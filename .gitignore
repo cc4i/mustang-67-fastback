@@ -1,14 +1,44 @@
-# generated files (mustang/paths.py): deliverables and scratch
+# Generated files (mustang/paths.py): deliverables and scratch
 /output/
 /tmp/
 
-# Claude Code session state
-/.claude/scheduled_tasks.lock
-/.claude/settings.local.json
+# Print, CAD and video artifacts, should one land outside output/ or tmp/
+*.stl
+*.3mf
+*.gcode
+*.mp4
 
-# Python and Blender leftovers
+# Blender: numbered save backups (.blend1, .blend2, ...) and the temp file written during a save
+*.blend[0-9]*
+*.blend@
+
+# Python
 __pycache__/
-*.pyc
-*.blend1
+*.py[cod]
+.ruff_cache/
+.mypy_cache/
+.pytest_cache/
+.venv/
+venv/
 
+# Agent harnesses: local state, personal overrides and indexes (shared config stays tracked)
+/.claude/settings.local.json
+/.claude/scheduled_tasks.lock
+/.claude/worktrees/
+CLAUDE.local.md
+.codegraph/
+.playwright-mcp/
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# macOS
 .DS_Store
+._*
+.AppleDouble
+.Spotlight-V100
+.Trashes

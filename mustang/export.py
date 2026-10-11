@@ -269,14 +269,27 @@ def remove_stale(folder, written):
             os.remove(path)
 
 
+def print_colour(ob_name):
+    """The colour an object prints in: its own PARTS / INLAYS entry's, or else that of the one copy
+    in PARTS it is printed as (Rim_FL prints as Rim_FR, TailBezel_L1 as TailBezel_L0)."""
+    colours = {ob: colour for _, ob, _, _, colour in PARTS} | {ob: colour for _, ob, _, colour in INLAYS}
+    if ob_name in colours:
+        return colours[ob_name]
+    base = ob_name.rsplit("_", 1)[0]
+    found = {colour for ob, colour in colours.items() if "_" in ob and ob.rsplit("_", 1)[0] == base}
+    assert len(found) == 1, f"no single print colour for {ob_name}: {found}"
+    return found.pop()
+
+
 def run_assembled(out_dir=paths.OUTPUT, collections=("Body", "Wheels", "Parts")):
     """Write every part as its own STL in its assembled position on the car (print millimetres),
-    for viewing/reference in CAD tools such as Shapr3D, plus one combined file."""
+    plus one combined file and manifest.json (file, object name, print colour), which
+    make_step.py turns into STEP solids for CAD tools such as Shapr3D."""
     folder = os.path.join(out_dir, "stl_assembled")
     os.makedirs(folder, exist_ok=True)
     dg = bpy.context.evaluated_depsgraph_get()
     combined = bmesh.new()
-    written = []
+    written, manifest = [], []
     for col_name in collections:
         for ob in sorted(bpy.data.collections[col_name].objects, key=lambda o: o.name):
             if ob.type != 'MESH':
@@ -292,8 +305,11 @@ def run_assembled(out_dir=paths.OUTPUT, collections=("Body", "Wheels", "Parts"))
             combined.from_mesh(tmp)
             bpy.data.meshes.remove(tmp)
             written.append(name)
+            manifest.append({"file": f"{name}.stl", "object": ob.name, "colour": print_colour(ob.name)})
             bm.free()
     write_stl(combined, os.path.join(folder, "_mustang_assembled_all_parts.stl"), "mustang67 assembled")
     combined.free()
+    with open(os.path.join(folder, "manifest.json"), "w") as f:
+        json.dump(manifest, f, indent=1)
     remove_stale(folder, {f"{n}.stl" for n in written} | {"_mustang_assembled_all_parts.stl"})
     return written
