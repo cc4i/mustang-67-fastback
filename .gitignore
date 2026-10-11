@@ -1,0 +1,14 @@
+# generated files (mustang/paths.py): deliverables and scratch
+/output/
+/tmp/
+
+# Claude Code session state
+/.claude/scheduled_tasks.lock
+/.claude/settings.local.json
+
+# Python and Blender leftovers
+__pycache__/
+*.pyc
+*.blend1
+
+.DS_Store
