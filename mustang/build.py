@@ -1,4 +1,4 @@
-"""Build the whole 1:24 printable Mustang into the open Blender scene.
+"""Build the whole 1:20 printable Mustang into the open Blender scene.
 
 Run inside Blender:  import build; build.main()
 """
@@ -23,12 +23,15 @@ for _m in (body, features, wheels, bumpers, details, interior, doors, engine_bay
     importlib.reload(_m)
 
 S = body.SCALE
+K = S / (1.0 / 24.0)
 AXLE_Z = body.WHEEL_RADIUS * S
 AXLE_XS = (body.FRONT_AXLE_X * S, body.REAR_AXLE_X * S)
-WHEEL_Y = 31.3                    # wheel centre plane offset from the centre line
-ARCH_R = 16.4                     # wheel arch opening radius (front; the rear is larger)
+WHEEL_Y = 31.3 * K                # rear wheel centre plane offset from the centre line
+FRONT_WHEEL_Y = 32.2 * K          # front wheel centre plane offset (clears steering sweep)
+ARCH_R = details.FRONT_ARCH * S   # wheel arch opening radius (front; the rear is larger)
 REAR_ARCH_R = details.REAR_ARCH * S
-WELL_INNER_Y = 25.6               # depth of the wheel well (inner wall plane)
+WELL_INNER_Y = 25.6 * K           # depth of the rear wheel well (inner wall plane)
+FRONT_WELL_INNER_Y = 23.4 * K     # depth of the front wheel well (steered tire sweep clearance)
 SUBDIV_LEVELS = 3
 
 COLLECTIONS = ["Body", "Wheels", "Parts", "Accessories", "Cutters"]
@@ -212,7 +215,7 @@ def build_doors(tree, me, body_ob):
             add_union(door, link(u, "Cutters"))
         for c in post:
             add_boolean(door, link(c, "Cutters"))
-    for card, unions, cuts in doors.card_parts():
+    for card, unions, cuts in doors.card_parts(tree):
         link(card, "Parts")
         for u in unions:
             add_union(card, link(u, "Cutters"))
@@ -227,7 +230,7 @@ def build_doors(tree, me, body_ob):
 
 
 def build_engine_bay(tree, me):
-    """Opening hood (pivoting on its rear pegs), black bay liner, V8 and the loose brace and prop."""
+    """Opening hood and trunk lid, black bay liner with N25 cradle, V8 shroud, driveshaft, and rear boot tub."""
     hood, pieces, cuts, pivot = engine_bay.hood_parts(tree, me)
     link(hood, "Parts")
     for p in pieces:
@@ -243,10 +246,10 @@ def build_engine_bay(tree, me):
         add_boolean(liner, link(c, "Cutters"))
     block, pieces, hollowed, covers, cleaner = engine_bay.engine_parts(tree)
     link(block, "Parts")
-    for part, inner in hollowed:                 # e.g. the fan belt: outer hull minus the pulley hull
-        add_boolean(part, link(inner, "Cutters"))
     for p in pieces:
         add_union(block, link(p, "Cutters"))
+    for part, inner in hollowed:                 # fan belt inner cut, alternator slots, and EngineBlock N25 cavity
+        add_boolean(part, link(inner, "Cutters"))
     for part, unions in covers + [cleaner]:      # valve covers and air cleaner
         link(part, "Parts")
         for u in unions:
@@ -255,6 +258,27 @@ def build_engine_bay(tree, me):
     link(brace, "Parts")
     for p in pieces:
         add_union(brace, link(p, "Cutters"))
+    shaft, s_cuts = engine_bay.driveshaft_part()
+    link(shaft, "Parts")
+    for c in s_cuts:
+        add_boolean(shaft, link(c, "Cutters"))
+    gear, g_cuts = engine_bay.axle_gear_part()
+    link(gear, "Parts")
+    for c in g_cuts:
+        add_boolean(gear, link(c, "Cutters"))
+    trunk, t_pieces, t_cuts, t_pivot = engine_bay.trunk_parts(tree, me)
+    link(trunk, "Parts")
+    for p in t_pieces:
+        add_union(trunk, link(p, "Cutters"))
+    for c in t_cuts:
+        add_boolean(trunk, link(c, "Cutters"))
+    engine_bay.set_hood_pivot(trunk, t_pieces + t_cuts, t_pivot)
+    boot, b_pieces, b_cuts = engine_bay.boot_tub_parts(tree)
+    link(boot, "Parts")
+    for c in b_cuts:
+        add_boolean(boot, link(c, "Cutters"))
+    for p in b_pieces:
+        add_union(boot, link(p, "Cutters"))
     prop = link(engine_bay.prop_rod(pivot, tree), "Accessories")
     prop.hide_render = True                  # shown only in open-hood renders
 
@@ -270,10 +294,11 @@ def build_body():
     tree = features._bvh(me)
     for name, piece in details.body_unions(tree, me):
         add_union(ob, link(piece, "Cutters"))
-    for x in AXLE_XS:
+    for i, x in enumerate(AXLE_XS):
+        well_y = FRONT_WELL_INNER_Y if i == 0 else WELL_INNER_Y
         for side in (-1, 1):
-            arch = link(cylinder_y(f"Cut_Arch_{'F' if x < 100 else 'R'}{'L' if side < 0 else 'R'}",
-                                   ARCH_R if x < 100 else REAR_ARCH_R, side * WELL_INNER_Y, side * 60, x, AXLE_Z, 96), "Cutters")
+            arch = link(cylinder_y(f"Cut_Arch_{'F' if i == 0 else 'R'}{'L' if side < 0 else 'R'}",
+                                   ARCH_R if i == 0 else REAR_ARCH_R, side * well_y, side * 60 * K, x, AXLE_Z, 96), "Cutters")
             add_boolean(ob, arch)
     for name, cutter in details.body_cutters(tree, me):
         add_boolean(ob, link(cutter, "Cutters"), name)
@@ -281,7 +306,7 @@ def build_body():
         add_union(ob, link(piece, "Cutters"))
     for name, cutter in details.body_late_cuts(tree, me):
         add_boolean(ob, link(cutter, "Cutters"), name)
-    for name, cutter in engine_bay.body_cutters(tree, me):
+    for name, cutter in engine_bay.body_cutters(tree, me) + engine_bay.trunk_body_cutters(tree, me):
         add_boolean(ob, link(cutter, "Cutters"), name)
     interior.set_body_surface(tree)
     add_boolean(ob, link(interior.cabin_cutter(), "Cutters"), "Cut_Cabin")
@@ -297,15 +322,28 @@ def build_body():
     return ob, shell
 
 
-AXLE_LENGTH = 2 * (WHEEL_Y + 3.55) - 0.3   # flush with the outer hub faces, less a hair
+AXLE_LENGTH = 2 * (WHEEL_Y + wheels.RIM_W - 0.3 * K) - 0.3 * K   # flush with the outer hub faces, less a hair
 
 
 def build_wheels():
-    for x in AXLE_XS:
-        axle = link(bpy.data.objects.new(f"Axle_{'F' if x < 100 else 'R'}", wheels.axle_mesh("Axle", AXLE_LENGTH)), "Wheels")
-        axle.location = (x, 0, AXLE_Z)
+    for i, x in enumerate(AXLE_XS):
+        wy = FRONT_WHEEL_Y if i == 0 else WHEEL_Y
+        if i == 1:
+            axle = link(bpy.data.objects.new("Axle_R", wheels.axle_mesh("Axle", AXLE_LENGTH)), "Wheels")
+            axle.location = (x, 0, AXLE_Z)
+        else:
+            tie, t_unions, t_cuts = wheels.steering_link_part()
+            link(tie, "Parts")
+            for u in t_unions:
+                u_ob = link(u, "Cutters")
+                u_ob.parent = tie
+                add_union(tie, u_ob)
+            for c in t_cuts:
+                c_ob = link(c, "Cutters")
+                c_ob.parent = tie
+                add_boolean(tie, c_ob)
         for side in (-1, 1):
-            tag = f"{'F' if x < 100 else 'R'}{'L' if side < 0 else 'R'}"
+            tag = f"{'F' if i == 0 else 'R'}{'L' if side < 0 else 'R'}"
             rim_me = wheels.rim_blank_mesh(f"Rim_{tag}")
             rim = link(bpy.data.objects.new(f"Rim_{tag}", rim_me), "Wheels")
             cutter = link(bpy.data.objects.new(f"Cut_Spokes_{tag}", wheels.spoke_cutter_mesh(f"Cut_Spokes_{tag}")), "Cutters")
@@ -313,14 +351,31 @@ def build_wheels():
             add_boolean(rim, cutter)
             tire = link(bpy.data.objects.new(f"Tire_{tag}", wheels.tire_mesh(f"Tire_{tag}")), "Wheels")
             for ob in (rim, tire):
-                ob.location = (x, side * WHEEL_Y, AXLE_Z)
+                ob.location = (x, side * wy, AXLE_Z)
                 # meshes face +Y outward; mirror the left-hand side
                 if side < 0:
                     ob.rotation_euler = (0, 0, math.pi)
+            if i == 0:
+                knuckle, k_unions, k_cuts, pivot = wheels.knuckle_parts(side)
+                link(knuckle, "Parts")
+                for u in k_unions:
+                    add_union(knuckle, link(u, "Cutters"))
+                for c in k_cuts:
+                    add_boolean(knuckle, link(c, "Cutters"))
+                wheels.set_knuckle_pivot(knuckle, k_unions + k_cuts, pivot, riders=(rim, tire))
 
 
 def smooth_by_angle(ob, angle_deg=35.0):
     """Render boolean-cut edges crisp (display/render only; exported STLs carry no shading)."""
+    ng = bpy.data.node_groups.get("Smooth by Angle")
+    if ng is not None:
+        mod = ob.modifiers.get("Smooth by Angle") or ob.modifiers.new("Smooth by Angle", 'NODES')
+        mod.node_group = ng
+        try:
+            mod["Input_1"] = math.radians(angle_deg)
+        except Exception:
+            pass
+        return
     with bpy.context.temp_override(object=ob, active_object=ob, selected_objects=[ob], selected_editable_objects=[ob]):
         bpy.ops.object.shade_auto_smooth(angle=math.radians(angle_deg))
 
@@ -332,9 +387,11 @@ def main():
     for lc in bpy.context.view_layer.layer_collection.children:     # animate.setup() hides the build
         if lc.collection.name in COLLECTIONS[:-1]:
             lc.hide_viewport = False
+            lc.collection.hide_viewport = False
             lc.collection.hide_render = False
         elif lc.collection.name == "Showcase":
             lc.hide_viewport = True
+            lc.collection.hide_viewport = True
             lc.collection.hide_render = True
     old = bpy.data.objects.get("Cube")
     if old:
@@ -344,9 +401,11 @@ def main():
     build_parts(body_ob, shell)
     materials.apply_all()
     smooth_by_angle(body_ob)
+    collection("Body").hide_viewport = True
     for ob in collection("Parts").objects:       # round parts (hoses, wires, caps) shade round, cut edges stay crisp
-        if ob.type == 'MESH' and not ob.name.startswith("Hood"):
+        if ob.type == 'MESH' and not ob.name.startswith(("Hood", "TrunkLid")):
             smooth_by_angle(ob)
+    collection("Body").hide_viewport = False
     collection("Cutters").hide_viewport = False
     for ob in collection("Cutters").objects:
         ob.hide_set(True)

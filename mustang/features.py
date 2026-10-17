@@ -93,7 +93,7 @@ def surface_solid(name, target_mesh, axis, outline_real, lo_fn, hi_fn, rings=6, 
     pts = resample([(u * SCALE, v * SCALE) for (u, v) in outline_real], step)
     cu = sum(p[0] for p in pts) / len(pts)
     cv = sum(p[1] for p in pts) / len(pts)
-    far = 200.0
+    far = 300.0
 
     def project(u, v):
         origin = to3d(u, v, far)
@@ -328,7 +328,7 @@ def surface_strip(name, tree, axis, centerline, width, lo, hi, closed=False, squ
         side_dir = Vector((-t.y, t.x)) * (width / 2)
         hits = []
         for q in (pts[i] + side_dir, pts[i] - side_dir):
-            hit, *_ = tree.ray_cast(to3d(q.x * SCALE, q.y * SCALE, 200.0), into, 400.0)
+            hit, *_ = tree.ray_cast(to3d(q.x * SCALE, q.y * SCALE, 300.0), into, 600.0)
             if hit is None:
                 raise ValueError(f"{name}: strip point ({q.x:.0f}, {q.y:.0f}) misses the body")
             hits.append(hit)

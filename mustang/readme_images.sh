@@ -16,10 +16,10 @@ FRAME_W=1080  # a 1280x720 frame cropped to the photos' 3:2
 # output name | photo | animation frame | left edge of the crop in the frame (px)
 PAIRS=(
   "front34_driver|1967-ford-mustang-fastback.jpeg|1|60"
-  "hood_open|1967-ford-mustang-fastback (11).jpeg|181|100"
-  "engine_bay|1967-ford-mustang-fastback (13).jpeg|110|100"
-  "front34_passenger|1967-ford-mustang-fastback (21).jpeg|440|170"
-  "door_open|1967-ford-mustang-fastback (8).jpeg|372|200"
+  "hood_open|1967-ford-mustang-fastback (11).jpeg|28|100"
+  "engine_bay|1967-ford-mustang-fastback (13).jpeg|40|100"
+  "front34_passenger|1967-ford-mustang-fastback (21).jpeg|68|170"
+  "door_open|1967-ford-mustang-fastback (8).jpeg|88|200"
 )
 
 mkdir -p "$OUT"

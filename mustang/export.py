@@ -43,7 +43,10 @@ PARTS = [
     ("diff_cover", "DiffCover", UPSIDE_DOWN, 1, "#1A1A1A"),             # flat side down
     ("exhaust", "Exhaust_R", RY_UP_FROM_POS_X, 2, "#C8C8CC"),
     ("backup_light", "BackupLight_R", RY_UP_FROM_POS_X, 2, "#C8C8CC"),        # stands on its back, face up
-    ("axle", "Axle_F", IDENTITY, 2, "#1A1A1A"),
+    ("axle", "Axle_R", IDENTITY, 1, "#1A1A1A"),
+    ("knuckle_r", "Knuckle_R", IDENTITY, 1, "#1A1A1A"),
+    ("knuckle_l", "Knuckle_L", IDENTITY, 1, "#1A1A1A"),
+    ("steering_link", "SteeringLink", IDENTITY, 1, "#1A1A1A"),
     ("mirror", "Mirror_L", RY_UP_FROM_NEG_X, 1, "#C8C8CC"),             # flat rear face down, domed back up
     ("interior_tub", "InteriorTub", IDENTITY, 1, "#1A1A1A"),
     ("steering_wheel", "SteeringWheel", "LOCAL_Y_UP", 1, "#1A1A1A"),
@@ -62,6 +65,10 @@ PARTS = [
     ("air_cleaner", "AirCleaner", IDENTITY, 1, "#1A1A1A"),
     ("brace", "Brace", IDENTITY, 1, "#1A1A1A"),
     ("hood_prop", "HoodProp", "LOCAL", 1, "#1A1A1A"),
+    ("trunk_lid", "TrunkLid", IDENTITY, 1, "#6B0F1A"),
+    ("boot_tub", "BootTub", IDENTITY, 1, "#1A1A1A"),
+    ("driveshaft", "Driveshaft", RY_UP_FROM_POS_X, 1, "#C8C8CC"),
+    ("axle_gear", "AxleGear", RX_UP_FROM_NEG_Y, 1, "#C8C8CC"),
 ]
 # extra parts of another part's print object (its unique part key), in another colour: the tinted
 # glass inlays print in black inside the body. Exported in the host's print frame, so they land in place.
@@ -205,7 +212,7 @@ def write_stl(bm, path, name):
             f.write(b"\0\0")
 
 
-HINGED = ("Hood", "Door_L", "Door_R")
+HINGED = ("Hood", "TrunkLid", "Door_L", "Door_R", "Knuckle_L", "Knuckle_R")
 
 
 def run(out_dir=paths.OUTPUT):

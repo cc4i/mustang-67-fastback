@@ -58,7 +58,7 @@ def cove(col=None):
         old, floor.data = floor.data, me
         if old.users == 0:
             bpy.data.meshes.remove(old)
-    floor.location = (96, 0, 0)
+    floor.location = (96 * ( __import__("body").SCALE / (1.0 / 24.0) ), 0, 0)
     floor.rotation_euler = (0, 0, 0)
     floor.scale = (1, 1, 1)
     floor.visible_shadow = False         # the HDRI's sun would otherwise cast the open-topped wall onto itself
@@ -74,12 +74,13 @@ def cove(col=None):
 
 
 def _area(col, name, loc, energy, size):
+    K = __import__("body").SCALE / (1.0 / 24.0)
     data = bpy.data.lights.new(name, 'AREA')
-    data.energy = energy
-    data.size = size
+    data.energy = energy * (K ** 2)
+    data.size = size * K
     ob = bpy.data.objects.new(name, data)
-    ob.location = loc
-    ob.rotation_euler = (Vector((96, 0, 20)) - Vector(loc)).to_track_quat('-Z', 'Y').to_euler()
+    ob.location = tuple(c * K for c in loc)
+    ob.rotation_euler = (Vector((96 * K, 0, 20 * K)) - Vector(ob.location)).to_track_quat('-Z', 'Y').to_euler()
     col.objects.link(ob)
 
 
@@ -154,14 +155,15 @@ def world(scene):
 
 
 def _camera(col, name, elev, azim, dist, target=(94, 0, 22), lens=60):
+    K = __import__("body").SCALE / (1.0 / 24.0)
     e, a = math.radians(elev), math.radians(azim)
-    t = Vector(target)
+    t = Vector(target) * K
     d = Vector((-math.cos(e) * math.cos(a), math.cos(e) * math.sin(a), math.sin(e)))
     data = bpy.data.cameras.new(name)
     data.lens = lens
     data.clip_start, data.clip_end = 1, 5000
     ob = bpy.data.objects.new(name, data)
-    ob.location = t + d * dist
+    ob.location = t + d * (dist * K)
     ob.rotation_euler = (t - ob.location).to_track_quat('-Z', 'Y').to_euler()
     col.objects.link(ob)
     return ob

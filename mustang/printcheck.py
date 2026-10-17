@@ -92,8 +92,8 @@ def overlap_volume(a, b):
 # that exist on one side only (the car has a driver's mirror only)
 ASYMMETRIC_PAIRS = ("ValveCover",)
 ONE_SIDED = ("Mirror", "DoorMirrorSlot", "Axle", "Bumper")      # (Axle_R, Bumper_R: R for rear)
-# parts that are meant to interpenetrate: the octagonal axle's corners bite into the rim hubs
-PRESS_FITS = (("Axle", "Rim"),)
+# parts that are meant to interpenetrate: the octagonal axle and knuckle stub corners bite into the rim hubs
+PRESS_FITS = (("Axle", "Rim"), ("Knuckle", "Rim"))
 
 
 def mirror_mismatches(tol=0.05):

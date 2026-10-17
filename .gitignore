@@ -7,6 +7,7 @@
 *.3mf
 *.gcode
 *.mp4
+!docs/images/*.mp4
 
 # Blender: numbered save backups (.blend1, .blend2, ...) and the temp file written during a save
 *.blend[0-9]*

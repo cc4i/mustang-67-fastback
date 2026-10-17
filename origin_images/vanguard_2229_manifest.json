@@ -1,0 +1,944 @@
+{
+  "source_url": "https://www.vanguardmotorsales.com/vehicles/2229/1967-ford-mustang-fastback",
+  "youtube_video_url": "https://www.youtube.com/watch?v=_jhEMsptDrc",
+  "total_gallery_images": 108,
+  "images": [
+    {
+      "gallery_index": 1,
+      "photo_id": "291101",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/291101/1920x1440/1967-ford-mustang-fastback",
+      "filename": "1967-ford-mustang-fastback (22).jpeg",
+      "sha256": "c1d55c5f5e05f635fb5460f65286ad7a726d553ecea2f9d844c184dfbb36e0b9",
+      "bytes": 132408,
+      "status": "downloaded"
+    },
+    {
+      "gallery_index": 2,
+      "photo_id": "291069",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/291069/1920x1440/1967-ford-mustang-fastback",
+      "filename": "1967-ford-mustang-fastback (7).jpeg",
+      "sha256": "e776431b4289ec67beef1cc7079e28c6f818da70577de3c821785ffa599a0d24",
+      "bytes": 160062,
+      "status": "existing"
+    },
+    {
+      "gallery_index": 3,
+      "photo_id": "291096",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/291096/1920x1440/1967-ford-mustang-fastback",
+      "filename": "1967-ford-mustang-fastback (13).jpeg",
+      "sha256": "ab161b72f09c43780bd56dfb91e76435a502909a9e4a4d6773012939fb355b83",
+      "bytes": 222111,
+      "status": "existing"
+    },
+    {
+      "gallery_index": 4,
+      "photo_id": "290816",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/290816/1920x1440/1967-ford-mustang-fastback",
+      "filename": null,
+      "status": "failed: curl: (22) The requested URL returned error: 400"
+    },
+    {
+      "gallery_index": 5,
+      "photo_id": "291024",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/291024/1920x1440/1967-ford-mustang-fastback",
+      "filename": "1967-ford-mustang-fastback (15).jpeg",
+      "sha256": "522a27b8363156b5648db06488db23b923049afbb189abfdf0c3624afcc93512",
+      "bytes": 145089,
+      "status": "existing"
+    },
+    {
+      "gallery_index": 6,
+      "photo_id": "291025",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/291025/1920x1440/1967-ford-mustang-fastback",
+      "filename": "1967-ford-mustang-fastback (20).jpeg",
+      "sha256": "3aeddad9ec559f70a93b6469037dbb31e6bfdd1f24543dcb92830c2a07374ed1",
+      "bytes": 152197,
+      "status": "existing"
+    },
+    {
+      "gallery_index": 7,
+      "photo_id": "291026",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/291026/1920x1440/1967-ford-mustang-fastback",
+      "filename": "1967-ford-mustang-fastback (23).jpeg",
+      "sha256": "08b103b9f12ea7332f29754ab3cf8ee56d79718339efd1921716bfe9fb5c2b42",
+      "bytes": 135736,
+      "status": "downloaded"
+    },
+    {
+      "gallery_index": 8,
+      "photo_id": "291027",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/291027/1920x1440/1967-ford-mustang-fastback",
+      "filename": "1967-ford-mustang-fastback (21).jpeg",
+      "sha256": "0689cbb98f48caa88f8efb6c8d01bbe84d9a9eee575b1aea9a3e2f86e5b2d585",
+      "bytes": 154631,
+      "status": "existing"
+    },
+    {
+      "gallery_index": 9,
+      "photo_id": "291028",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/291028/1920x1440/1967-ford-mustang-fastback",
+      "filename": "1967-ford-mustang-fastback.jpeg",
+      "sha256": "0f16601152a1f20cf449bafe333b766349a1d55646eefe274329f2de3048bafa",
+      "bytes": 158751,
+      "status": "existing"
+    },
+    {
+      "gallery_index": 10,
+      "photo_id": "291029",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/291029/1920x1440/1967-ford-mustang-fastback",
+      "filename": "1967-ford-mustang-fastback (1).jpeg",
+      "sha256": "6b2d9f0b8554644ddd0c65b2f3ccd9dfaa2ded517f7a1145cb7700911460508c",
+      "bytes": 126344,
+      "status": "existing"
+    },
+    {
+      "gallery_index": 11,
+      "photo_id": "291030",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/291030/1920x1440/1967-ford-mustang-fastback",
+      "filename": "1967-ford-mustang-fastback (17).jpeg",
+      "sha256": "b05cfa3c5727e74fd08b9b9cb64755f5a52715ce649414534441549264f19468",
+      "bytes": 144267,
+      "status": "existing"
+    },
+    {
+      "gallery_index": 12,
+      "photo_id": "291031",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/291031/1920x1440/1967-ford-mustang-fastback",
+      "filename": "1967-ford-mustang-fastback (24).jpeg",
+      "sha256": "33d8a0f5c29e6b59b42ebfcc6429312562f20a7eafd11818e48145a4de9316f6",
+      "bytes": 148027,
+      "status": "downloaded"
+    },
+    {
+      "gallery_index": 13,
+      "photo_id": "291032",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/291032/1920x1440/1967-ford-mustang-fastback",
+      "filename": "1967-ford-mustang-fastback (3).jpeg",
+      "sha256": "178f214f2b699a95f88c73537485be1f427853ed15595738c0d5649c9ae63f22",
+      "bytes": 134950,
+      "status": "existing"
+    },
+    {
+      "gallery_index": 14,
+      "photo_id": "291033",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/291033/1920x1440/1967-ford-mustang-fastback",
+      "filename": "1967-ford-mustang-fastback (25).jpeg",
+      "sha256": "1fd7355af2955e0e17d2182ffd994b7ab422f9d8be89503622cbf5ed2e6e267f",
+      "bytes": 130714,
+      "status": "downloaded"
+    },
+    {
+      "gallery_index": 15,
+      "photo_id": "291034",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/291034/1920x1440/1967-ford-mustang-fastback",
+      "filename": "1967-ford-mustang-fastback (26).jpeg",
+      "sha256": "c0dbf552b211544f3a10d4014216f84c0ed38ba4b7e2f61970c0dfb6edfb57d6",
+      "bytes": 135531,
+      "status": "downloaded"
+    },
+    {
+      "gallery_index": 16,
+      "photo_id": "291035",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/291035/1920x1440/1967-ford-mustang-fastback",
+      "filename": "1967-ford-mustang-fastback (5).jpeg",
+      "sha256": "aaeda7515f3a31d3af195d5a63e51af77be0d85abd78627f29842262defc2eb8",
+      "bytes": 151565,
+      "status": "existing"
+    },
+    {
+      "gallery_index": 17,
+      "photo_id": "291036",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/291036/1920x1440/1967-ford-mustang-fastback",
+      "filename": "1967-ford-mustang-fastback (27).jpeg",
+      "sha256": "38c098bf2e546a70085afa8f38c471ffec2f08161bec38e4f0d8009e0456c301",
+      "bytes": 139818,
+      "status": "downloaded"
+    },
+    {
+      "gallery_index": 18,
+      "photo_id": "291037",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/291037/1920x1440/1967-ford-mustang-fastback",
+      "filename": "1967-ford-mustang-fastback (18).jpeg",
+      "sha256": "eb72406db11aafe7d66c1f632518f3895c9ddb0a2b843a01cdc089330cdeb755",
+      "bytes": 145030,
+      "status": "existing"
+    },
+    {
+      "gallery_index": 19,
+      "photo_id": "291038",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/291038/1920x1440/1967-ford-mustang-fastback",
+      "filename": "1967-ford-mustang-fastback (16).jpeg",
+      "sha256": "65a760ecb5674ef43476dc4002dbf36a7bd64c1493c6e64fa0e360d522b9f973",
+      "bytes": 127204,
+      "status": "existing"
+    },
+    {
+      "gallery_index": 20,
+      "photo_id": "291039",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/291039/1920x1440/1967-ford-mustang-fastback",
+      "filename": "1967-ford-mustang-fastback (28).jpeg",
+      "sha256": "df021f4402f1905bb36c314737bc97d5e344aba9dbe30e96b7ed1d0560399b69",
+      "bytes": 130614,
+      "status": "downloaded"
+    },
+    {
+      "gallery_index": 21,
+      "photo_id": "291040",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/291040/1920x1440/1967-ford-mustang-fastback",
+      "filename": "1967-ford-mustang-fastback (29).jpeg",
+      "sha256": "654f76c4965930fe023c7fb80370d9fd09472bdbce0a9857113517f256e4838d",
+      "bytes": 121507,
+      "status": "downloaded"
+    },
+    {
+      "gallery_index": 22,
+      "photo_id": "291041",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/291041/1920x1440/1967-ford-mustang-fastback",
+      "filename": "1967-ford-mustang-fastback (30).jpeg",
+      "sha256": "7b1b64a8293665608063b0e7d13557327823f3930d51ad209de60b0d03093920",
+      "bytes": 93451,
+      "status": "downloaded"
+    },
+    {
+      "gallery_index": 23,
+      "photo_id": "291042",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/291042/1920x1440/1967-ford-mustang-fastback",
+      "filename": "1967-ford-mustang-fastback (31).jpeg",
+      "sha256": "03494e8f7a9a536d65cd5542861d99f676c85cdfc661335664fd7e250bda36f6",
+      "bytes": 137037,
+      "status": "downloaded"
+    },
+    {
+      "gallery_index": 24,
+      "photo_id": "291043",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/291043/1920x1440/1967-ford-mustang-fastback",
+      "filename": "1967-ford-mustang-fastback (32).jpeg",
+      "sha256": "645ab9f4f99efefe9fa3727bf827fa7ac02ab5fec4baa988e0419e550e43e76c",
+      "bytes": 131128,
+      "status": "downloaded"
+    },
+    {
+      "gallery_index": 25,
+      "photo_id": "291044",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/291044/1920x1440/1967-ford-mustang-fastback",
+      "filename": "1967-ford-mustang-fastback (33).jpeg",
+      "sha256": "a1a62d76dabbc078c69c5afcd4255753e9e53824e4f2dd4bcf94e571d6d092a3",
+      "bytes": 119664,
+      "status": "downloaded"
+    },
+    {
+      "gallery_index": 26,
+      "photo_id": "291045",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/291045/1920x1440/1967-ford-mustang-fastback",
+      "filename": "1967-ford-mustang-fastback (34).jpeg",
+      "sha256": "86b0ce8027e1ee9906a96932aa8613ee34f4de76b97118cf3d9649810e63a1f6",
+      "bytes": 118914,
+      "status": "downloaded"
+    },
+    {
+      "gallery_index": 27,
+      "photo_id": "291046",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/291046/1920x1440/1967-ford-mustang-fastback",
+      "filename": "1967-ford-mustang-fastback (35).jpeg",
+      "sha256": "d08a8fbe9413826b09376d7df58a63357b8c6e79a0300dd6c63dd6ead85542de",
+      "bytes": 146057,
+      "status": "downloaded"
+    },
+    {
+      "gallery_index": 28,
+      "photo_id": "291047",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/291047/1920x1440/1967-ford-mustang-fastback",
+      "filename": "1967-ford-mustang-fastback (36).jpeg",
+      "sha256": "494bcaeb449109c3cab88e065621e2502233c89d8704d7adea37331e27b09d07",
+      "bytes": 102150,
+      "status": "downloaded"
+    },
+    {
+      "gallery_index": 29,
+      "photo_id": "291048",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/291048/1920x1440/1967-ford-mustang-fastback",
+      "filename": "1967-ford-mustang-fastback (37).jpeg",
+      "sha256": "33cf8956508b8a78e11aba9fcda6301f428a7322fa454b09e094ac983b7182c7",
+      "bytes": 113904,
+      "status": "downloaded"
+    },
+    {
+      "gallery_index": 30,
+      "photo_id": "291049",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/291049/1920x1440/1967-ford-mustang-fastback",
+      "filename": "1967-ford-mustang-fastback (38).jpeg",
+      "sha256": "187a83c729a450a63ebfd8edd353bd6016c799aeb7073fcc1ef0d9e07be990f9",
+      "bytes": 128746,
+      "status": "downloaded"
+    },
+    {
+      "gallery_index": 31,
+      "photo_id": "291050",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/291050/1920x1440/1967-ford-mustang-fastback",
+      "filename": "1967-ford-mustang-fastback (39).jpeg",
+      "sha256": "3faed9cd4cce3c8095d880fce7070d3f434b8ee84b998e48e9c812bbf925faa0",
+      "bytes": 128031,
+      "status": "downloaded"
+    },
+    {
+      "gallery_index": 32,
+      "photo_id": "291051",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/291051/1920x1440/1967-ford-mustang-fastback",
+      "filename": "1967-ford-mustang-fastback (40).jpeg",
+      "sha256": "093583a1462a22e5c7eb9ca36e2e6e47f31860298adf7fa9a340dc8e6c6d2cc3",
+      "bytes": 148487,
+      "status": "downloaded"
+    },
+    {
+      "gallery_index": 33,
+      "photo_id": "291052",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/291052/1920x1440/1967-ford-mustang-fastback",
+      "filename": "1967-ford-mustang-fastback (41).jpeg",
+      "sha256": "af1c0d0c6a850baa70b86bc0c3c49048aa4b82f578cba2cc8da75e28eb9e6708",
+      "bytes": 133365,
+      "status": "downloaded"
+    },
+    {
+      "gallery_index": 34,
+      "photo_id": "291053",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/291053/1920x1440/1967-ford-mustang-fastback",
+      "filename": "1967-ford-mustang-fastback (42).jpeg",
+      "sha256": "40baf969533ebe503195bb788bd215074428acfd0a98a8e6ef7d51b51538ea41",
+      "bytes": 140231,
+      "status": "downloaded"
+    },
+    {
+      "gallery_index": 35,
+      "photo_id": "291054",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/291054/1920x1440/1967-ford-mustang-fastback",
+      "filename": "1967-ford-mustang-fastback (43).jpeg",
+      "sha256": "74c313b22a880146c031480ad5b49aa0f56d7773640a4b2c79753f340c0091d3",
+      "bytes": 143482,
+      "status": "downloaded"
+    },
+    {
+      "gallery_index": 36,
+      "photo_id": "291055",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/291055/1920x1440/1967-ford-mustang-fastback",
+      "filename": "1967-ford-mustang-fastback (44).jpeg",
+      "sha256": "2e74fc468a7b9e1cf5213dab07f9ee54fe6e8e9f3cf2c5563107a0ae905795b9",
+      "bytes": 122826,
+      "status": "downloaded"
+    },
+    {
+      "gallery_index": 37,
+      "photo_id": "291056",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/291056/1920x1440/1967-ford-mustang-fastback",
+      "filename": "1967-ford-mustang-fastback (45).jpeg",
+      "sha256": "d91b6cc75f107d1d319ddd2bcc33a838dde28f1d978d1d2eca72fbb50bf74e0f",
+      "bytes": 153031,
+      "status": "downloaded"
+    },
+    {
+      "gallery_index": 38,
+      "photo_id": "291057",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/291057/1920x1440/1967-ford-mustang-fastback",
+      "filename": "1967-ford-mustang-fastback (46).jpeg",
+      "sha256": "1d6685cad78ee09133229f24538a8f1dc11f32f0c97644f81413bdeb3833ff37",
+      "bytes": 126381,
+      "status": "downloaded"
+    },
+    {
+      "gallery_index": 39,
+      "photo_id": "291058",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/291058/1920x1440/1967-ford-mustang-fastback",
+      "filename": "1967-ford-mustang-fastback (47).jpeg",
+      "sha256": "e27bee2a8ba3530c01dc0f289096ee0b47edc52c2131fa8571992494205607c7",
+      "bytes": 117255,
+      "status": "downloaded"
+    },
+    {
+      "gallery_index": 40,
+      "photo_id": "291059",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/291059/1920x1440/1967-ford-mustang-fastback",
+      "filename": "1967-ford-mustang-fastback (48).jpeg",
+      "sha256": "54a8921ecb7be43ab4f411261fa28914fad5b0b0aaca37256c2c72c5d413ff27",
+      "bytes": 135521,
+      "status": "downloaded"
+    },
+    {
+      "gallery_index": 41,
+      "photo_id": "291060",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/291060/1920x1440/1967-ford-mustang-fastback",
+      "filename": "1967-ford-mustang-fastback (49).jpeg",
+      "sha256": "60a8ce8b5ba24c51829737d725e76d40e202120b16277e130e8a28538a7eee92",
+      "bytes": 102984,
+      "status": "downloaded"
+    },
+    {
+      "gallery_index": 42,
+      "photo_id": "291061",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/291061/1920x1440/1967-ford-mustang-fastback",
+      "filename": "1967-ford-mustang-fastback (50).jpeg",
+      "sha256": "8e6740998e2ea32611da9f8e58ece01830a701fd434d46433053ff721fface3e",
+      "bytes": 116896,
+      "status": "downloaded"
+    },
+    {
+      "gallery_index": 43,
+      "photo_id": "291062",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/291062/1920x1440/1967-ford-mustang-fastback",
+      "filename": "1967-ford-mustang-fastback (51).jpeg",
+      "sha256": "78e579fa5c785e4e471cd580904d0b863055edcf6f7bfa22ff4455e15d828adb",
+      "bytes": 120427,
+      "status": "downloaded"
+    },
+    {
+      "gallery_index": 44,
+      "photo_id": "291063",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/291063/1920x1440/1967-ford-mustang-fastback",
+      "filename": "1967-ford-mustang-fastback (52).jpeg",
+      "sha256": "c33760360b17a75279678e8264fd2a71095127ca911cbb34b72016607b063af3",
+      "bytes": 143064,
+      "status": "downloaded"
+    },
+    {
+      "gallery_index": 45,
+      "photo_id": "291064",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/291064/1920x1440/1967-ford-mustang-fastback",
+      "filename": "1967-ford-mustang-fastback (53).jpeg",
+      "sha256": "4294fd7a0c042713d2d339189b8efa9f70a4ef090218f3681d35adeabf85a3c0",
+      "bytes": 153927,
+      "status": "downloaded"
+    },
+    {
+      "gallery_index": 46,
+      "photo_id": "291065",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/291065/1920x1440/1967-ford-mustang-fastback",
+      "filename": "1967-ford-mustang-fastback (54).jpeg",
+      "sha256": "9744104272c1ed8248bb237f413adeb16fb8fef6de2b32c1d213c2f56f66a29b",
+      "bytes": 155615,
+      "status": "downloaded"
+    },
+    {
+      "gallery_index": 47,
+      "photo_id": "291066",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/291066/1920x1440/1967-ford-mustang-fastback",
+      "filename": "1967-ford-mustang-fastback (55).jpeg",
+      "sha256": "cababd91cf5850e284509b2933f35f79e52ad3f1dec4ca65f4904b43a9bdcdbe",
+      "bytes": 146558,
+      "status": "downloaded"
+    },
+    {
+      "gallery_index": 48,
+      "photo_id": "291067",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/291067/1920x1440/1967-ford-mustang-fastback",
+      "filename": "1967-ford-mustang-fastback (56).jpeg",
+      "sha256": "3b2f16a1f7398d297e8dbaced2d725a9978ea3fd1da3b76767740755128565ae",
+      "bytes": 161100,
+      "status": "downloaded"
+    },
+    {
+      "gallery_index": 49,
+      "photo_id": "291102",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/291102/1920x1440/1967-ford-mustang-fastback",
+      "filename": "1967-ford-mustang-fastback (7).jpeg",
+      "sha256": "e776431b4289ec67beef1cc7079e28c6f818da70577de3c821785ffa599a0d24",
+      "bytes": 160062,
+      "status": "existing"
+    },
+    {
+      "gallery_index": 50,
+      "photo_id": "291068",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/291068/1920x1440/1967-ford-mustang-fastback",
+      "filename": "1967-ford-mustang-fastback (57).jpeg",
+      "sha256": "84c3226b488c45029f0a87cf42d5ee7fb64a4278d6ae5684494334711432cf82",
+      "bytes": 142693,
+      "status": "downloaded"
+    },
+    {
+      "gallery_index": 51,
+      "photo_id": "291070",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/291070/1920x1440/1967-ford-mustang-fastback",
+      "filename": "1967-ford-mustang-fastback (58).jpeg",
+      "sha256": "20cfd999b158684503aefc996633b4de47c6ac1ca867c80493cdf7d9fc3fe7a0",
+      "bytes": 148181,
+      "status": "downloaded"
+    },
+    {
+      "gallery_index": 52,
+      "photo_id": "291071",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/291071/1920x1440/1967-ford-mustang-fastback",
+      "filename": "1967-ford-mustang-fastback (59).jpeg",
+      "sha256": "53267ce401d2c790315e1fcb785681f78506223d9c1d875af1e49ba2f9743821",
+      "bytes": 149221,
+      "status": "downloaded"
+    },
+    {
+      "gallery_index": 53,
+      "photo_id": "291072",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/291072/1920x1440/1967-ford-mustang-fastback",
+      "filename": "1967-ford-mustang-fastback (60).jpeg",
+      "sha256": "556b25120a72ae5ca5fff36911877b26f8020db99223ac4e937e27d8ea5e9650",
+      "bytes": 155047,
+      "status": "downloaded"
+    },
+    {
+      "gallery_index": 54,
+      "photo_id": "291073",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/291073/1920x1440/1967-ford-mustang-fastback",
+      "filename": "1967-ford-mustang-fastback (61).jpeg",
+      "sha256": "b42f70b85431337a7ea9d4c659930e07bdd0e3b83c0afb5b9b11afcf1634ed74",
+      "bytes": 179357,
+      "status": "downloaded"
+    },
+    {
+      "gallery_index": 55,
+      "photo_id": "291074",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/291074/1920x1440/1967-ford-mustang-fastback",
+      "filename": "1967-ford-mustang-fastback (8).jpeg",
+      "sha256": "bd5ce261856c82390d44263e2d32947eacd17c3bc097da9fba0cb3ff5ef305aa",
+      "bytes": 140645,
+      "status": "existing"
+    },
+    {
+      "gallery_index": 56,
+      "photo_id": "291075",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/291075/1920x1440/1967-ford-mustang-fastback",
+      "filename": "1967-ford-mustang-fastback (62).jpeg",
+      "sha256": "343ad7552087b53b5674bddd0017c7965d9c09c13364886fc13c8c39179a8d99",
+      "bytes": 134452,
+      "status": "downloaded"
+    },
+    {
+      "gallery_index": 57,
+      "photo_id": "291076",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/291076/1920x1440/1967-ford-mustang-fastback",
+      "filename": "1967-ford-mustang-fastback (63).jpeg",
+      "sha256": "0380e7cc4d70846523c654843dc50a23c28e2a678d9de2bf68d15c5d4e2c8765",
+      "bytes": 161708,
+      "status": "downloaded"
+    },
+    {
+      "gallery_index": 58,
+      "photo_id": "291077",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/291077/1920x1440/1967-ford-mustang-fastback",
+      "filename": "1967-ford-mustang-fastback (9).jpeg",
+      "sha256": "d913d4920e9d78e084e2337491dbabc1c70cdcf557eda1268a028eece5e2308d",
+      "bytes": 140283,
+      "status": "existing"
+    },
+    {
+      "gallery_index": 59,
+      "photo_id": "291078",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/291078/1920x1440/1967-ford-mustang-fastback",
+      "filename": "1967-ford-mustang-fastback (64).jpeg",
+      "sha256": "a61b2daac2d74b89083814e4137e1ceae2f4a4240ffdba4245d84e16c2aa3193",
+      "bytes": 141388,
+      "status": "downloaded"
+    },
+    {
+      "gallery_index": 60,
+      "photo_id": "291079",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/291079/1920x1440/1967-ford-mustang-fastback",
+      "filename": "1967-ford-mustang-fastback (65).jpeg",
+      "sha256": "c8c7e1c588a0d7345cfb82510f71e5e29907c38bb11759737974e7101602bb65",
+      "bytes": 139059,
+      "status": "downloaded"
+    },
+    {
+      "gallery_index": 61,
+      "photo_id": "291080",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/291080/1920x1440/1967-ford-mustang-fastback",
+      "filename": "1967-ford-mustang-fastback (10).jpeg",
+      "sha256": "fec3bb6a49e92ce3f2ba363550e34f792d2888c7216456219679d5d0fc1fe394",
+      "bytes": 131692,
+      "status": "existing"
+    },
+    {
+      "gallery_index": 62,
+      "photo_id": "291081",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/291081/1920x1440/1967-ford-mustang-fastback",
+      "filename": "1967-ford-mustang-fastback (66).jpeg",
+      "sha256": "862426e32dcd79fd5817815ca7d796b149958e38b0b167b9eb39641c67668b35",
+      "bytes": 123289,
+      "status": "downloaded"
+    },
+    {
+      "gallery_index": 63,
+      "photo_id": "291082",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/291082/1920x1440/1967-ford-mustang-fastback",
+      "filename": "1967-ford-mustang-fastback (67).jpeg",
+      "sha256": "ab6e617acbf150af5e80d72f0e2329d841a30f4eedaebeaa736083ab81bcfd41",
+      "bytes": 153432,
+      "status": "downloaded"
+    },
+    {
+      "gallery_index": 64,
+      "photo_id": "291083",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/291083/1920x1440/1967-ford-mustang-fastback",
+      "filename": "1967-ford-mustang-fastback (68).jpeg",
+      "sha256": "d2f82c9f689feac0b95810a0c4e37b4efb5f4eb63aa4dcfdf05286eae12d8434",
+      "bytes": 150274,
+      "status": "downloaded"
+    },
+    {
+      "gallery_index": 65,
+      "photo_id": "291084",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/291084/1920x1440/1967-ford-mustang-fastback",
+      "filename": "1967-ford-mustang-fastback (69).jpeg",
+      "sha256": "6d989baa0023665b4eff9f6c1229c9da2867cc698ad5de8fed4a3f06b8d58126",
+      "bytes": 139441,
+      "status": "downloaded"
+    },
+    {
+      "gallery_index": 66,
+      "photo_id": "291085",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/291085/1920x1440/1967-ford-mustang-fastback",
+      "filename": "1967-ford-mustang-fastback (70).jpeg",
+      "sha256": "29b8e82265f0dd33f2b3802c2926b4f752c1572bffcd105535972697e4b19e72",
+      "bytes": 135275,
+      "status": "downloaded"
+    },
+    {
+      "gallery_index": 67,
+      "photo_id": "291086",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/291086/1920x1440/1967-ford-mustang-fastback",
+      "filename": "1967-ford-mustang-fastback (71).jpeg",
+      "sha256": "9ba71ef13993954f753423f01a7285a17bb2889bb488eda591461291b626f10b",
+      "bytes": 106217,
+      "status": "downloaded"
+    },
+    {
+      "gallery_index": 68,
+      "photo_id": "291087",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/291087/1920x1440/1967-ford-mustang-fastback",
+      "filename": "1967-ford-mustang-fastback (72).jpeg",
+      "sha256": "1db7471d7cc2ce049384002f7921751e408b7994c72226d4088b24f9421e905a",
+      "bytes": 151526,
+      "status": "downloaded"
+    },
+    {
+      "gallery_index": 69,
+      "photo_id": "291088",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/291088/1920x1440/1967-ford-mustang-fastback",
+      "filename": "1967-ford-mustang-fastback (73).jpeg",
+      "sha256": "0088c7174911435bbdd6291df350e325dc72cc2a41e8e20530db47f6a458aeb2",
+      "bytes": 108528,
+      "status": "downloaded"
+    },
+    {
+      "gallery_index": 70,
+      "photo_id": "291089",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/291089/1920x1440/1967-ford-mustang-fastback",
+      "filename": "1967-ford-mustang-fastback (74).jpeg",
+      "sha256": "3a4b8d0e6f900e790ecfe1076f3478420d645359a3851ff0157aa04316351e0b",
+      "bytes": 103547,
+      "status": "downloaded"
+    },
+    {
+      "gallery_index": 71,
+      "photo_id": "291090",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/291090/1920x1440/1967-ford-mustang-fastback",
+      "filename": "1967-ford-mustang-fastback (75).jpeg",
+      "sha256": "fd8f411260bcd78200d67c8671aaa97763bc03bbffa3ea7710d05264a7cd4b66",
+      "bytes": 137211,
+      "status": "downloaded"
+    },
+    {
+      "gallery_index": 72,
+      "photo_id": "291091",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/291091/1920x1440/1967-ford-mustang-fastback",
+      "filename": "1967-ford-mustang-fastback (76).jpeg",
+      "sha256": "2387a7ce542d6edc6117cc070e0cc200e0890c9ed73244f7944f482105277a4c",
+      "bytes": 120191,
+      "status": "downloaded"
+    },
+    {
+      "gallery_index": 73,
+      "photo_id": "291092",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/291092/1920x1440/1967-ford-mustang-fastback",
+      "filename": "1967-ford-mustang-fastback (77).jpeg",
+      "sha256": "76cc4f5dec3782bee4241cc4f0e410e581f604afb8c0df16557f2924ad3fc7f5",
+      "bytes": 138705,
+      "status": "downloaded"
+    },
+    {
+      "gallery_index": 74,
+      "photo_id": "291093",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/291093/1920x1440/1967-ford-mustang-fastback",
+      "filename": "1967-ford-mustang-fastback (78).jpeg",
+      "sha256": "6d97b17f76a9ffa17ed99b1d4ebd5e2e72facbdadcea158dc89491497c7ef087",
+      "bytes": 129127,
+      "status": "downloaded"
+    },
+    {
+      "gallery_index": 75,
+      "photo_id": "291094",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/291094/1920x1440/1967-ford-mustang-fastback",
+      "filename": "1967-ford-mustang-fastback (11).jpeg",
+      "sha256": "6b17d12efee619771189b85c42d08bd7d60d39a9e99e3ab98be38a1b4306a68b",
+      "bytes": 148343,
+      "status": "existing"
+    },
+    {
+      "gallery_index": 76,
+      "photo_id": "291095",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/291095/1920x1440/1967-ford-mustang-fastback",
+      "filename": "1967-ford-mustang-fastback (12).jpeg",
+      "sha256": "d8993fbe846425a3a2e2bc3d6fc878971f8a79e803661ac818e06cb8cf94e1c1",
+      "bytes": 137709,
+      "status": "existing"
+    },
+    {
+      "gallery_index": 77,
+      "photo_id": "291103",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/291103/1920x1440/1967-ford-mustang-fastback",
+      "filename": "1967-ford-mustang-fastback (13).jpeg",
+      "sha256": "ab161b72f09c43780bd56dfb91e76435a502909a9e4a4d6773012939fb355b83",
+      "bytes": 222111,
+      "status": "existing"
+    },
+    {
+      "gallery_index": 78,
+      "photo_id": "291097",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/291097/1920x1440/1967-ford-mustang-fastback",
+      "filename": "1967-ford-mustang-fastback (14).jpeg",
+      "sha256": "1b05c1b46c0d86cf3f07a20cd5cf83c834852d3fbf59db8fc14051b09b11c022",
+      "bytes": 225700,
+      "status": "existing"
+    },
+    {
+      "gallery_index": 79,
+      "photo_id": "291098",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/291098/1920x1440/1967-ford-mustang-fastback",
+      "filename": "1967-ford-mustang-fastback (79).jpeg",
+      "sha256": "7c5f909700311d4818aaea81fbe8e1a8d528e8c40a2a5f650c574ff0edef11c4",
+      "bytes": 218523,
+      "status": "downloaded"
+    },
+    {
+      "gallery_index": 80,
+      "photo_id": "291099",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/291099/1920x1440/1967-ford-mustang-fastback",
+      "filename": "1967-ford-mustang-fastback (80).jpeg",
+      "sha256": "a318026122371873332bccb288abfd8a2b45bcd26c26daf82d9b722f4a64534f",
+      "bytes": 229480,
+      "status": "downloaded"
+    },
+    {
+      "gallery_index": 81,
+      "photo_id": "291100",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/291100/1920x1440/1967-ford-mustang-fastback",
+      "filename": "1967-ford-mustang-fastback (81).jpeg",
+      "sha256": "21c9b0a8d6ca2c0592a648f3f82dc39e6a707eff20c73a569ef233478d52a0f8",
+      "bytes": 234461,
+      "status": "downloaded"
+    },
+    {
+      "gallery_index": 82,
+      "photo_id": "290811",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/290811/1920x1440/1967-ford-mustang-fastback",
+      "filename": null,
+      "status": "failed: curl: (22) The requested URL returned error: 400"
+    },
+    {
+      "gallery_index": 83,
+      "photo_id": "290913",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/290913/1920x1440/1967-ford-mustang-fastback",
+      "filename": null,
+      "status": "failed: curl: (22) The requested URL returned error: 400"
+    },
+    {
+      "gallery_index": 84,
+      "photo_id": "290852",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/290852/1920x1440/1967-ford-mustang-fastback",
+      "filename": null,
+      "status": "failed: curl: (22) The requested URL returned error: 400"
+    },
+    {
+      "gallery_index": 85,
+      "photo_id": "290817",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/290817/1920x1440/1967-ford-mustang-fastback",
+      "filename": null,
+      "status": "failed: curl: (22) The requested URL returned error: 400"
+    },
+    {
+      "gallery_index": 86,
+      "photo_id": "290862",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/290862/1920x1440/1967-ford-mustang-fastback",
+      "filename": null,
+      "status": "failed: curl: (22) The requested URL returned error: 400"
+    },
+    {
+      "gallery_index": 87,
+      "photo_id": "290863",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/290863/1920x1440/1967-ford-mustang-fastback",
+      "filename": null,
+      "status": "failed: curl: (22) The requested URL returned error: 400"
+    },
+    {
+      "gallery_index": 88,
+      "photo_id": "290877",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/290877/1920x1440/1967-ford-mustang-fastback",
+      "filename": null,
+      "status": "failed: curl: (22) The requested URL returned error: 400"
+    },
+    {
+      "gallery_index": 89,
+      "photo_id": "290912",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/290912/1920x1440/1967-ford-mustang-fastback",
+      "filename": null,
+      "status": "failed: curl: (22) The requested URL returned error: 400"
+    },
+    {
+      "gallery_index": 90,
+      "photo_id": "290915",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/290915/1920x1440/1967-ford-mustang-fastback",
+      "filename": null,
+      "status": "failed: curl: (22) The requested URL returned error: 400"
+    },
+    {
+      "gallery_index": 91,
+      "photo_id": "290742",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/290742/1920x1440/1967-ford-mustang-fastback",
+      "filename": null,
+      "status": "failed: curl: (22) The requested URL returned error: 400"
+    },
+    {
+      "gallery_index": 92,
+      "photo_id": "290741",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/290741/1920x1440/1967-ford-mustang-fastback",
+      "filename": null,
+      "status": "failed: curl: (22) The requested URL returned error: 400"
+    },
+    {
+      "gallery_index": 93,
+      "photo_id": "290820",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/290820/1920x1440/1967-ford-mustang-fastback",
+      "filename": null,
+      "status": "failed: curl: (22) The requested URL returned error: 400"
+    },
+    {
+      "gallery_index": 94,
+      "photo_id": "290740",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/290740/1920x1440/1967-ford-mustang-fastback",
+      "filename": null,
+      "status": "failed: curl: (22) The requested URL returned error: 400"
+    },
+    {
+      "gallery_index": 95,
+      "photo_id": "290739",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/290739/1920x1440/1967-ford-mustang-fastback",
+      "filename": null,
+      "status": "failed: curl: (22) The requested URL returned error: 400"
+    },
+    {
+      "gallery_index": 96,
+      "photo_id": "290890",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/290890/1920x1440/1967-ford-mustang-fastback",
+      "filename": null,
+      "status": "failed: curl: (22) The requested URL returned error: 400"
+    },
+    {
+      "gallery_index": 97,
+      "photo_id": "290834",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/290834/1920x1440/1967-ford-mustang-fastback",
+      "filename": null,
+      "status": "failed: curl: (22) The requested URL returned error: 400"
+    },
+    {
+      "gallery_index": 98,
+      "photo_id": "290738",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/290738/1920x1440/1967-ford-mustang-fastback",
+      "filename": null,
+      "status": "failed: curl: (22) The requested URL returned error: 400"
+    },
+    {
+      "gallery_index": 99,
+      "photo_id": "290768",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/290768/1920x1440/1967-ford-mustang-fastback",
+      "filename": null,
+      "status": "failed: curl: (22) The requested URL returned error: 400"
+    },
+    {
+      "gallery_index": 100,
+      "photo_id": "290805",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/290805/1920x1440/1967-ford-mustang-fastback",
+      "filename": null,
+      "status": "failed: curl: (22) The requested URL returned error: 400"
+    },
+    {
+      "gallery_index": 101,
+      "photo_id": "290775",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/290775/1920x1440/1967-ford-mustang-fastback",
+      "filename": null,
+      "status": "failed: curl: (22) The requested URL returned error: 400"
+    },
+    {
+      "gallery_index": 102,
+      "photo_id": "290914",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/290914/1920x1440/1967-ford-mustang-fastback",
+      "filename": null,
+      "status": "failed: curl: (22) The requested URL returned error: 400"
+    },
+    {
+      "gallery_index": 103,
+      "photo_id": "290856",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/290856/1920x1440/1967-ford-mustang-fastback",
+      "filename": null,
+      "status": "failed: curl: (22) The requested URL returned error: 400"
+    },
+    {
+      "gallery_index": 104,
+      "photo_id": "291021",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/291021/1920x1440/1967-ford-mustang-fastback",
+      "filename": "1967-ford-mustang-fastback (22).jpeg",
+      "sha256": "c1d55c5f5e05f635fb5460f65286ad7a726d553ecea2f9d844c184dfbb36e0b9",
+      "bytes": 132408,
+      "status": "existing"
+    },
+    {
+      "gallery_index": 105,
+      "photo_id": "291105",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/291105/1920x1440/1967-ford-mustang-fastback",
+      "filename": "1967-ford-mustang-fastback (82).jpeg",
+      "sha256": "6b170cd91e83c8b990432e4cc8907285da6c6c191d99b7d9e57465a31a87949f",
+      "bytes": 524131,
+      "status": "downloaded"
+    },
+    {
+      "gallery_index": 106,
+      "photo_id": "290905",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/290905/1920x1440/1967-ford-mustang-fastback",
+      "filename": null,
+      "status": "failed: curl: (22) The requested URL returned error: 400"
+    },
+    {
+      "gallery_index": 107,
+      "photo_id": "291104",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/291104/1920x1440/1967-ford-mustang-fastback",
+      "filename": "1967-ford-mustang-fastback (83).jpeg",
+      "sha256": "0b3836dc3b85488a73d3cb733ba91476c37b7c99b157b3857346a57ed3b75531",
+      "bytes": 272752,
+      "status": "downloaded"
+    },
+    {
+      "gallery_index": 108,
+      "photo_id": "290893",
+      "url": "https://cdn.dealeraccelerate.com/vanguard/1/3275/290893/1920x1440/1967-ford-mustang-fastback",
+      "filename": null,
+      "status": "failed: curl: (22) The requested URL returned error: 400"
+    }
+  ],
+  "videos": [
+    {
+      "type": "youtube_vehicle_showcase",
+      "video_id": "_jhEMsptDrc",
+      "url": "https://www.youtube.com/watch?v=_jhEMsptDrc",
+      "filename": "1967-ford-mustang-fastback-video.mp4",
+      "bytes": 230913989
+    },
+    {
+      "type": "direct_mp4",
+      "url": "https://s3.amazonaws.com/dealeraccelerate-all/vanguard/dm_assets/30-sec-about-us.mp4",
+      "filename": "vanguard_30_sec_about_us.mp4",
+      "bytes": 6158899
+    }
+  ]
+}

@@ -31,7 +31,7 @@ PALETTE = {
     "Cream": ((0.70, 0.66, 0.55, 1), 0.0, 0.5, {}),               # washer bag piping
     "ClearGlass": ((0.55, 0.6, 0.6, 1), 0.0, 0.02, {"alpha": 0.15}),   # vent window panes: see-through, with reflections
     "Lens": ((0.9, 0.9, 0.85, 1), 0.2, 0.05, {}),
-    "SealedBeam": ((0.82, 0.84, 0.86, 1), 0.35, 0.1, {"flutes": 1.6, "coat": 1.0}),    # head/fog lamp lenses: glass over a grid of prisms
+    "SealedBeam": ((0.78, 0.80, 0.84, 1), 0.82, 0.14, {"flutes": 6.0, "coat": 1.0}),    # head/fog lamp lenses: glass over a grid of prisms
     # backup lamps: clear glass moulded in rings over a reflector that reads darker toward the rim
     "RingLens": ((0.42, 0.46, 0.44, 1), 0.5, 0.2, {"rings": 0.12, "rim": ((0.07, 0.08, 0.075, 1), 0.55, 1.1), "coat": 1.0}),
     # backup lamp housings and the rear bumper's bolt heads: chrome set in the car's rear face
@@ -66,11 +66,14 @@ def material(name):
         tex = nt.nodes.get("Flutes") or nt.nodes.new("ShaderNodeTexChecker")
         tex.name = "Flutes"
         tex.inputs["Scale"].default_value = extra["flutes"]
+        tex.inputs["Color1"].default_value = (0.85, 0.87, 0.90, 1)
+        tex.inputs["Color2"].default_value = (0.28, 0.30, 0.34, 1)
         bump = nt.nodes.get("FluteBump") or nt.nodes.new("ShaderNodeBump")
         bump.name = "FluteBump"
-        bump.inputs["Strength"].default_value = 0.5
-        bump.inputs["Distance"].default_value = 0.05
+        bump.inputs["Strength"].default_value = 0.75
+        bump.inputs["Distance"].default_value = 0.08
         nt.links.new(coord.outputs["Object"], tex.inputs["Vector"])
+        nt.links.new(tex.outputs["Color"], bsdf.inputs["Base Color"])
         nt.links.new(tex.outputs["Fac"], bump.inputs["Height"])
         nt.links.new(bump.outputs["Normal"], bsdf.inputs["Normal"])
     if "rings" in extra:                 # moulded rings round the lamp's axis (+X; the object carries it as
@@ -138,15 +141,17 @@ def assign(ob, name):
 
 # cutter-name prefix -> material its cut faces take on the body
 CUTTER_MATERIALS = [
-    ("Cut_WindowOpen", "Black"), ("Cut_DoorOpen", "PaintJamb"), ("Cut_ScuffPlate", "BrushedAl"), ("Cut_Striker", "Chrome"),
+    ("Cut_WindowOpen", "Chrome"), ("Cut_DoorOpen", "PaintJamb"), ("Cut_ScuffPlate", "BrushedAl"), ("Cut_Striker", "Chrome"),
     ("Cut_Glass", "Chrome"), ("Cut_Louver", "Black"), ("Cut_ScoopIntake", "Black"),
     ("Cut_ParkLight", "Paint"), ("Cut_Beltline", "Black"), ("Cut_BossSlot", "Black"), ("Cut_EngineBay", "Black"),
-    ("Cut_Hinge", "Black"), ("Cut_Cabin", "Black"), ("Cut_ChassisAxle", "Black"), ("Cut_ExhaustSlot", "Black"),
+    ("Cut_Hinge", "Black"), ("Cut_Cabin", "Black"), ("Cut_ChassisAxle", "Black"), ("Cut_ChassisSteer", "Black"),
+    ("Cut_ExhaustSlot", "Black"),
     ("Cut_Keyway", "Black"), ("Cut_DoorPin", "Black"), ("Cut_LockFace", "Chrome"), ("Cut_LockPocket", "Paint"),
     ("Add_", "Chrome"), ("Cut_Grille", "Black"), ("Cut_PlateRecess", "Black"), ("Cut_BackupSocket", "Black"),
-    ("Cut_DiffTunnel", "Black"), ("Cut_RearUnder", "Black"), ("Cut_Arch", "Black"),
+    ("Cut_DiffTunnel", "Black"), ("Cut_DiffShaftWeb", "Black"), ("Cut_FirewallWireWeb", "Black"), ("Cut_WireTunnel", "Black"),
+    ("Cut_RearUnder", "Black"), ("Cut_Arch", "Black"),
     ("Cut_Headlight", "Paint"), ("Cut_Spokes", "Black"), ("Cut_Taillight", "Black"), ("Cut_GasCap", "Chrome"),
-    ("Cut_Deck", "PaintJamb"),
+    ("Cut_Deck", "PaintJamb"), ("Cut_Trunk", "PaintJamb"), ("Cut_Boot", "Black"),
 ]
 
 PART_MATERIALS = [
@@ -159,11 +164,13 @@ PART_MATERIALS = [
     ("ValveCover_L_BreatherTop", "Chrome"), ("AirCleaner_Nut", "Steel"), ("Engine_Boot", "Black"), ("Engine_Coil", "Black"),
     ("Engine_DistCap", "Black"), ("Engine_DistTower", "Black"), ("Engine_DistVacuum", "Chrome"), ("Engine_FuelLine", "Steel"),
     ("Engine_AltPulley", "Chrome"), ("Engine_Alternator", "CastAl"), ("Engine_OilFilter", "EngineBlue"),
+    ("Engine_N25Cavity", "Black"),
     ("BayTub_Bushing", "Red"), ("BayTub_Cable", "Rubber"), ("BayTub_Harness", "Rubber"), ("BayTub_RadCap", "SatinChrome"),
     ("BayTub_RadTank", "TankGrey"), ("BayTub_RadOverflow", "Rubber"), ("BayTub_MCCap", "Chrome"), ("BayTub_MCBail", "Steel"),
     ("BayTub_BrakeLine", "Steel"), ("BayTub_TowerNut", "Steel"), ("BayTub_HeaterFitting", "Steel"),
     ("BayTub_WasherCap", "Aluminum"), ("BayTub_WasherPiping", "Cream"), ("BayTub_WasherGrommet", "Steel"),
-    ("BayTub_WasherLabel", "White"), ("BayTub_WasherFord", "White"), ("BayTub_Washer", "Vinyl"), ("DoorHandle", "Chrome"),
+    ("BayTub_WasherLabel", "White"), ("BayTub_WasherFord", "White"), ("BayTub_Washer", "Vinyl"), ("DoorBeltTrim", "Chrome"),
+    ("DoorHandle", "Chrome"),
     ("DoorLock", "Chrome"), ("DoorMirrorSlot", "Black"), ("DoorCardTrim", "Chrome"), ("DoorCardKnob", "White"),
     ("DoorCard", "Vinyl"), ("DoorLatchRotor", "Black"), ("DoorLatchScrew", "Steel"), ("DoorLatch", "Chrome"),
     ("DoorSeal", "Rubber"), ("DoorBracket", "Black"), ("DoorBumper", "Rubber"), ("DoorVentPane", "ClearGlass"),
@@ -171,14 +178,20 @@ PART_MATERIALS = [
     ("Bumper_R_Guard", "Rubber"), ("Bumper_R_Bolt", "RearChrome"), ("GasCap_Face", "SatinChrome"), ("ExhaustBore", "Black"),
     ("BackupLens", "RingLens"), ("BackupLight", "RearChrome"), ("GasCap_Ring", "Black"), ("GasCap_TriR", "Red"), ("GasCap_TriW", "White"),
     ("GasCap_TriFrame", "Black"), ("DiffCover", "Black"), ("GasCap_TriB", "Blue"),
-    ("Exhaust", "Chrome"), ("Body", "Paint"), ("Rim", "Chrome"), ("Axle", "Black"), ("Tire", "Rubber"), ("Bumper", "Chrome"),
+    ("Exhaust", "Chrome"), ("Body", "Paint"), ("Rim", "Chrome"), ("AxleGear", "Steel"),
+    ("Knuckle", "Black"), ("SteeringLink", "Black"), ("Axle", "Black"), ("Tire", "Rubber"), ("Bumper", "Chrome"),
     ("GrilleSurround", "Chrome"), ("Corral", "Chrome"), ("Mirror", "Chrome"), ("FogLamp", "Chrome"), ("Grille_Bar", "Chrome"),
     ("Grille", "Black"),
-    ("Chassis", "Black"), ("InteriorTub", "Carpet"), ("HoodProp", "Black"), ("Hood_LouverCut", "Black"),
+    ("Chassis", "Black"), ("InteriorTub", "Carpet"), ("BootTub", "Carpet"), ("Driveshaft", "Steel"),
+    ("TrunkLid", "Paint"), ("Trunk_", "Paint"),
+    ("HoodProp", "Black"), ("Hood_LouverCut", "Black"),
     ("Hood_PropHole", "Black"), ("Hood", "Paint"), ("BayTub", "GlossBlack"), ("EngineBlock", "EngineBlue"),
     ("Engine_", "EngineBlue"), ("ValveCover", "Black"), ("AirCleaner", "Black"), ("Brace", "GlossBlack"),
-    ("Tub_SeatTrim", "Chrome"), ("Tub_GaugeBezel", "Chrome"), ("Tub_DashTrim", "Chrome"), ("Tub_ConsoleTrim", "Chrome"),
-    ("Tub_Shifter", "Chrome"), ("Tub_", "Vinyl"), ("SteeringWheel", "Vinyl"), ("Headlight", "Chrome"), ("Taillight", "TailRed"),
+    ("Tub_SeatTrim", "Chrome"), ("Tub_GaugeBezel", "Chrome"), ("Tub_DashTrim", "Chrome"),
+    ("Tub_ConsoleTrim", "Chrome"), ("Tub_ConsoleDeck", "BrushedAl"),
+    ("Tub_Shifter", "Chrome"), ("Tub_", "Vinyl"),
+    ("SteeringWheel_Spoke", "BrushedAl"), ("SteeringWheel_HornRing", "Chrome"), ("SteeringWheel", "Vinyl"),
+    ("Headlight", "Chrome"), ("Taillight", "TailRed"),
     ("TailBezel", "Chrome"), ("GasCap", "Chrome"), ("Glass_", "Glass"), ("HeadRing", "Chrome"), ("HeadLens", "SealedBeam"),
     ("FogRing", "Chrome"), ("FogLens", "SealedBeam"), ("ParkLight", "Chrome"), ("ParkRing", "Chrome"), ("ParkLens", "Lens"),
     ("FenderTriR", "Red"), ("FenderTriW", "White"), ("FenderTriB", "Blue"),

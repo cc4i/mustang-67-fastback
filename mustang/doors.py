@@ -46,9 +46,14 @@ CORNER_R = 99.0                 # door material stays within this radius of the 
 
 CARD_T = 30.0                   # door card thickness (y 666..696)
 CARD_X0 = details.BELTLINE_X0 + 6.0   # the card stays inside the cabin and the cleared beltline
-CARD_Z0, CARD_TOP_GAP = BOTTOM_Z + 20.0, 9.0    # the card runs up to just under the door's top edge
-VENT_FRAME, VENT_T, VENT_PANE = 14.0, 0.8, 0.4  # vent window: chrome frame width (real), thickness, pane (print mm)
-VENT_RAIL = 0.5                                 # print mm: the narrowest frame rail left over the door top (one nozzle line+)
+CARD_Z0, CARD_TOP_GAP = BOTTOM_Z + 20.0, 2.5    # the card runs right up to the door's top window sill (top trim +1.0 caps at -1.5)
+CARD_BAYS_X = ((1835.0, 2082.0), (2118.0, 2382.0), (2418.0, 2675.0))   # 3x2 mortise-and-tenon registration grid (x spans)
+CARD_BAYS_Z = ((455.0, 652.0), (688.0, 860.0))                         # 2 rows separated by horizontal locating rail
+BAY_Y_DOOR, PAD_Y_CARD = 712.5, 710.5   # mortise bay floor in Door (0.825 mm deep) and mating tenon pad on DoorCard (0.725 mm proud)
+VENT_FRAME, VENT_T, VENT_PANE = 18.0, 1.25, 0.65  # vent window: chrome frame width (real), thickness, pane (print mm)
+VENT_Z_IN, VENT_Z_OUT = -0.75, 0.50               # local z range in glass plane (print mm), centred on the door sill
+TENON_DEPTH, TENON_CLEAR = 24.0, 2.4              # vent window bottom mounting tenon depth (1.20 mm print) and slot clearance
+VENT_RAIL = 0.85                                  # print mm: the narrowest frame rail left over the door top (two nozzle lines)
 VENT_POST, VENT_POST_W = (1970.0, 2090.0), 20.0   # the vent window's rear post: x at the door top and under the rail
                                                   # (it leans back ~25 deg), and its width
 ARMREST = (2330.0, 2640.0, 640.0, 690.0, 70.0)    # x0, x1, z0, z1, depth inboard of the card
@@ -148,21 +153,147 @@ def _rear_relief(side):
     return secs
 
 
+def _vent_plane(tree, side):
+    """Return (q1, ux, up, nz, fb, ft, xb, xt) defining the vent window's glass plane on `side`."""
+    ax = axis(side)
+    door_top = lambda x: top_z(x) - GAP
+    rail = lambda x: details.rail_z(x) - GAP
+    fb, ft = details.pillar_meets(door_top, GAP), details.pillar_meets(rail, GAP)
+    xb, xt = VENT_POST
+
+    def hit(x, z):
+        return Vector((x, details.hit_w(tree, ax, x, z) / SCALE * side, z))
+
+    q1, q2, q3 = hit(fb.x + 25.0, fb.y + 20.0), hit(xb - 10.0, fb.y + 20.0), hit(xt - 25.0, ft.y - 20.0)
+    nz = (q2 - q1).cross(q3 - q1).normalized()
+    if nz.y * side < 0:
+        nz = -nz
+    up = (Vector((0, 0, 1)) - nz * nz.z).normalized()
+    ux = up.cross(nz)
+    return q1, ux, up, nz, fb, ft, xb, xt
+
+
+def _vent_y_bounds(q1, nz, x, z):
+    """Return (|y_in|, |y_out|) in real mm of the DoorVent frame at side-view (x, z)."""
+    y_mid = abs(q1.y - (nz.x * (x - q1.x) + nz.z * (z - q1.z)) / nz.y)
+    return y_mid + (VENT_Z_IN / SCALE) / abs(nz.y), y_mid + (VENT_Z_OUT / SCALE) / abs(nz.y)
+
+
+def _frustum_y(name, side, x0, z0, x1, z1, y0, y1, bevel):
+    """8-vertex hexahedral frustum along Y (real mm coordinates scaled by SCALE), tapering inward by `bevel` from y0 to y1."""
+    import bmesh
+    bm = bmesh.new()
+    quad0 = [(x0, z0), (x1, z0), (x1, z1), (x0, z1)]
+    quad1 = [(x0 + bevel, z0 + bevel), (x1 - bevel, z0 + bevel),
+             (x1 - bevel, z1 - bevel), (x0 + bevel, z1 - bevel)]
+    v0 = [bm.verts.new((x * SCALE, side * y0 * SCALE, z * SCALE)) for x, z in quad0]
+    v1 = [bm.verts.new((x * SCALE, side * y1 * SCALE, z * SCALE)) for x, z in quad1]
+    bm.faces.new(v0)
+    bm.faces.new(list(reversed(v1)))
+    for i in range(4):
+        j = (i + 1) % 4
+        bm.faces.new((v0[i], v0[j], v1[j], v1[i]))
+    F.outward(bm)
+    me = bpy.data.meshes.new(name)
+    bm.to_mesh(me)
+    bm.free()
+    return bpy.data.objects.new(name, me)
+
+
+def _door_vent_slot(name, side, q1, nz, x0, x1, z_drop):
+    """Mortise slot cutter in the top sill of Door for the outboard side of DoorVent's tenon,
+    with 45-deg lower and end ramps down to INNER_Y so Door prints with zero floating starts."""
+    import bmesh
+    door_top = lambda x: top_z(x) - GAP
+    y_in = INNER_Y - 2.0
+    xs = [x0 + (x1 - x0) * k / 8 for k in range(9)]
+    bm = bmesh.new()
+    rings = []
+    for i, x in enumerate(xs):
+        zt = door_top(x)
+        zb = zt - z_drop
+        _, vy_out = _vent_y_bounds(q1, nz, x, zb)
+        y_out = max(INNER_Y + 12.0, vy_out + TENON_CLEAR)
+        ramp = y_out - y_in
+        dx_in = -ramp if i == 0 else (ramp if i == len(xs) - 1 else 0.0)
+        pts_in = [((x + dx_in) * SCALE, side * y_in * SCALE, (zb - ramp) * SCALE),
+                  ((x + dx_in) * SCALE, side * y_in * SCALE, (zt + 15.0) * SCALE)]
+        pts_out = [(x * SCALE, side * y_out * SCALE, zb * SCALE),
+                   (x * SCALE, side * y_out * SCALE, (zt + 15.0) * SCALE)]
+        ring = [bm.verts.new(pts_in[0]), bm.verts.new(pts_out[0]),
+                bm.verts.new(pts_out[1]), bm.verts.new(pts_in[1])]
+        rings.append(ring)
+    for a, b in zip(rings[:-1], rings[1:]):
+        for k in range(4):
+            m = (k + 1) % 4
+            bm.faces.new((a[k], a[m], b[m], b[k]))
+    bm.faces.new(rings[0])
+    bm.faces.new(list(reversed(rings[-1])))
+    F.outward(bm)
+    me = bpy.data.meshes.new(name)
+    bm.to_mesh(me)
+    bm.free()
+    return bpy.data.objects.new(name, me)
+
+
+def _card_vent_slot(name, side, q1, nz, x0, x1, z_drop):
+    """Mortise slot cutter in the top edge of DoorCard for the inboard side of DoorVent's tenon,
+    with 45-deg lower and end ramps out to PAD_Y_CARD so DoorCard prints with zero floating starts."""
+    import bmesh
+    door_top = lambda x: top_z(x) - GAP
+    y_out = PAD_Y_CARD + 3.0
+    xs = [x0 + (x1 - x0) * k / 8 for k in range(9)]
+    bm = bmesh.new()
+    rings = []
+    for i, x in enumerate(xs):
+        zt = door_top(x)
+        zb = zt - z_drop
+        vy_in_top, _ = _vent_y_bounds(q1, nz, x, zt + 2.0)
+        vy_in_bot, _ = _vent_y_bounds(q1, nz, x, zb)
+        y_in = min(INNER_Y - 12.0, min(vy_in_top, vy_in_bot) - TENON_CLEAR)
+        ramp = y_out - y_in
+        dx_out = -ramp if i == 0 else (ramp if i == len(xs) - 1 else 0.0)
+        pts_out = [((x + dx_out) * SCALE, side * y_out * SCALE, (zb - ramp) * SCALE),
+                   ((x + dx_out) * SCALE, side * y_out * SCALE, (zt + 15.0) * SCALE)]
+        pts_in = [(x * SCALE, side * y_in * SCALE, zb * SCALE),
+                  (x * SCALE, side * y_in * SCALE, (zt + 15.0) * SCALE)]
+        ring = [bm.verts.new(pts_in[0]), bm.verts.new(pts_out[0]),
+                bm.verts.new(pts_out[1]), bm.verts.new(pts_in[1])]
+        rings.append(ring)
+    for a, b in zip(rings[:-1], rings[1:]):
+        for k in range(4):
+            m = (k + 1) % 4
+            bm.faces.new((a[k], a[m], b[m], b[k]))
+    bm.faces.new(rings[0])
+    bm.faces.new(list(reversed(rings[-1])))
+    F.outward(bm)
+    me = bpy.data.meshes.new(name)
+    bm.to_mesh(me)
+    bm.free()
+    return bpy.data.objects.new(name, me)
+
+
 def door_parts(tree, body_mesh, body_ob):
     """[(door, intersect_with, pre_cuts, unions, post_cuts)] for both doors, modelled closed, in
-    place. The skin intersect comes first, then the side-scoop sculpting, the handle and lock, and
-    last the mirror socket, the hinge (pin hole, rounded inner front corner, bevelled rear edge) and
-    the shut-face details."""
+    place. The skin intersect comes first, then the side-scoop sculpting, the handle, lock, and
+    window-sill beltline chrome moulding, and last the mirror socket, the hinge (pin hole, rounded
+    inner front corner, bevelled rear edge), the 3x2 mortise bays for the door card, the top
+    window-sill mortise channel for the vent window tenon, and the shut-face details."""
     out = []
     slots = dict(details.mirror_slots(tree))
+    xb0, xb1 = 1785.0, 2784.0
+    belt_path = [(x, top_z(x) - GAP - 9.0) for x in (xb0 + (xb1 - xb0) * k / 24 for k in range(25))]
     for s in SIDES:
         t, ax = tag(s), axis(s)
+        q1, _ux, _up, nz, fb, _ft, xb, _xt = _vent_plane(tree, s)
+        tenon_x0, tenon_x1 = fb.x + 22.0, xb - 6.0
         door = F.prism_cutter(f"Door_{t}", ax, outline(GAP, GAP_FRONT - GAP), INNER_Y * SCALE, 1000.0 * SCALE)
         skin = bpy.data.objects.new(f"Door_{t}_Skin", body_ob.data)    # the body's own skin: exact continuity
-        pre = [F.surface_cutter(f"DoorCove_{t}", body_mesh, ax, details.SCOOP_COVE, 0.9, depth_fn=details.cove_fade, tree=tree)]
+        pre = [F.surface_cutter(f"DoorCove_{t}", body_mesh, ax, details.SCOOP_COVE, 1.35, depth_fn=details.cove_fade, tree=tree)]
         x0, z0, x1, z1 = details.DOOR_HANDLE
         unions = [F.surface_solid(f"DoorHandle_{t}", body_mesh, ax, details.rect(x0, z0, x1, z1, 12),
-                                  lambda u, v: -0.4, lambda u, v: 0.4, rings=3, tree=tree, step=0.3)]
+                                  lambda u, v: -0.4, lambda u, v: 0.4, rings=3, tree=tree, step=0.3),
+                  F.surface_strip(f"DoorBeltTrim_{t}", tree, ax, belt_path, 17.0, -0.25, 0.25, square=True)]
         lx, lz, lr = details.DOOR_LOCK
         unions.append(F.surface_solid(f"DoorLock_{t}", body_mesh, ax, F.circle(lx, lz, lr, 16),
                                       lambda u, v: -0.4, lambda u, v: 0.3, rings=2, tree=tree, step=0.3))
@@ -170,34 +301,59 @@ def door_parts(tree, body_mesh, body_ob):
         if slot:
             slot.name = slot.data.name = f"DoorMirrorSlot_{t}"
         hx, hy = HINGE_AXIS
+        bays = []
+        idx = 0
+        bevel_door = BAY_Y_DOOR - (INNER_Y - 2.0)
+        for bx0, bx1 in CARD_BAYS_X:
+            for bz0, bz1 in CARD_BAYS_Z:
+                bays.append(_frustum_y(f"Door_{t}_CardBay{idx}", s, bx0, bz0, bx1, bz1,
+                                       INNER_Y - 2.0, BAY_Y_DOOR, bevel_door))
+                idx += 1
+        vent_slot = _door_vent_slot(f"Door_{t}_VentSlot", s, q1, nz, tenon_x0 - 7.0, tenon_x1 + 7.0,
+                                    TENON_DEPTH + TENON_CLEAR)
         post = ([slot] if slot else []) + [
                 F.prism_cutter(f"DoorHinge_{t}_Hole", "+Z", F.circle(hx, s * hy, DOOR_HOLE_R, 24),
                                (BOTTOM_Z - 20.0) * SCALE, DOOR_HOLE_TOP * SCALE),
                 F.prism_cutter(f"DoorHinge_{t}_Corner", "+Z", _corner_trim(s), (BOTTOM_Z - 20.0) * SCALE, 1000.0 * SCALE),
-                F.loft_solid(f"DoorHinge_{t}_Rear", "+Z", _rear_relief(s))] + shut_face_parts(s, tree)
+                F.loft_solid(f"DoorHinge_{t}_Rear", "+Z", _rear_relief(s)),
+                vent_slot] + bays + shut_face_parts(s, tree)
         out.append((door, skin, pre, unions, post))
     return out
 
 
-def card_parts():
+def card_parts(tree=None):
     """[(card, unions, cuts)] black door cards for the doors' inner faces (modelled closed, in place):
-    padded like the car's, with a rounded roll under the chrome top moulding and pleat rolls below
-    it, a padded armrest on a chrome strip, and on a flat band above the armrest a chrome pull handle
-    and a chrome window crank with a light knob."""
+    keyed into the door's inner face by a 3x2 grid of 45-deg bevelled rear tenon pads (mating with
+    Door_CardBay0..5) and a top window-sill U-channel slot that captures the vent window's tenon."""
+    if tree is None:
+        tree = F._bvh(bpy.data.objects["Body"].data)
     out = []
     for s in SIDES:
         t, ax = tag(s), axis(s)
-        y_out, y_in = INNER_Y, INNER_Y - CARD_T
+        q1, _ux, _up, nz, fb, _ft, xb, _xt = _vent_plane(tree, s)
+        tenon_x0, tenon_x1 = fb.x + 22.0, xb - 6.0
+        y_out, y_in = INNER_Y - 1.5, INNER_Y - CARD_T
         xr = lambda z: _edge_x(details.DOOR_REAR, z) - GAP - 10.0
         card_top = lambda x: top_z(x) - GAP - CARD_TOP_GAP                   # follows the door's top edge
         xs = [CARD_X0 + (xr(card_top(2600.0)) - CARD_X0) * k / 12 for k in range(13)]
         profile = [(CARD_X0, CARD_Z0), (xr(CARD_Z0), CARD_Z0)] + [(x, card_top(x)) for x in reversed(xs)]
         card = F.prism_cutter(f"DoorCard_{t}", ax, profile, y_in * SCALE, y_out * SCALE)
-        # chrome belt moulding along the card's top edge
-        trim = [(x, card_top(x) - 12.0) for x in xs] + [(x, card_top(x) + 0.5) for x in reversed(xs)]
-        unions = [F.prism_cutter(f"DoorCardTrim_{t}", ax, trim, (y_in - 4.0) * SCALE, (y_out - 1.0) * SCALE)]
+        # chrome belt moulding along the card's top edge (forms the inner wall of the vent window U-channel)
+        trim = [(x, card_top(x) - 18.0) for x in xs] + [(x, card_top(x) + 1.0) for x in reversed(xs)]
+        unions = [F.prism_cutter(f"DoorCardTrim_{t}", ax, trim, (y_in - 8.0) * SCALE, (y_out - 0.5) * SCALE)]
+        # 6 mating 45-deg bevelled tenon pads on the back of DoorCard
+        idx = 0
+        bevel_card = PAD_Y_CARD - (y_out - 2.5)
+        for bx0, bx1 in CARD_BAYS_X:
+            for bz0, bz1 in CARD_BAYS_Z:
+                unions.append(_frustum_y(
+                    f"DoorCard_{t}_Pad{idx}", s,
+                    bx0 + 3.5, bz0 + 3.5, bx1 - 3.5, bz1 - 3.5,
+                    y_out - 2.5, PAD_Y_CARD, bevel_card
+                ))
+                idx += 1
         # padded rolls along the panel behind the dash: the top roll under the moulding, then the pleats
-        z_hi = -12.0
+        z_hi = -18.0
         for k, (h, proud) in enumerate([ROLL] + [PLEAT] * PLEATS):
             unions.append(_roll(f"DoorCard_{t}_Roll{k}", s, y_in, lambda x, dz=z_hi - h / 2: card_top(x) + dz, h, proud,
                                 interior.DASH_FACE_X + 20.0, xr(card_top(2600.0) + z_hi - h) - 30.0))
@@ -225,7 +381,9 @@ def card_parts():
         unions.append(F.prism_cutter(f"DoorCardTrim_{t}_CrankArm", ax, details.line_band((cx, cz), (kx, kz), 12.0),
                                      (y_in - 13.0) * SCALE, (y_in + 3.0) * SCALE))
         unions.append(interior._cylinder(f"DoorCardKnob_{t}", (kx, s * (y_in - 10.0), kz), (kx, s * (y_in - 40.0), kz), 11.0))
-        out.append((card, unions, []))
+        cuts = [_card_vent_slot(f"DoorCard_{t}_VentSlot", s, q1, nz, tenon_x0 - 7.0, tenon_x1 + 7.0,
+                                TENON_DEPTH + TENON_CLEAR)]
+        out.append((card, unions, cuts))
     return out
 
 
@@ -296,39 +454,51 @@ def shut_face_parts(side, tree):
 def riders(side):
     """Objects that swing with a door: its feature cutters, its card and the mirror (with theirs)."""
     t = tag(side)
-    prefixes = (f"Door_{t}_", f"DoorCove_{t}", f"DoorHandle_{t}", f"DoorLock_{t}", f"DoorMirrorSlot_{t}", f"DoorCard_{t}",
-                f"DoorCardTrim_{t}", f"DoorCardKnob_{t}", f"Mirror_{t}", f"DoorHinge_{t}", f"DoorVent_{t}", f"DoorVentPane_{t}",
-                f"DoorLatch_{t}", f"DoorLatchRotor_{t}", f"DoorLatchScrew_{t}", f"DoorSeal_{t}", f"DoorBracket_{t}",
-                f"DoorBumper_{t}")
+    prefixes = (f"Door_{t}_", f"DoorCove_{t}", f"DoorHandle_{t}", f"DoorBeltTrim_{t}", f"DoorLock_{t}",
+                f"DoorMirrorSlot_{t}", f"DoorCard_{t}", f"DoorCardTrim_{t}", f"DoorCardKnob_{t}", f"Mirror_{t}",
+                f"DoorHinge_{t}", f"DoorVent_{t}", f"DoorVentPane_{t}", f"DoorLatch_{t}", f"DoorLatchRotor_{t}",
+                f"DoorLatchScrew_{t}", f"DoorSeal_{t}", f"DoorBracket_{t}", f"DoorBumper_{t}")
     return [ob for ob in bpy.data.objects if ob.name.startswith(prefixes)]
 
 
 def set_pivot(side):
     """Move the door's origin onto its hinge axis and parent everything that swings with it, so
-    rotating the door about its local Z opens it (positive angles for the right door)."""
-    door = bpy.data.objects[f"Door_{tag(side)}"]
+    rotating the door about its local Z opens it (positive angles for the right door). Card and
+    vent cutters are parented to DoorCard and DoorVent respectively so moving either sub-assembly
+    carries its own boolean modifiers."""
+    t = tag(side)
+    door = bpy.data.objects[f"Door_{t}"]
+    card = bpy.data.objects.get(f"DoorCard_{t}")
+    vent = bpy.data.objects.get(f"DoorVent_{t}")
     x, y = HINGE_AXIS
     p = Vector((x, side * y, 0.0)) * SCALE
     door.data.transform(Matrix.Translation(-p))
     door.location = p
     bpy.context.view_layer.update()
+    card_prefixes = (f"DoorCard_{t}_", f"DoorCardTrim_{t}", f"DoorCardKnob_{t}")
+    vent_prefixes = (f"DoorVent_{t}_", f"DoorVentPane_{t}")
     for ob in riders(side):
-        ob.parent = door
-        ob.matrix_parent_inverse = door.matrix_world.inverted()
+        if card and ob != card and ob.name.startswith(card_prefixes):
+            parent = card
+        elif vent and ob != vent and ob.name.startswith(vent_prefixes):
+            parent = vent
+        else:
+            parent = door
+        ob.parent = parent
+        ob.matrix_parent_inverse = parent.matrix_world.inverted()
 
 
 def vent_parts(tree):
     """[(frame, cuts)] the vent windows: a flat chrome frame round a glass pane, standing on the
     front of each door's top edge in the greenhouse plane (so it swings with the door, as on the
-    car). It fills the front of the side opening: its front edge follows the A-pillar and its top
-    the roof rail, round the opening's corner, and its rear post leans back from the door top. Each
-    is modelled flat in its own frame (local XY = the glass plane, +Z outward) and placed on the car,
-    so it prints lying flat. Left and right are mirror images (their feet are bevelled to the door
-    top on the inner face), so each side is its own part."""
+    car) and anchored by an integrated full-length bottom mounting tenon that seats into the U-channel
+    mortise slot shared by Door and DoorCard. Each is modelled flat in its own frame (local XY = the
+    glass plane, +Z outward) and placed on the car, so it prints lying flat."""
     out = []
     door_top = lambda x: top_z(x) - GAP
     rail = lambda x: details.rail_z(x) - GAP
     fb, ft = details.pillar_meets(door_top, GAP), details.pillar_meets(rail, GAP)    # the front edge's ends, GAP behind the pillar
+    fb_low = details.pillar_meets(lambda x: door_top(x) - TENON_DEPTH - 16.0, GAP)
     xb, xt = VENT_POST
     post = [Vector((xb, door_top(xb))), Vector((xt, rail(xt)))]
     # everything ahead of and above the opening's outline inset by GAP, from below the door top up
@@ -338,16 +508,7 @@ def vent_parts(tree):
                                                          (fb.x - 400.0, ft.y + 300.0), (fb.x - 400.0, fb.y - 60.0)]
     for s in SIDES:
         t, ax = tag(s), axis(s)
-
-        def hit(x, z):
-            return Vector((x, details.hit_w(tree, ax, x, z) / SCALE * s, z))
-        # glass plane through three points of the greenhouse side inside the outline
-        q1, q2, q3 = hit(fb.x + 25.0, fb.y + 20.0), hit(xb - 10.0, fb.y + 20.0), hit(xt - 25.0, ft.y - 20.0)
-        nz = (q2 - q1).cross(q3 - q1).normalized()
-        if nz.y * s < 0:
-            nz = -nz                                                 # outward
-        up = (Vector((0, 0, 1)) - nz * nz.z).normalized()
-        ux = up.cross(nz)
+        q1, ux, up, nz, fb, ft, xb, xt = _vent_plane(tree, s)
 
         def local(p):
             """Side-view point (x, z) carried along y onto the glass plane, in the plane's own (u, v)."""
@@ -358,44 +519,50 @@ def vent_parts(tree):
         # opening's (in the side view), cut off behind by the post; the pane: the same inset by the
         # frame width (in the glass plane)
         corner = details.OPEN_CORNER_T - 2.5
-        sharp_xz = [tuple(fb), tuple(ft), tuple(ft + Vector((400.0, 0.0))), tuple(fb + Vector((400.0, 0.0)))]
-        sharp = [local(p) for p in sharp_xz]
+        sharp_xz_pane = [tuple(fb), tuple(ft), tuple(ft + Vector((400.0, 0.0))), tuple(fb + Vector((400.0, 0.0)))]
+        sharp_pane = [local(p) for p in sharp_xz_pane]
+        sharp_xz_frame = [tuple(fb_low), tuple(ft), tuple(ft + Vector((400.0, 0.0))), tuple(fb_low + Vector((400.0, 0.0)))]
         pb, pt = local(post[0]), local(post[1])
-        if (pt - pb).cross(sharp[1] - pb) < 0:      # (the plane's u axis runs the other way on the left side)
-            pb, pt = pt, pb                          # keep what lies ahead of the post: the left of pb -> pt
+        if (pt - pb).cross(sharp_pane[1] - pb) < 0:      # (the plane's u axis runs the other way on the left side)
+            pb, pt = pt, pb                              # keep what lies ahead of the post: the left of pb -> pt
         # (its foot's front corner well rounded: the A-pillar's foot stands just inboard of it)
-        outline = _clip([tuple(local(p)) for p in F.rounded_poly(sharp_xz, [24.0, corner, 0.0, 0.0])], pb, pt)
-        inner = F.offset_closed([tuple(p) for p in sharp], -VENT_FRAME * SCALE)
+        outline_uv = _clip([tuple(local(p)) for p in F.rounded_poly(sharp_xz_frame, [18.0, corner, 0.0, 0.0])], pb, pt)
+        inner = F.offset_closed([tuple(p) for p in sharp_pane], -VENT_FRAME * SCALE)
         n_post = Vector((pb.y - pt.y, pt.x - pb.x)).normalized() * VENT_POST_W * SCALE      # forward, off the post
         pane = _clip(F.rounded_poly(inner, [12.0 * SCALE, max(3.0, corner - VENT_FRAME * 0.4) * SCALE, 0.0, 0.0]),
                      pb + n_post, pt + n_post)
         # the foot is squared off along the door top below (the seat cut), and the frame leans with the
-        # glass, so on its inner face the seat line rides higher by VENT_T * tan(lean): keep the pane
+        # glass, so on its inner face the seat line rides higher by abs(VENT_Z_IN) * tan(lean): keep the pane
         # VENT_RAIL clear of the seat on both faces
-        # (the seat follows the door top, which rises and levels off across the vent: lift the straight
-        # clip line by the most the door top bulges above its chord too)
         seat_xs = [fb.x - 60.0 + (xb + 60.0 - fb.x + 60.0) * k / 12 for k in range(13)]
         s0, s1 = local((seat_xs[0], door_top(seat_xs[0]))), local((seat_xs[-1], door_top(seat_xs[-1])))
         bulge = max(0.0, max((local((x, door_top(x))) - s0).cross(s1 - s0) / (s1 - s0).length * (1 if (s1 - s0).x < 0 else -1)
                              for x in seat_xs))
-        lift = Vector((0.0, max(0.0, VENT_T * nz.z / up.z) + VENT_RAIL + bulge))
+        lift = Vector((0.0, max(0.0, abs(VENT_Z_IN) * nz.z / up.z) + VENT_RAIL + bulge))
         sa, sb = s0 + lift, s1 + lift
         centre = sum((Vector(p) for p in pane), Vector((0.0, 0.0))) / len(pane)
         if (sb - sa).cross(centre - sa) < 0:
             sa, sb = sb, sa
         pane = _clip(pane, sa, sb)
-        frame = _flat_prism(f"DoorVent_{t}", outline, -VENT_T, 0.0)
-        r = (VENT_T - VENT_PANE) / 2
+        frame = _flat_prism(f"DoorVent_{t}", outline_uv, VENT_Z_IN, VENT_Z_OUT)
+        z_mid = (VENT_Z_IN + VENT_Z_OUT) / 2
+        r_half = VENT_PANE / 2
         panes = [_flat_prism(f"DoorVentPane_{t}{k}", pane, z0, z1)
-                 for k, (z0, z1) in enumerate(((-VENT_T - 1.0, -VENT_T + r), (-r, 1.0)))]
+                 for k, (z0, z1) in enumerate(((VENT_Z_IN - 1.0, z_mid - r_half), (z_mid + r_half, VENT_Z_OUT + 1.0)))]
         m = Matrix((ux, up, nz)).transposed().to_4x4()
         m.translation = q1 * SCALE
         for ob in [frame] + panes:
             ob.matrix_world = m
-        # the frame leans with the glass, so its inner face reaches past the outline seen from the
-        # side: square its foot off along the door's top so it sits on it, and trim it to the
-        # opening's outline inset by GAP so it clears the opening's edges all round
-        seat = [(x, door_top(x)) for x in reversed(seat_xs)] + [(seat_xs[0], fb.y - 300.0), (seat_xs[-1], fb.y - 300.0)]
+        # stepped seat profile with an integrated bottom mounting tenon over [tenon_x0, tenon_x1] that
+        # drops into the shared Door + DoorCard window-sill U-channel
+        tenon_x0, tenon_x1 = fb.x + 22.0, xb - 6.0
+        txs = [tenon_x0 + (tenon_x1 - tenon_x0) * k / 8 for k in range(9)]
+        seat_top = (
+            [(fb.x - 60.0, door_top(fb.x - 60.0) + 1.0), (tenon_x0 - 3.0, door_top(tenon_x0 - 3.0) + 1.0)]
+            + [(x, door_top(x) - TENON_DEPTH) for x in txs]
+            + [(tenon_x1 + 3.0, door_top(tenon_x1 + 3.0) + 1.0), (xb + 60.0, door_top(xb + 60.0) + 1.0)]
+        )
+        seat = list(reversed(seat_top)) + [(fb.x - 60.0, fb.y - 300.0), (xb + 60.0, fb.y - 300.0)]
         panes.append(F.prism_cutter(f"DoorVent_{t}_Seat", ax, seat, 500.0 * SCALE, 1000.0 * SCALE))
         panes.append(F.prism_cutter(f"DoorVent_{t}_Trim", ax, trim, 500.0 * SCALE, 1000.0 * SCALE))
         out.append((frame, panes))

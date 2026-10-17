@@ -37,6 +37,7 @@ OBJECT_SETTINGS = {
     # the hood prints skin-up with its bracing underneath; the engine has pulleys and an alternator
     # hanging out sideways
     "hood.stl": {"enable_support": "1", "support_type": "tree(auto)", "support_on_build_plate_only": "1"},
+    "trunk_lid.stl": {"enable_support": "1", "support_type": "tree(auto)", "support_on_build_plate_only": "1"},
     "engine_block.stl": {"enable_support": "1", "support_type": "tree(auto)", "support_on_build_plate_only": "1"},
     # the rear blade's ends sweep up, so it has no flat top to stand on: upright, supported under
     # its (hidden) lower edge and the guards

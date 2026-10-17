@@ -36,11 +36,11 @@ RIB_DEPTH = 1.0                  # underside bracing below the skin (print mm)
 RIB_TOP = 0.65                   # ribs reach this far up into the skin: below the 0.5 mm louver slots
 LEDGE_DROP = 0.08                # clearance between the closed hood's skin and the ledge it rests on (print mm)
 
-BAY_X0, BAY_X1, BAY_HALF = 300.0, 1625.0, 560.0
+BAY_X0, BAY_X1, BAY_HALF = 300.0, 1625.0, 544.0
 WALL_T = 30.0                    # liner wall thickness
 LINER_FIT = 5.0                  # liner-to-bay clearance (real mm, ~0.2 mm)
 FLOOR_Z0, FLOOR_Z1 = body.Z_BOTTOM, body.Z_BOTTOM + 40.0
-BOSS_X0, BOSS_X1, BOSS_TOP = 727.0, 857.0, 400.0   # clear of the chassis front axle boss
+BOSS_X0, BOSS_X1, BOSS_TOP = 682.0, 857.0, 400.0   # clear of the chassis front steering shelf and kingpin boss
 
 PEG_R, PEG_Y0, PEG_Y1 = 13.0, 625.0, 667.0         # hinge pegs (real mm)
 PIVOT_DROP = 24.0                                  # pivot sits ~1 mm under the surface at the rear corners
@@ -52,7 +52,7 @@ PLENUM_DEPTH = 80.0                                # plenum floor below the pivo
 SLOT_CLEAR = 4.0
 HOOD_OPEN_DEG = 50.0                               # prop-rod angle
 
-BRACE_T = 1.0 / SCALE            # V brace thickness (real mm)
+BRACE_T = 1.5 / SCALE            # V brace thickness (real mm)
 TOWER_ROUND = 18.0               # shock-tower top edge rounding
 TANK_H = 55.0                    # radiator top tank height
 RAD_CAP = (385.0, 110.0)         # filler neck, off-centre on the tank (clear of the prop-rod socket)
@@ -154,6 +154,10 @@ def hood_parts(tree, body_mesh):
         # ribs reach well up into the skin so the union is robust to the two surfaces' sampling
         pieces.append(F.surface_solid(f"Hood_Rib{k}", body_mesh, "+Z", outline, lambda u, v: -(HOOD_T + RIB_DEPTH),
                                       lambda u, v: -RIB_TOP, rings=2, tree=tree, step=0.5))
+    for k, s in enumerate((-1, 1)):
+        ring_out = oval(815.0, s * 255.0 - 72.0, 1035.0, s * 255.0 + 72.0)
+        pieces.append(F.surface_solid(f"Hood_RibOval{k}", body_mesh, "+Z", ring_out, lambda u, v: -(HOOD_T + RIB_DEPTH),
+                                      lambda u, v: -RIB_TOP, rings=3, tree=tree, step=0.5))
     for s in (-1, 1):
         tag = "L" if s < 0 else "R"
         y0, y1 = sorted((s * 600.0, s * (HOOD_HALF_REAR - 2)))
@@ -162,10 +166,14 @@ def hood_parts(tree, body_mesh):
         pieces.append(_cylinder(f"Hood_Peg_{tag}", (P.x, s * PEG_Y0, P.z), (P.x, s * PEG_Y1, P.z), PEG_R, 20))
     # cup for the prop rod's upper end
     px, py = PROP_HOOD_POINT
-    pieces.append(F.surface_solid("Hood_PropCup", body_mesh, "+Z", F.circle(px, py, 28.0, 20),
+    pieces.append(F.surface_solid("Hood_PropCup", body_mesh, "+Z", F.circle(px, py, 32.0, 20),
                                   lambda u, v: -(HOOD_T + RIB_DEPTH + 0.6), lambda u, v: -RIB_TOP, rings=3, tree=tree))
     cuts = [p for _, p in details.hood_louver_cutters(tree, body_mesh)]
-    cuts.append(F.surface_solid("Hood_PropHole", body_mesh, "+Z", F.circle(px, py, 0.65 / SCALE, 16),
+    for k, s in enumerate((-1, 1)):
+        hole_in = oval(835.0, s * 255.0 - 52.0, 1015.0, s * 255.0 + 52.0)
+        cuts.append(F.surface_solid(f"Hood_LouverCutOval{k}", body_mesh, "+Z", hole_in,
+                                    lambda u, v: -(HOOD_T + RIB_DEPTH + 0.6), lambda u, v: -(HOOD_T + 0.15), rings=2, tree=tree))
+    cuts.append(F.surface_solid("Hood_PropHole", body_mesh, "+Z", F.circle(px, py, 0.90 / SCALE, 16),
                                 lambda u, v: -(HOOD_T + RIB_DEPTH + 1.0), lambda u, v: -(HOOD_T + 0.2), rings=2, tree=tree))
     return hood, pieces, cuts, P
 
@@ -208,7 +216,7 @@ def liner_parts(tree):
     pieces = [F.prism_cutter("BayTub_FloorFront", "+Z", rect(xa, -h, BOSS_X0 - f, h, 20), FLOOR_Z0 * SCALE, FLOOR_Z1 * SCALE)]
     cuts = []
     # common level for the shock-tower tops, firewall top and the V brace that rests on them
-    brace_top = min(headroom(tree, 1000, 1600, -460, 460, clearance=0.4), headroom(tree, 1560, 1620, -525, 525))
+    brace_top = min(headroom(tree, 1000, 1600, -460, 460, clearance=0.4), headroom(tree, 1560, 1620, -510, 510))
     level = brace_top - BRACE_T
     # inner fenders: top edge just under the hood ledge, notched over the axle boss, and dropped
     # below the plenum floor near the hinge where the hood's rear corners dip as it opens
@@ -233,7 +241,7 @@ def liner_parts(tree):
         shoulder = F.offset_closed(tower, -TOWER_ROUND * 0.3)
         pieces.append(F.loft_solid(f"BayTub_Tower{s}", "+Z", [(tower, FLOOR_Z0 * SCALE), (tower, (level - TOWER_ROUND) * SCALE),
                                                                (shoulder, (level - TOWER_ROUND * 0.3) * SCALE), (top, level * SCALE)]))
-        for k, (x, y) in enumerate(((1090.0, 470.0), (1112.0, 428.0), (1068.0, 505.0))):
+        for k, (x, y) in enumerate(((1090.0, 460.0), (1112.0, 428.0), (1068.0, 490.0))):
             pieces.append(_cylinder(f"BayTub_TowerNut{s}{k}", (x, s * y, level - 4), (x, s * y, level + 6), 10, 6))
     # firewall and radiator support
     pieces.append(_box("BayTub_Firewall", xb - WALL_T, xb, -h, h, FLOOR_Z0, level, 0))
@@ -288,13 +296,13 @@ def liner_parts(tree):
     wall_in = s * (h - WALL_T)                                # inner face of the passenger-side apron
     bat_top = min(760.0, headroom(tree, 360, 600, 395, h - WALL_T + 5) - 30.0)    # room for the posts and cables
     pieces.append(_box("BayTub_Battery", 360.0, 600.0, 395.0, h - WALL_T + 5, FLOOR_Z0, bat_top, 12))
-    pieces.append(_cylinder("BayTub_BatPos", (420.0, 470.0, bat_top - 5), (420.0, 470.0, bat_top + 22), 16))
-    pieces.append(_cylinder("BayTub_BatNeg", (540.0, 470.0, bat_top - 5), (540.0, 470.0, bat_top + 22), 16))
+    pieces.append(_cylinder("BayTub_BatPos", (420.0, 455.0, bat_top - 5), (420.0, 455.0, bat_top + 22), 16))
+    pieces.append(_cylinder("BayTub_BatNeg", (540.0, 455.0, bat_top - 5), (540.0, 455.0, bat_top + 22), 16))
     pieces.append(_box("BayTub_Solenoid", 640.0, 700.0, wall_in - 38, wall_in, 600.0, 660.0, 8))
     pieces.append(_wall_gusset("BayTub_SolenoidGusset", 645.0, 695.0, wall_in, -38.0, 600.0))
-    pieces.append(tube("BayTub_CablePos", [(420.0, 470.0, bat_top + 18), (560.0, 490.0, bat_top + 14),
+    pieces.append(tube("BayTub_CablePos", [(420.0, 455.0, bat_top + 18), (560.0, 475.0, bat_top + 14),
                                            (655.0, wall_in - 30, 666.0)], 11, 8))
-    pieces.append(tube("BayTub_CableNeg", [(540.0, 470.0, bat_top + 18), (600.0, wall_in - 12, 640.0),
+    pieces.append(tube("BayTub_CableNeg", [(540.0, 455.0, bat_top + 18), (600.0, wall_in - 12, 640.0),
                                            (600.0, wall_in - 8, 560.0)], 11, 8))
     # washer bag hanging flat on the driver-side apron: a soft pillow with a cream bead round its
     # face, grommets in its top corners, a big label, the cap on a short neck. Its underside rises
@@ -302,7 +310,7 @@ def liner_parts(tree):
     wall_in = -(h - WALL_T)
     x0, x1 = WASHER_X
     z0 = WASHER_Z0
-    wb_top = min(760.0, headroom(tree, x0, x1, -525, -470) - 40.0)
+    wb_top = min(760.0, headroom(tree, x0, x1, -510, -455) - 40.0)
     yi = wall_in + WASHER_T
     face_z0 = z0 + WASHER_T
 
@@ -349,22 +357,53 @@ def liner_parts(tree):
     bx, by = PROP_BASE
     pieces.append(_box("BayTub_PropSocket", xa, bx + 42, by - 32, by + 32, support_top - 40, support_top, 6))   # latch bracket
     cuts.append(_cylinder("BayTub_PropHole", (bx + 10, by, support_top - 25), (bx + 10, by, support_top + 10),
-                          1.0 / SCALE))                                # roomy: the rod leans
+                          1.15 / SCALE))                               # roomy: the rod leans
     # brace bushings on the shock-tower tops (red on the car), beside the brace feet
     for s in (-1, 1):
-        pieces.append(_cylinder(f"BayTub_Bushing{s}", (950.0, s * 470.0, level - 5), (950.0, s * 470.0, level + 22), 25))
+        pieces.append(_cylinder(f"BayTub_Bushing{s}", (950.0, s * 458.0, level - 5), (950.0, s * 458.0, level + 22), 25))
     # voltage regulator on the driver-side apron, the wiring harness clipped along it (its centre
     # line just inside the wall, so its lowest point grows out of the wall rather than floating)
     pieces.append(_box("BayTub_Regulator", 720.0, 795.0, wall_in, wall_in + 30, 640.0, 700.0, 6))
     pieces.append(_wall_gusset("BayTub_RegulatorGusset", 725.0, 790.0, wall_in, 30.0, 640.0))
     pieces.append(tube("BayTub_Harness", [(650.0, wall_in - 3, 720.0), (880.0, wall_in - 3, 735.0),
                                           (1500.0, wall_in - 3, 735.0)], 12, 8))
+    # Front micro steering servo snap-in cradle on BayTub_FloorFront (X = 448..675, Y = -172..+172):
+    # internal pocket 191 x 304 real mm (9.55 x 15.20 print mm) recessed to Z = 296 for a 1.7g micro servo
+    pieces.append(_box("BayTub_ServoFront", 448.0, 466.0, -172.0, 172.0, FLOOR_Z0, 380.0, 6.0))
+    pieces.append(_box("BayTub_ServoRear", 657.0, 675.0, -172.0, 172.0, FLOOR_Z0, 380.0, 6.0))
+    for s in (-1, 1):
+        sy0, sy1 = sorted((s * 152.0, s * 172.0))
+        pieces.append(_box(f"BayTub_ServoWall{'L' if s < 0 else 'R'}", 454.0, 669.0, sy0, sy1, FLOOR_Z0, 380.0, 6.0))
+    cuts.append(_box("BayTub_ServoBed", 466.0, 657.0, -152.0, 152.0, 296.0, FLOOR_Z1 + 5.0, 4.0))
+    cuts.append(_box("BayTub_ServoHornSlot", 652.0, 680.0, -152.0, 90.0, 305.0, 386.0, 4.0))
+    # N25 gearmotor snap-in cradle on the bay floor: internal slot 496 x 252 real mm (24.80 x 12.60 print mm)
+    # for a standard 24.0 x 12.0 x 10.0 mm N25 gearmotor, with floor recessed to Z = 295 (shaft axis Z = 395)
+    pieces.append(_box("BayTub_N25Front", 862.0, 880.0, -154.0, 154.0, FLOOR_Z0, 435.0, 8.0))
+    pieces.append(_box("BayTub_N25Rear", 1376.0, 1400.0, -154.0, 154.0, FLOOR_Z0, 435.0, 8.0))
+    for s in (-1, 1):
+        y0, y1 = sorted((s * 126.0, s * 154.0))
+        pieces.append(_box(f"BayTub_N25Wall{'L' if s < 0 else 'R'}", 868.0, 1388.0, y0, y1, FLOOR_Z0, 435.0, 6.0))
+        gy0, gy1 = sorted((s * 220.0, s * 268.0))
+        pieces.append(_box(f"BayTub_EngineGuide{'L' if s < 0 else 'R'}", 1018.0, 1172.0, gy0, gy1, FLOOR_Z0, 395.0, 8.0))
+    cuts.append(_box("BayTub_N25Bed", 880.0, 1376.0, -126.0, 126.0, 295.0, FLOOR_Z1 + 5.0, 4.0))
+    cuts.append(_box("BayTub_N25WireFront", 855.0, 885.0, -138.0, 85.0, 340.0, 445.0, 4.0))
+    cuts.append(_box("BayTub_N25WireRear", 1370.0, 1405.0, -138.0, -74.0, 340.0, 445.0, 4.0))
+    # Partitioned wire chute on driver side (Y = -154..-74) separated from Driveshaft coupler by a 0.80 mm solid wall
+    pieces.append(_box("BayTub_WirePartition", 1376.0, xb, -74.0, -58.0, FLOOR_Z0, 435.0, 4.0))
+    pieces.append(_box("BayTub_WireOuterWall", 1376.0, xb, -166.0, -154.0, FLOOR_Z0, 435.0, 4.0))
+    # 45-deg gable-roofed driveshaft tunnel (Y = -58..+58) and dedicated wire conduit (Y = -154..-74) through firewall
+    cuts.append(F.prism_cutter("BayTub_ShaftTunnel", "+X",
+                               [(-58.0, 320.0), (58.0, 320.0), (58.0, 455.0), (0.0, 513.0), (-58.0, 455.0)],
+                               1365.0 * SCALE, 1630.0 * SCALE))
+    cuts.append(F.prism_cutter("BayTub_WireTunnel", "+X",
+                               [(-154.0, 335.0), (-74.0, 335.0), (-74.0, 423.0), (-114.0, 463.0), (-154.0, 423.0)],
+                               1365.0 * SCALE, 1630.0 * SCALE))
     return liner, pieces, cuts, level
 
 
 def brace_part(level):
     """Black V brace from the shock-tower tops to the firewall centre (separate, glued last)."""
-    w = 30.0
+    w = 38.0
     pts_l = [(1020.0, -440.0), (1585.0, 0.0)]
     pts_r = [(1020.0, 440.0), (1585.0, 0.0)]
     outline_l = line_band(pts_l[0], pts_l[1], w)
@@ -372,7 +411,7 @@ def brace_part(level):
     top = (level + BRACE_T) * SCALE
     brace = F.prism_cutter("Brace", "+Z", outline_l, level * SCALE, top)
     other = F.prism_cutter("Brace_Right", "+Z", outline_r, level * SCALE, top)
-    feet = [F.prism_cutter(f"Brace_Foot{k}", "+Z", F.circle(x, y, 34.0, 24), level * SCALE, top)
+    feet = [F.prism_cutter(f"Brace_Foot{k}", "+Z", F.circle(x, y, 38.0, 24), level * SCALE, top)
             for k, (x, y) in enumerate([(1020.0, -440.0), (1020.0, 440.0), (1585.0, 0.0)])]
     return brace, [other] + feet
 
@@ -425,7 +464,7 @@ def pleated_outline(outline, depth, pitch):
 
 DIST = (718.0, 0.0)                      # Ford small-block: distributor at the front of the engine
 PLUG_X = {-1: (800.0, 910.0, 1020.0, 1130.0), 1: (780.0, 890.0, 1000.0, 1110.0)}   # front to rear
-WIRE_R, WIRE_GAP = 5.0, 0.8              # plug wires, side by side in a loose loom under each valve cover
+WIRE_R, WIRE_GAP = 5.5, 0.8              # plug wires, side by side in a loose loom under each valve cover
 BOOT_R, BOOT_OUT = 9.0, 28.0             # the distributor cap's right-angle boots: radius, reach out from the tower
 LOOM_X0, LOOM_Y0, LOOM_Z = 708.0, 330.0, 696.0   # the loom: start (ahead of the valve cover), innermost wire (|y|), height
 WIRE_SAG = (5.0, 8.0, 4.0, 7.0)          # each wire droops its own amount between the separators
@@ -504,9 +543,9 @@ def engine_parts(tree):
     # (kept under the air cleaner's rim where they pass beneath it)
     intake = F.rounded_poly([(236, 742), (236, 756), (190, 740), (150, 726), (-150, 726), (-190, 740), (-236, 756), (-236, 742),
                              (-95, 683), (95, 683)], [0, 4, 15, 15, 15, 15, 4, 0, 0, 0])
-    bell = [(rect(-150, 445, 150, 600, 40), 1345.0), (rect(-170, 430, 170, 610, 60), 1584.0)]
+    bell = [(rect(-212, 410, 212, 628, 40), 1340.0), (rect(-208, 405, 208, 628, 44), 1584.0)]
     pieces = [
-        _box("Engine_OilPan", 760, 1300, -165, 165, 400, 430, 30),
+        _box("Engine_OilPan", 700, 1345, -192, 192, 402, 450, 24),
         F.prism_cutter("Engine_Intake", "+X", intake, 735 * SCALE, 1340 * SCALE),
         _box("Engine_IntakePlenum", 900, 1160, -105, 105, 720, 758, 30),
         _box("Engine_IntakePad", 940, 1120, -112, 112, 755, 767, 25),
@@ -520,8 +559,46 @@ def engine_parts(tree):
         for x in PLUG_X[s]:
             arch = [(x + 50, s * 95, 730), (x + 50, s * 150, 748), (x + 50, s * 185, 756), (x + 50, s * 226, 744)]
             pieces.append(tube(f"Engine_IntakeRunner{s}{int(x)}", F.chaikin(arch, 2), 18, 16))
-        y0, y1 = sorted((s * 195.0, s * 270.0))
-        pieces.append(_box(f"Engine_Mount{s}", 920, 990, y0, y1, FLOOR_Z1, 470, 0))
+        rail_prof = [
+            (s * 135.0, FLOOR_Z1),
+            (s * 212.0, FLOOR_Z1),
+            (s * 212.0, 465.0),
+            (s * 198.0, 515.0),
+            (s * 135.0, 515.0),
+        ]
+        bell_rail_prof = [
+            (s * 135.0, FLOOR_Z1),
+            (s * 212.0, FLOOR_Z1),
+            (s * 212.0, 460.0),
+            (s * 198.0, 505.0),
+            (s * 135.0, 505.0),
+        ]
+        mount_prof = [
+            (s * 135.0, FLOOR_Z1),
+            (s * 308.0, FLOOR_Z1),
+            (s * 308.0, 382.0),
+            (s * 242.0, 432.0),
+            (s * 242.0, 628.0),
+            (s * 135.0, 628.0),
+        ]
+        bell_mount_prof = [
+            (s * 135.0, FLOOR_Z1),
+            (s * 282.0, FLOOR_Z1),
+            (s * 282.0, 382.0),
+            (s * 212.0, 432.0),
+            (s * 212.0, 540.0),
+            (s * 135.0, 540.0),
+        ]
+        if s < 0:
+            rail_prof.reverse()
+            bell_rail_prof.reverse()
+            mount_prof.reverse()
+            bell_mount_prof.reverse()
+        pieces.append(F.prism_cutter(f"Engine_CradleRail{s}", "+X", rail_prof, 866.0 * SCALE, 1418.0 * SCALE))
+        pieces.append(F.prism_cutter(f"Engine_BellhousingRail{s}", "+X", bell_rail_prof, 1408.0 * SCALE, 1580.0 * SCALE))
+        pieces.append(F.prism_cutter(f"Engine_MountF{s}", "+X", mount_prof, 870.0 * SCALE, 1005.0 * SCALE))
+        pieces.append(F.prism_cutter(f"Engine_MountR{s}", "+X", mount_prof, 1185.0 * SCALE, 1325.0 * SCALE))
+        pieces.append(F.prism_cutter(f"Engine_BellhousingMount{s}", "+X", bell_mount_prof, 1445.0 * SCALE, 1576.0 * SCALE))
     # front of the engine: shaped timing cover, water pump with its arms and the lower hose's inlet
     timing = F.rounded_poly([(-125, 450), (125, 450), (130, 540), (108, 615), (65, 650), (-65, 650), (-108, 615), (-130, 540)], 22)
     pieces += [F.prism_cutter("Engine_Timing", "+X", timing, 640 * SCALE, 694 * SCALE),
@@ -543,6 +620,16 @@ def engine_parts(tree):
     belt_obj, belt_cut = belt("Engine_Belt", [(0.0, 470.0, 75.0), (0.0, FAN_Z, 55.0), (240.0, 560.0, 32.0)], 620.0, 636.0)
     pieces.append(belt_obj)
     hollowed.append((belt_obj, belt_cut))            # outer hull minus the pulley hull
+    # gable-topped underside cavity in EngineBlock + OilPan + Bellhousing so it straddles the N25 motor + cradle
+    # with full physical room (324 x 218 x 570 real mm = 16.20 x 10.90 x 28.50 print mm clear to vertical wall top,
+    # rising at 45 deg to Z = 680 at the centreline)
+    p_wide = [(-168.0, 310.0), (168.0, 310.0), (168.0, 518.0), (0.0, 680.0), (-168.0, 518.0)]
+    p_mid = [(-168.0, 310.0), (168.0, 310.0), (168.0, 488.0), (0.0, 612.0), (-168.0, 488.0)]
+    p_bell = [(-168.0, 310.0), (168.0, 310.0), (168.0, 450.0), (0.0, 604.0), (-168.0, 450.0)]
+    n25_cav = F.loft_solid("Engine_N25Cavity", "+X", [
+        (p_wide, 842.0 * SCALE), (p_wide, 1345.0 * SCALE), (p_mid, 1385.0 * SCALE),
+        (p_bell, 1430.0 * SCALE), (p_bell, 1600.0 * SCALE)])
+    hollowed.append((block, n25_cav))
     pieces += _ignition(tree)
     pieces += _cooling(tree)
     # steel fuel line from the pump, tucked against the front of the engine, into the carburettor
@@ -823,6 +910,166 @@ def prop_rod(P, tree):
     top = open_angle_point(P, cup, HOOD_OPEN_DEG)
     axis = top - base
     # modelled along local +X so it exports lying flat; placed in its working position
-    rod = _cylinder("HoodProp", (0, 0, 0), (axis.length, 0, 0), 0.6 / SCALE, 16)
+    rod = _cylinder("HoodProp", (0, 0, 0), (axis.length, 0, 0), 0.85 / SCALE, 16)
     rod.matrix_world = Matrix.Translation(base * SCALE) @ axis.to_track_quat('X', 'Z').to_matrix().to_4x4()
     return rod
+
+
+# ---------------------------------------------------------------- N25 driveshaft & rear boot
+
+TRUNK_FRONT_X, TRUNK_REAR_X = 3885.0, 4410.0
+TRUNK_SIDE = [(3885.0, 548.0), (4100.0, 565.0), (4300.0, 614.0), (4410.0, 660.0)]
+TRUNK_OUTLINE = F.rounded_poly(TRUNK_SIDE + [(x, -y) for x, y in reversed(TRUNK_SIDE)], [20, 0, 0, 24, 24, 0, 0, 20])
+TRUNK_GAP, TRUNK_FRONT_GAP = 6.0, 11.0
+TRUNK_RECESS_SIDE = [(3885.0 - TRUNK_FRONT_GAP, 548.0 + TRUNK_GAP), (4100.0, 565.0 + TRUNK_GAP),
+                     (4300.0, 614.0 + TRUNK_GAP), (4410.0 + TRUNK_GAP, 660.0 + TRUNK_GAP)]
+TRUNK_RECESS_OUTLINE = F.rounded_poly(
+    TRUNK_RECESS_SIDE + [(x, -y) for x, y in reversed(TRUNK_RECESS_SIDE)], [20, 0, 0, 24, 24, 0, 0, 20])
+TRUNK_PIVOT_X = TRUNK_FRONT_X + 60.0
+TRUNK_PIVOT_DROP = 22.0
+TRUNK_PEG_R, TRUNK_PEG_Y0, TRUNK_PEG_Y1 = 12.0, 515.0, 598.0
+TRUNK_OPEN_DEG = 40.0
+
+
+def _gear_ring(cu, cv, r_root, r_tip, teeth, phase_rad=0.0):
+    """Toothed gear cross-section around (cu, cv) with 4 * teeth vertices; circular when r_root == r_tip."""
+    pts = []
+    pitch = 2.0 * math.pi / teeth
+    for t in range(teeth):
+        a0 = phase_rad + t * pitch
+        for frac, r in ((-0.35, r_root), (-0.09, r_tip), (0.09, r_tip), (0.35, r_root)):
+            a = a0 + frac * pitch
+            pts.append((cu + r * math.cos(a), cv + r * math.sin(a)))
+    return pts
+
+
+def _d_bore_ring(cy, cz, r, flat_top, steps=32):
+    """D-shaft bore cross-section around (cy, cz), clipped flat at cz + flat_top."""
+    return [(cy + r * math.cos(2.0 * math.pi * k / steps),
+             cz + min(r * math.sin(2.0 * math.pi * k / steps), flat_top)) for k in range(steps)]
+
+
+def driveshaft_part():
+    """Center N25 prop shaft (X = 1404..3514, Y = 0, Z = 395): front D-shaft coupler sleeve with
+    subtracted D-bore (Ø3.20 mm, 2.70 mm across flat, 45-deg ceiling), central shaft through firewall
+    and cabin tunnel, and rear 10-tooth bevel pinion meshing with AxleGear on Axle_R."""
+    zc = 395.0
+    teeth = 10
+    # Phase one pinion tooth crest directly toward the AxleGear mesh centre M = (3490, +28, 366)
+    phase = math.atan2(366.0 - zc, 28.0 - 0.0)
+    stations = [
+        (1404.0, 52.0, 52.0),
+        (1564.0, 52.0, 52.0),
+        (1594.0, 34.0, 34.0),
+        (3456.0, 34.0, 34.0),
+        (3470.0, 26.0, 44.0),
+        (3502.0, 21.0, 37.0),
+        (3514.0, 15.0, 15.0),
+    ]
+    sections = [(_gear_ring(0.0, zc, r0, r1, teeth, phase), x * SCALE) for x, r0, r1 in stations]
+    shaft = F.loft_solid("Driveshaft", "+X", sections)
+    d_bore = F.loft_solid("Driveshaft_DBore", "+X", [
+        (_d_bore_ring(0.0, zc, 32.0, 22.0), 1400.0 * SCALE),
+        (_d_bore_ring(0.0, zc, 32.0, 22.0), 1532.0 * SCALE),
+        (_d_bore_ring(0.0, zc, 2.0, 2.0), 1564.0 * SCALE),
+    ])
+    return shaft, [d_bore]
+
+
+def axle_gear_part():
+    """12-tooth bevel crown gear mounted coaxially on Axle_R (X = 3535, Z = 330, Y = +21.5..+54.5) inside
+    Chassis_Diff, with an aligned 3.32 mm across-flats octagonal spline bore that locks rotationally
+    onto Axle_R's 3.24 mm flats / 3.51 mm corners while maintaining 0.0 mm^3 static overlap."""
+    gx, gz = 3535.0, 330.0
+    teeth = 12
+    # Phase a crown tooth valley at M = (3490, +28, 366) so the pinion tooth crest sits cleanly inside it
+    phase = math.atan2(366.0 - gz, 3490.0 - gx) + math.pi / teeth
+    stations = [
+        (21.5, 42.0, 56.0),
+        (39.5, 49.0, 68.0),
+        (43.5, 70.0, 70.0),
+        (54.5, 70.0, 70.0),
+    ]
+    sections = [(_gear_ring(gx, gz, r0, r1, teeth, phase), y * SCALE) for y, r0, r1 in stations]
+    gear = F.loft_solid("AxleGear", "+Y", sections)
+    r_oct = 33.20 / math.cos(math.pi / 8)
+    oct_ring = [(gx + r_oct * math.cos(math.pi / 8 + k * math.pi / 4),
+                 gz + r_oct * math.sin(math.pi / 8 + k * math.pi / 4)) for k in range(8)]
+    bore = F.prism_cutter("AxleGear_Bore", "+Y", oct_ring, 10.0 * SCALE, 58.0 * SCALE)
+    return gear, [bore]
+
+
+def trunk_pivot(tree):
+    z = surface_z(tree, TRUNK_PIVOT_X, 548.0) - TRUNK_PIVOT_DROP
+    return Vector((TRUNK_PIVOT_X, 0.0, z))
+
+
+def trunk_body_cutters(tree, body_mesh):
+    """[(name, cutter)]: trunk lid recess, deep boot cavity, and front hinge plenum/slots."""
+    PT = trunk_pivot(tree)
+    cuts = [
+        ("Cut_TrunkRecess", F.surface_cutter("Cut_TrunkRecess", body_mesh, "+Z", TRUNK_RECESS_OUTLINE, HOOD_T + LEDGE_DROP,
+                                             rings=10, tree=tree)),
+        ("Cut_Boot", F.prism_cutter("Cut_Boot", "+Z", rect(3988.0, -480.0, 4368.0, 480.0, 24.0), 558.0 * SCALE, 80.0)),
+    ]
+    c = SLOT_CLEAR
+    half = 548.0 + TRUNK_GAP + 3.0
+    cuts.append(("Cut_TrunkPlenum", F.prism_cutter(
+        "Cut_TrunkPlenum", "+Z", rect(TRUNK_FRONT_X - TRUNK_FRONT_GAP, -half, PT.x + 60.0, half, 0),
+        (PT.z - 68.0) * SCALE, 80.0)))
+    for s in (-1, 1):
+        tag = "L" if s < 0 else "R"
+        y0, y1 = sorted((s * (548.0 + TRUNK_GAP), s * (TRUNK_PEG_Y1 + c)))
+        cuts.append((f"Cut_TrunkSlot_{tag}", F.prism_cutter(
+            f"Cut_TrunkSlot_{tag}", "+Z", rect(PT.x - TRUNK_PEG_R - c, y0, PT.x + TRUNK_PEG_R + c, y1, 0),
+            (PT.z - TRUNK_PEG_R - c) * SCALE, 80.0)))
+    return cuts
+
+
+def _trunk_ribs():
+    x0, x1, h, w = 4035.0, 4330.0, 430.0, 18.0
+    e = 6.0
+    return [rect(x0, -h, x0 + w, h, 0), rect(x1 - w, -h, x1, h, 0),
+            rect(x0 + e, h - w, x1 - e, h, 0), rect(x0 + e, -h, x1 - e, -h + w, 0),
+            rect(x0 + e, -w / 2, x1 - e, w / 2, 0)]
+
+
+def trunk_parts(tree, body_mesh):
+    """(trunk_lid, union pieces, cut pieces, pivot). Modelled closed in place, hinged at its front corners."""
+    PT = trunk_pivot(tree)
+    trunk = F.surface_solid("TrunkLid", body_mesh, "+Z", TRUNK_OUTLINE, lambda u, v: -HOOD_T, lambda u, v: 0.0,
+                            rings=18, tree=tree, step=0.4)
+    pieces = []
+    for k, outline in enumerate(_trunk_ribs()):
+        pieces.append(F.surface_solid(f"Trunk_Rib{k}", body_mesh, "+Z", outline, lambda u, v: -(HOOD_T + RIB_DEPTH),
+                                      lambda u, v: -RIB_TOP, rings=2, tree=tree, step=0.5))
+    for s in (-1, 1):
+        tag = "L" if s < 0 else "R"
+        y0, y1 = sorted((s * 505.0, s * 550.0))
+        pieces.append(F.surface_solid(f"Trunk_HingeBoss_{tag}", body_mesh, "+Z", rect(PT.x - 38.0, y0, PT.x + 38.0, y1, 0),
+                                      lambda u, v: -(TRUNK_PIVOT_DROP + TRUNK_PEG_R + 18.0) * SCALE, lambda u, v: -0.1,
+                                      rings=3, tree=tree))
+        pieces.append(_cylinder(f"Trunk_Peg_{tag}", (PT.x, s * TRUNK_PEG_Y0, PT.z), (PT.x, s * TRUNK_PEG_Y1, PT.z), TRUNK_PEG_R, 20))
+    return trunk, pieces, [], PT
+
+
+def boot_tub_parts(tree):
+    """(boot_tub, union pieces, cut pieces) for the rear boot liner partitioned into a driver-side
+    2.4GHz Receiver + 5A Micro Brushed ESC bay (Y = -450..-58) and a passenger-side LiPo battery bay (Y = -42..+450)."""
+    bx0, bx1, bh = 4004.0, 4360.0, 472.0
+    bz0, bz1, btop, bw = 564.0, 596.0, 835.0, 22.0
+    boot = F.prism_cutter("BootTub", "+Z", rect(bx0, -bh, bx1, bh, 20.0), bz0 * SCALE, btop * SCALE)
+    cuts = [
+        F.prism_cutter("BootTub_Cavity", "+Z", rect(bx0 + bw, -(bh - bw), bx1 - bw, bh - bw, 12.0),
+                       bz1 * SCALE, (btop + 20.0) * SCALE),
+        F.prism_cutter("BootTub_WireEntry", "+X",
+                       [(-154.0, 596.0), (-74.0, 596.0), (-74.0, 655.0), (-114.0, 695.0), (-154.0, 655.0)],
+                       3996.0 * SCALE, 4038.0 * SCALE),
+    ]
+    pieces = [
+        _box("BootTub_Divider", bx0 + 40.0, bx1 - 40.0, -58.0, -42.0, bz1 - 4.0, bz1 + 84.0, 4.0),
+        _box("BootTub_BatRail0", bx0 + 40.0, bx1 - 40.0, 35.0, 55.0, bz1 - 4.0, bz1 + 24.0, 4.0),
+        _box("BootTub_BatRail1", bx0 + 40.0, bx1 - 40.0, 350.0, 370.0, bz1 - 4.0, bz1 + 24.0, 4.0),
+    ]
+    return boot, pieces, cuts
+

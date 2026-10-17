@@ -27,7 +27,7 @@ PEG_LEN = 3.0
 A_PILLAR = ((1780.0, 918.0), (2110.0, 1248.0))   # two points on the A-pillar's rear edge, below the sill and above the rail
 RAIL_MARGIN, RAIL_X_FLAT = 30.0, 2150.0
 OPEN_CORNER_T = 33.0
-DRIP_RAIL = (6.0, 18.0, 0.2)        # chrome drip moulding over the opening and down the pillar: offsets out (real), proud (print mm)
+DRIP_RAIL = (-2.0, 22.0, 0.38)      # chrome window frame moulding around the side window opening: offsets out (real), proud (print mm)
 OPENING_STEPS = 6                   # points per fillet of the opening's outline (each fillet becomes steps + 1 points)
 QUARTER_X1 = 2887.0
 
@@ -105,7 +105,7 @@ OPEN_CORNER_X = pillar_meets(rail_z).x          # the opening's top front corner
 WINDOW_CUT_DEPTH = 8.0
 BELTLINE_X0, BELTLINE_Y = 1772.0, (600.0, 700.0)   # beltline clearance: from just behind the door's front edge; |y| band
 BELTLINE_TOP, BELTLINE_PILLAR = 25.0, 6.0           # it reaches sill + 25 behind the A-pillar, and stays 6 mm behind the pillar
-WINDSHIELD = F.rounded_poly([(1712, -590), (2055, -500), (2055, 500), (1712, 590)], 70)
+WINDSHIELD = F.rounded_poly([(1712, -590), (2082, -504), (2082, 504), (1712, 590)], [70, 48, 48, 70])
 
 # door shut lines (side view): front and rear edges, from the rocker moulding up toward the sill
 # (doors.py cuts the opening doors along them)
@@ -158,9 +158,10 @@ def cove_fade(u, v):
 SCOOP_INTAKES = [F.rounded_poly([(2822, 676), (2826, 762), (2994, 768), (2998, 674)], 20),
                  F.rounded_poly([(2816, 570), (2820, 640), (2998, 638), (3002, 566)], 20)]
 
-# twin raised hood scoops (mid hood) and the louvered vents at the rear of the hood
+# twin 1967 hood turn-signal scallops (mid hood) and the louvered vents at the rear of the hood
 HOOD_SCOOPS = [F.rounded_poly([(760, s * 95), (760, s * 430), (1210, s * 400), (1210, s * 110)], [30, 30, 60, 60]) for s in (-1, 1)]
-SCOOP_FRONT, SCOOP_REAR, SCOOP_H = 760.0, 1210.0, 0.85
+HOOD_SCALLOPS = [F.rounded_poly([(810, s * 130), (810, s * 395), (1185, s * 370), (1185, s * 142)], [22, 22, 42, 42]) for s in (-1, 1)]
+SCOOP_FRONT, SCOOP_REAR, SCOOP_H = 760.0, 1210.0, 0.55
 
 
 def cowl_louvers():
@@ -174,28 +175,32 @@ def cowl_louvers():
 
 
 def hood_scoop_pieces(tree, body_mesh):
-    """[(name, solid)] twin raised scoops, built on the original body surface (they ride on the hood)."""
+    """[(name, solid)] twin spear borders around the recessed 1967 hood scallops."""
     def scoop(u, v):
-        # crisp front edge, flat top, fading into the hood toward the rear and at the sides
         t = (u - SCOOP_FRONT) / (SCOOP_REAR - SCOOP_FRONT)
         inner, outer = 95 + 15 * t, 430 - 30 * t
-        rear = max(0.0, min(1.0, (SCOOP_REAR - u) / 260.0))
+        rear = max(0.0, min(1.0, (SCOOP_REAR - u) / 220.0))
         side = max(0.0, min(1.0, min(abs(v) - inner, outer - abs(v)) / 20.0))
         return SCOOP_H * rear * side
 
     return [(f"Hood_Scoop{i}", F.surface_solid(f"Hood_Scoop{i}", body_mesh, "+Z", outline, lambda u, v: -0.4,
-                                               lambda u, v: scoop(u, v) - 0.06, rings=8, tree=tree, step=0.4))
+                                               lambda u, v: scoop(u, v) - 0.05, rings=8, tree=tree, step=0.4))
             for i, outline in enumerate(HOOD_SCOOPS)]
 
 
 def hood_louver_cutters(tree, body_mesh):
-    return [(f"Hood_LouverCut{i}", F.surface_cutter(f"Hood_LouverCut{i}", body_mesh, "+Z", slot, 0.5, rings=3, tree=tree))
+    cuts = [(f"Hood_LouverCut{i}", F.surface_cutter(f"Hood_LouverCut{i}", body_mesh, "+Z", slot, 0.5, rings=3, tree=tree))
             for i, slot in enumerate(cowl_louvers())]
+    for i, outline in enumerate(HOOD_SCALLOPS):
+        cuts.append((f"Hood_LouverCutScallop{i}", F.surface_cutter(
+            f"Hood_LouverCutScallop{i}", body_mesh, "+Z", outline, 0.35, out=0.8, rings=6,
+            depth_fn=lambda u, v: max(0.25, min(1.0, (u - 810.0) / 260.0)), tree=tree)))
+    return cuts
 
 
 # front valance parking lamps: small chrome-ringed inserts in pockets square to the raked valance
-PARK_LIGHTS = [(s * 640.0, 430.0, 34.0) for s in (-1, 1)]       # y, z, radius
-PARK_DEPTH = 1.0                                                  # pocket depth (print mm)
+PARK_LIGHTS = [(s * 640.0, 425.0, 38.0) for s in (-1, 1)]       # y, z, radius
+PARK_DEPTH = 1.35                                                 # pocket depth (print mm)
 # rear valance: round backup lamps either side of a recessed licence plate. Each is a separate chrome
 # housing standing out of a socket in the valance: a cone flaring from a vertical face back into the
 # valance (BACKUP_FLARE real mm of radius per mm), so from behind a sliver of its side shows round the
@@ -215,14 +220,28 @@ BACKUP_LENS_DEPTH, BACKUP_LENS_DOME = 0.35, 0.2
 PLATE = (-152.0, 525.0, 152.0, 672.0)          # y0, z0, y1, z1: a 12 x 6 in plate (black recess)
 PLATE_DEPTH = 0.6
 
-GRILLE_Y, GRILLE_Z0, GRILLE_Z1, GRILLE_R = 593.0, 552.0, 800.0, 60.0
-GRILLE = F.rounded_poly([(-GRILLE_Y, GRILLE_Z0), (GRILLE_Y, GRILLE_Z0), (GRILLE_Y, GRILLE_Z1), (-GRILLE_Y, GRILLE_Z1)], GRILLE_R)
-HEADLIGHT_R, HEADLIGHT_Y, HEADLIGHT_Z = 86.0, 715.0, 680.0
-HEADLIGHT_FLARE = 12.0     # bucket radius grows by this much from floor to body face
-FOG_Y, FOG_R = 440.0, 64.0
+GRILLE_Y_BOT, GRILLE_Y_TOP = 582.0, 544.0
+GRILLE_Y, GRILLE_Z0, GRILLE_Z1, GRILLE_R = GRILLE_Y_BOT, 574.0, 800.0, 24.0
+
+
+def grille_poly(inset_print=0.0):
+    """Trapezoidal 1967 Mustang shark-nose grille outline (wider at bottom, slanted inward toward top)."""
+    i = inset_print / SCALE
+    return F.rounded_poly([
+        (-(GRILLE_Y_BOT - i), GRILLE_Z0 + i),
+        (GRILLE_Y_BOT - i, GRILLE_Z0 + i),
+        (GRILLE_Y_TOP - i, GRILLE_Z1 - i),
+        (-(GRILLE_Y_TOP - i), GRILLE_Z1 - i),
+    ], max(4.0, GRILLE_R - i))
+
+
+GRILLE = grille_poly(0.0)
+HEADLIGHT_R, HEADLIGHT_Y, HEADLIGHT_Z = 86.0, 718.0, 684.0
+HEADLIGHT_FLARE = 15.0     # inner socket collar flare around the recessed sealed beam
+FOG_Y, FOG_R = 430.0, 62.0
 # the round lamps are sealed beams: a chrome retaining ring LAMP_RING_W (real mm) wide standing
 # LAMP_RING_H (print mm) round a domed lens that rises LAMP_DOME from the ring's foot
-LAMP_RING_W, LAMP_RING_H, LAMP_DOME = 12.0, 0.35, 0.4
+LAMP_RING_W, LAMP_RING_H, LAMP_DOME = 14.0, 0.45, 0.55
 # tail: a chrome strip frames the panel, along the top edge and down both corners; inside it the
 # panel is set back and carries the taillights, gas cap, trunk lock and spaced MUSTANG letters
 TRIM_W, TRIM_INSET, TAIL_EDGE_DROP = 14.0, 9.0, 12.0   # strip width; how far inside the face's edge
@@ -269,7 +288,7 @@ def _dense_rows(rows, df, span=(0.0, 1.0)):
     return out
 
 
-FRONT_BUMPER_Z = (470.0, 566.0)
+FRONT_BUMPER_Z = (476.0, 568.0)
 REAR_BUMPER_Z = (629.0, 738.0)
 # the rear blade: a broad top sloping up to just under the lamps, a crisp crease, then the face;
 # (height fraction, forward thickness print mm), top first; between 0.15 and the top's last row rows are
@@ -300,7 +319,7 @@ REAR_BUMPER_CORNER = (852.0, 62.5, 48.0, 60.0, 50.0)
 REAR_BUMPER_CURL = (806.0, 845.0, 1.5)
 BUMPER_PEGS_Y = (-300.0, 300.0)
 # guards: (y positions, top z, drop, width real mm, rounded capsule); black rubber at the rear
-FRONT_GUARDS = ((-480.0, 480.0), 494.0, 170.0, 31.2, True)      # chrome capsules running down the apron, as on the car
+FRONT_GUARDS = ((-480.0, 480.0), 564.0, 195.0, 34.0, True)      # chrome capsules straddling the blade and valance apron
 FRONT_BUMPER_SIDE_T = 0.6                     # print mm: the blade's thickness where it wraps along the fenders
 REAR_GUARDS = ((-227.0, 227.0), 690.0, 160.0, 38.0, True)      # rubber-faced capsules
 # two round bolt heads low on the rear blade's face, outboard of the plate (y, z real mm, as in photo 3):
@@ -313,14 +332,14 @@ PLATE_NOTCH = (-172.0, 600.0, 172.0, 680.0)   # cut-out in the rear blade's lowe
 # underside behind the rear axle: the floor climbs right behind the axle boss slot, so the quarters
 # and valance end ~0.5 m off the ground with the axle, tires and exhaust in view below, as on the
 # car (the flat underside ahead of it is the print bed)
-REAR_FLOOR_Z = 488.0
+REAR_FLOOR_Z = 468.0
 # Outboard of REAR_UNDER_Y the quarters hang lower than that floor: their lower edge (x, z) eases up
 # from behind the wheel to the floor at the tail, keeping just above the line of sight under the
 # valance from behind, so the tires show below it as on the car. The quarters roll under toward it
 # (body.QUARTER_TUCK), so the edge comes where the drawn-in skin already faces partly down. Across
 # the car the step rolls down over QUARTER_ROLL (real mm), shrinking away as it rises.
 REAR_UNDER_Y, QUARTER_ROLL = 610.0, 80.0
-QUARTER_EDGE = [(3935.0, 420.0), (4100.0, 432.0), (4250.0, 455.0), (4350.0, 477.0), (4400.0, REAR_FLOOR_Z), (4460.0, REAR_FLOOR_Z)]
+QUARTER_EDGE = [(3935.0, 385.0), (4100.0, 402.0), (4250.0, 428.0), (4350.0, 452.0), (4400.0, REAR_FLOOR_Z), (4460.0, REAR_FLOOR_Z)]
 
 
 def body_z_bottom():
@@ -330,12 +349,16 @@ REAR_UNDER = F.rounded_poly([(3610, 100), (3610, 250), (3650, 300), (3800, REAR_
                              (4800, REAR_FLOOR_Z), (4800, 100)], [0, 30, 50, 60, 40, 0, 0])
 
 def louver_slots():
-    """Vertical slats in a panel on the C-pillar sail, behind the quarter glass."""
+    """Raked extractor slats on the C-pillar sail panel behind the quarter glass."""
     slots = []
-    for k in range(9):
-        x0 = 2988 + 44 * k
-        top = 1222 - (x0 - 2985) * 0.12 - 12
-        slots.append(rect(x0, 1066, x0 + 18, top, 8))
+    for k in range(11):
+        x0 = 3004.0 + 34.0 * k
+        z0 = 1066.0
+        top = 1214.0 - (x0 - 2985.0) * 0.14
+        rake_dx = -44.0 * (top - z0) / 145.0
+        w = 14.0
+        pts = [(x0, z0), (x0 + w, z0), (x0 + w + rake_dx, top), (x0 + rake_dx, top)]
+        slots.append(F.rounded_poly(pts, 4.5))
     return slots
 
 
@@ -492,7 +515,7 @@ def tail_rear_x(tree, z):
     """Rearmost x (real mm) of the tail at height z across the quarter extension: the side view's outline."""
     xs = []
     for y in range(700, 861, 8):
-        hit, *_ = tree.ray_cast(Vector((200.0, y * SCALE, z * SCALE)), Vector((-1.0, 0.0, 0.0)), 400.0)
+        hit, *_ = tree.ray_cast(Vector((300.0, y * SCALE, z * SCALE)), Vector((-1.0, 0.0, 0.0)), 600.0)
         if hit is not None:
             xs.append(hit.x / SCALE)
     return max(xs)
@@ -522,14 +545,14 @@ def deck_gap_path(tree, sgn):
     carries point, direction and width along together, so the groove turns over the roll in one sweep."""
     def knot(u, v, axis, width):
         into, to3d = F.AXES[axis]
-        hit, nrm, *_ = tree.ray_cast(to3d(u * SCALE, v * SCALE, 200.0), into, 400.0)
+        hit, nrm, *_ = tree.ray_cast(to3d(u * SCALE, v * SCALE, 300.0), into, 600.0)
         if hit is None:
             raise ValueError(f"deck gap knot ({u:.0f}, {v:.0f}) misses the body")
         d = Vector((nrm.x, 0.0, nrm.z)).normalized()
         return (*(hit / SCALE), *(d if d.dot(into) < 0 else -d), width)
 
     rear = DECKLID_REAR + [(DECKLID_REAR[-1][0], RECESS_TOP + 2.0)]
-    knots = [knot(x, sgn * y, "+Z", DECKLID_GAP[0]) for x, y in DECKLID_SIDE]
+    knots = [knot(x, sgn * y, "+Z", DECKLID_GAP[0]) for x, y in ((4410.0, 662.0), (4420.0, 676.0))]
     knots += [knot(sgn * y, z, "+X", DECKLID_GAP[1]) for y, z in rear]
     return [(q[:3], q[3:6], q[6]) for q in F.chaikin(knots, 4)]
 
@@ -659,24 +682,114 @@ def offset_rect(u0, v0, u1, v1, r, inset_print):
 def hit_w(tree, axis, u, v):
     """Coordinate along the outward axis where the body surface is at (u, v) (real mm)."""
     into, to3d = F.AXES[axis]
-    origin = to3d(u * SCALE, v * SCALE, 200.0)
-    hit, *_ = tree.ray_cast(origin, into, 400.0)
+    origin = to3d(u * SCALE, v * SCALE, 300.0)
+    hit, *_ = tree.ray_cast(origin, into, 600.0)
     if hit is None:
         raise ValueError(f"no surface at {axis} ({u}, {v})")
     return -hit.dot(into)
 
 
-GRILLE_DEPTH, HEADLIGHT_DEPTH, TAILLIGHT_DEPTH, GAS_CAP_DEPTH = 3.0, 2.0, 2.0, 2.4
+GRILLE_DEPTH, HEADLIGHT_DEPTH, TAILLIGHT_DEPTH, GAS_CAP_DEPTH = 3.2, 5.4, 2.0, 2.4
 GAS_CAP_PROUD = 1.2             # the chrome cap stands ~30 mm proud of the set-back panel
 TAILLIGHT_PROUD = TAIL_RECESS   # bezel faces stand off the set-back panel flush with the band above it
 
 
 def grille_floor(tree):
-    return hit_w(tree, "-X", 0, 715) - GRILLE_DEPTH
+    return hit_w(tree, "-X", GRILLE_Y_TOP, 715) - GRILLE_DEPTH
 
 
 def headlight_floor(tree, y):
     return hit_w(tree, "-X", y, HEADLIGHT_Z) - HEADLIGHT_DEPTH
+
+
+def bucket_mouth_outline(s):
+    """Front-view (y, z) outline (real mm) of the 1967 Mustang swept-back headlight bucket mouth."""
+    pts = [
+        (s * 589.0, 574.0),   # bottom-inboard, right beside the slanted grille surround
+        (s * 705.0, 572.0),   # bottom-mid above front bumper
+        (s * 792.0, 578.0),   # bottom-outboard corner inside fender spear
+        (s * 806.0, 684.0),   # mid-outboard peak inside fender nose spear
+        (s * 790.0, 774.0),   # top-outboard eyebrow curve
+        (s * 720.0, 798.0),   # top-mid overhanging fender eyebrow
+        (s * 635.0, 800.0),   # top-inboard eyebrow
+        (s * 551.0, 796.0),   # top-inboard corner right beside upper grille surround
+    ]
+    radii = [14.0, 45.0, 26.0, 55.0, 32.0, 55.0, 45.0, 14.0]
+    poly = F.rounded_poly(pts, radii, steps=8)
+    return poly if s > 0 else list(reversed(poly))
+
+
+def _ray_poly_r(yc, zc, ca, sa, poly):
+    """Distance r > 0 along ray (ca, sa) from (yc, zc) to closed polygon `poly`."""
+    best = None
+    n = len(poly)
+    for i in range(n):
+        x1, y1 = poly[i][0] - yc, poly[i][1] - zc
+        x2, y2 = poly[(i + 1) % n][0] - yc, poly[(i + 1) % n][1] - zc
+        dx, dy = x2 - x1, y2 - y1
+        det = ca * (-dy) - sa * (-dx)
+        if abs(det) < 1e-9:
+            continue
+        r = (x1 * (-dy) - y1 * (-dx)) / det
+        u = (ca * y1 - sa * x1) / det
+        if r > 0.0 and -1e-6 <= u <= 1.0 + 1e-6:
+            if best is None or r < best:
+                best = r
+    return best if best is not None else (HEADLIGHT_R + 20.0)
+
+
+def headlight_bucket_cutter(name, tree, s):
+    """Deep, swept-back 1967 Mustang concave headlight bucket cutter with smooth paint-shaded walls."""
+    yc, zc = s * HEADLIGHT_Y, HEADLIGHT_Z
+    f = headlight_floor(tree, yc)
+    poly = bucket_mouth_outline(s)
+    n = 72
+    angles = [2.0 * math.pi * k / n for k in range(n)]
+    r_out = [_ray_poly_r(yc, zc, math.cos(a), math.sin(a), poly) for a in angles]
+    for _ in range(3):
+        r_out = [0.25 * r_out[(k - 1) % n] + 0.50 * r_out[k] + 0.25 * r_out[(k + 1) % n] for k in range(n)]
+    w_mouth = [hit_w(tree, "-X", yc + r_out[k] * math.cos(angles[k]), zc + r_out[k] * math.sin(angles[k]))
+               for k in range(n)]
+    for _ in range(2):
+        w_mouth = [0.25 * w_mouth[(k - 1) % n] + 0.50 * w_mouth[k] + 0.25 * w_mouth[(k + 1) % n] for k in range(n)]
+
+    r0, w0 = HEADLIGHT_R, f
+    r1, w1 = HEADLIGHT_R + 0.6, f + 1.20
+    r2, w2 = HEADLIGHT_R + 8.5, f + 1.48
+    rings_3d = [
+        [(-w0, (yc + r0 * math.cos(a)) * SCALE, (zc + r0 * math.sin(a)) * SCALE) for a in angles],
+        [(-w1, (yc + r1 * math.cos(a)) * SCALE, (zc + r1 * math.sin(a)) * SCALE) for a in angles],
+        [(-w2, (yc + min(r2, r_out[k] - 2.0) * math.cos(a)) * SCALE,
+          (zc + min(r2, r_out[k] - 2.0) * math.sin(a)) * SCALE) for k, a in enumerate(angles)],
+    ]
+    for t in (0.14, 0.28, 0.44, 0.62, 0.80, 0.96, 1.06):
+        rho = 0.28 * min(t, 1.0) + 0.72 * math.sin(0.5 * math.pi * min(t, 1.0))
+        if t > 1.0:
+            rho += 0.28 * (t - 1.0)
+        ring = []
+        for k, a in enumerate(angles):
+            r2_k = min(r2, r_out[k] - 2.0)
+            rk = r2_k + (r_out[k] - r2_k) * rho
+            wk = w2 + (w_mouth[k] - w2) * (t ** 1.15)
+            ring.append((-wk, (yc + rk * math.cos(a)) * SCALE, (zc + rk * math.sin(a)) * SCALE))
+        rings_3d.append(ring)
+    w_air = max(w_mouth) + 25.0
+    rings_3d.append([(-w_air, p[1], p[2]) for p in rings_3d[-1]])
+
+    bm = bmesh.new()
+    vrings = [[bm.verts.new(p) for p in ring] for ring in rings_3d]
+    for a, b in zip(vrings[:-1], vrings[1:]):
+        for i in range(n):
+            j = (i + 1) % n
+            f_quad = bm.faces.new((a[i], a[j], b[j], b[i]))
+            f_quad.smooth = True
+    bm.faces.new(list(reversed(vrings[0])))
+    bm.faces.new(vrings[-1])
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    me = bpy.data.meshes.new(name)
+    bm.to_mesh(me)
+    bm.free()
+    return bpy.data.objects.new(name, me)
 
 
 def taillight_floor(tree, y):
@@ -706,34 +819,26 @@ def body_cutters(tree, body_mesh):
         cuts.append((f"Cut_Beltline_{side}", F.prism_cutter(f"Cut_Beltline_{side}", axis, belt,
                                                             BELTLINE_Y[0] * SCALE, BELTLINE_Y[1] * SCALE)))
         for i, slot in enumerate(louver_slots()):
-            cuts.append((f"Cut_Louver{i}_{side}", F.surface_cutter(f"Cut_Louver{i}_{side}", body_mesh, axis, slot, 0.5,
+            cuts.append((f"Cut_Louver{i}_{side}", F.surface_cutter(f"Cut_Louver{i}_{side}", body_mesh, axis, slot, 0.65,
                                                                    rings=3, tree=tree)))
-        cuts.append((f"Cut_ScoopCove_{side}", F.surface_cutter(f"Cut_ScoopCove_{side}", body_mesh, axis, SCOOP_COVE, 0.9,
+        cuts.append((f"Cut_ScoopCove_{side}", F.surface_cutter(f"Cut_ScoopCove_{side}", body_mesh, axis, SCOOP_COVE, 1.35,
                                                                depth_fn=cove_fade, tree=tree)))
         for i, intake in enumerate(SCOOP_INTAKES):
-            cuts.append((f"Cut_ScoopIntake{i}_{side}", F.surface_cutter(f"Cut_ScoopIntake{i}_{side}", body_mesh, axis, intake, 1.6,
+            cuts.append((f"Cut_ScoopIntake{i}_{side}", F.surface_cutter(f"Cut_ScoopIntake{i}_{side}", body_mesh, axis, intake, 2.1,
                                                                         rings=4, tree=tree)))
     for tag, (outline, depth) in GLASS_RECESSES.items():         # deep enough for the glass inlay too
         cuts.append((f"Cut_Glass_{tag}", F.surface_cutter(f"Cut_Glass_{tag}", body_mesh, "+Z", outline, depth + GLASS_T, tree=tree)))
     for i, sgn in enumerate((-1, 1)):            # down each side and on down the tail face, splitting the trim
-        cuts.append((f"Cut_DeckLine{i}", F.surface_ribbon(f"Cut_DeckLine{i}", tree, deck_gap_path(tree, sgn), -0.35, 1.0)))
+        cuts.append((f"Cut_DeckLine{i}", F.surface_ribbon(f"Cut_DeckLine{i}", tree, deck_gap_path(tree, sgn), -0.65, 1.0)))
     for side, axis in (("R", "+Y"), ("L", "-Y")):        # joint between the quarter panel and its extension
         cuts.append((f"Cut_ExtSeam_{side}", F.surface_strip(f"Cut_ExtSeam_{side}", tree, axis, ext_seam(tree), 8.0, -EXT_SEAM_DEPTH, 1.0)))
-    cuts.append(("Cut_DeckLine2", F.surface_cutter("Cut_DeckLine2", body_mesh, "+Z",
-                                                   line_band((DECKLID_X0, -DECKLID_Y - 6), (DECKLID_X0, DECKLID_Y + 6), 13.0),
-                                                   0.35, rings=2, tree=tree)))
 
     # grille: flat-floored pocket, the shark-nose recess
     floor = grille_floor(tree)
     cuts.append(("Cut_Grille", F.prism_cutter("Cut_Grille", "-X", GRILLE, floor, floor + 30.0)))
     for s in (-1, 1):
-        y = s * HEADLIGHT_Y
-        f = headlight_floor(tree, y)
         name = f"Cut_Headlight_{'L' if s < 0 else 'R'}"
-        # flared bucket: the fender forms an eyebrow around a recessed lamp
-        wide = F.circle(y, HEADLIGHT_Z, HEADLIGHT_R + HEADLIGHT_FLARE, 40)
-        cuts.append((name, F.loft_solid(name, "-X", [(F.circle(y, HEADLIGHT_Z, HEADLIGHT_R, 40), f),
-                                                     (wide, f + HEADLIGHT_DEPTH + 0.2), (wide, f + 30.0)])))
+        cuts.append((name, headlight_bucket_cutter(name, tree, s)))
     for i, (y, z, r) in enumerate(PARK_LIGHTS):
         pocket = F.prism_cutter(f"Cut_ParkLight{i}", "+Z", F.circle(0.0, 0.0, r, 40), -PARK_DEPTH, 30.0)
         pocket.data.transform(park_light_frame(tree, y, z))
@@ -765,9 +870,18 @@ def body_cutters(tree, body_mesh):
     ys = [0.0] + [REAR_UNDER_Y + QUARTER_ROLL * k / 16 for k in range(17)] + [1200.0]
     ys = sorted({s * y for y in ys for s in (-1, 1)})
     cuts.append(("Cut_RearUnder", under_solid("Cut_RearUnder", xs, ys, lambda x, y: rear_under_z(x, y, ramp), REAR_UNDER[0][1])))
-    # tunnel over the differential housing (which rides on the chassis)
-    cuts.append(("Cut_DiffTunnel", F.prism_cutter("Cut_DiffTunnel", "+Z", rect(3405.0, -130.0, 3665.0, 130.0, 60.0),
-                                                  (body_z_bottom() - 2.0) * SCALE, 470.0 * SCALE)))
+    # tunnel over the differential housing, N25 driveshaft through firewall web, and dedicated motor-to-battery wire conduit
+    cuts.append(("Cut_DiffTunnel", F.prism_cutter("Cut_DiffTunnel", "+Z", rect(3375.0, -130.0, 3665.0, 130.0, 60.0),
+                                                  (body_z_bottom() - 2.0) * SCALE, 480.0 * SCALE)))
+    cuts.append(("Cut_DiffShaftWeb", F.prism_cutter(
+        "Cut_DiffShaftWeb", "+X", [(-50.0, 310.0), (50.0, 310.0), (50.0, 445.0), (0.0, 495.0), (-50.0, 445.0)],
+        1610.0 * SCALE, 1760.0 * SCALE)))
+    cuts.append(("Cut_FirewallWireWeb", F.prism_cutter(
+        "Cut_FirewallWireWeb", "+X", [(-154.0, 310.0), (-74.0, 310.0), (-74.0, 423.0), (-114.0, 463.0), (-154.0, 423.0)],
+        1610.0 * SCALE, 1760.0 * SCALE)))
+    cuts.append(("Cut_WireTunnel", F.prism_cutter(
+        "Cut_WireTunnel", "+X", [(-154.0, 598.0), (-74.0, 598.0), (-74.0, 655.0), (-114.0, 695.0), (-154.0, 655.0)],
+        3400.0 * SCALE, 4015.0 * SCALE)))
     f = gas_cap_floor(tree)
     cuts.append(("Cut_GasCap", F.prism_cutter("Cut_GasCap", "+X", F.circle(GAS_CAP[0], GAS_CAP[1], GAS_CAP[2], 32), f, f + 30.0)))
     # shallow pocket round the trunk lock, running down into the gas cap's opening
@@ -812,24 +926,31 @@ def _bumper(name, tree, axis, z_range, center_x, theta0, theta1, guards, rise=No
 def grille_parts(tree):
     """Grille insert: base plate, egg-crate grid, corral emblem with bars, fog lamps (unioned in build)."""
     floor = grille_floor(tree)
-    u0, v0, u1, v1 = -GRILLE_Y, GRILLE_Z0, GRILLE_Y, GRILLE_Z1
-    plate = F.prism_cutter("Grille", "-X", offset_rect(u0, v0, u1, v1, GRILLE_R, FIT), floor, floor + 0.9)
+    v0, v1 = GRILLE_Z0, GRILLE_Z1
+    plate = F.prism_cutter("Grille", "-X", grille_poly(FIT), floor, floor + 0.9)
     pieces = []
     rib, pitch = 16.0, 42.0          # ~0.67 mm ribs on a ~1.75 mm grid
     top = floor + 1.5
-    border = SURROUND_W / SCALE + FIT / SCALE + 6     # ribs stop short of the chrome surround
+    border = SURROUND_W / SCALE + FIT / SCALE + 18.0    # ribs stop short of the slanted chrome surround
     v = v0 + border
     k = 0
     while v + rib < v1 - border:
-        pieces.append(F.prism_cutter(f"Grille_RibH{k}", "-X", rect(u0 + border, v, u1 - border, v + rib, 0), floor + 0.8, top))
+        uh = GRILLE_Y_BOT + (GRILLE_Y_TOP - GRILLE_Y_BOT) * (v + rib - v0) / (v1 - v0) - border
+        pieces.append(F.prism_cutter(f"Grille_RibH{k}", "-X", rect(-uh, v, uh, v + rib, 0), floor + 0.8, top))
         v += pitch
         k += 1
-    u = u0 + border
+    u = -(GRILLE_Y_BOT - border)
     k = 0
-    while u + rib < u1 - border:
-        pieces.append(F.prism_cutter(f"Grille_RibV{k}", "-X", rect(u, v0 + border, u + rib, v1 - border, 0), floor + 0.8, top))
+    while u + rib < GRILLE_Y_BOT - border:
+        u_max = max(abs(u), abs(u + rib))
+        if u_max <= GRILLE_Y_TOP - border:
+            v_hi = v1 - border
+        else:
+            v_hi = v0 + (v1 - v0) * (GRILLE_Y_BOT - border - u_max) / (GRILLE_Y_BOT - GRILLE_Y_TOP)
+        if v_hi > v0 + border + rib:
+            pieces.append(F.prism_cutter(f"Grille_RibV{k}", "-X", rect(u, v0 + border, u + rib, v_hi, 0), floor + 0.8, top))
+            k += 1
         u += pitch
-        k += 1
     vc = (v0 + v1) / 2 + 10
     # horizontal bars from the corral to the fog lamps
     pieces.append(F.prism_cutter("Grille_BarL", "-X", rect(-FOG_Y + FOG_R - 10, vc - 8, -CORRAL_W + 5, vc + 8, 0), floor + 0.8, top + 0.4))
@@ -919,7 +1040,7 @@ def sealed_beam(name, ring_name, lens_name, cy, cz, r, w0, w1, axis="-X"):
 def park_light_frame(tree, y, z):
     """World matrix of a parking lamp's own frame: origin on the valance at (y, z) (real mm), +Z
     along the surface's outward normal there."""
-    hit, normal, *_ = tree.ray_cast(Vector((-200.0, y * SCALE, z * SCALE)), Vector((1.0, 0.0, 0.0)), 400.0)
+    hit, normal, *_ = tree.ray_cast(Vector((-300.0, y * SCALE, z * SCALE)), Vector((1.0, 0.0, 0.0)), 600.0)
     if hit is None:
         raise ValueError(f"parking lamp at ({y:.0f}, {z:.0f}) misses the body")
     n = normal.normalized() if normal.x < 0 else -normal.normalized()
@@ -930,18 +1051,23 @@ SURROUND_W = 1.0       # chrome grille surround ring width (print mm)
 
 
 def grille_surround(tree):
-    """Chrome ring framing the grille; sits on the insert's flat border inside the pocket. The nose
-    rakes back toward the bottom, so the flat ring would stand proud of the skin along its lower
-    edge, where the front bumper's top hugs the skin: it is trimmed to stay just under the skin.
+    """Chrome ring framing the slanted shark-nose grille; sits on the insert's flat border inside the
+    pocket and extends forward to the raked shark-nose lip, trimmed by a clean raked plane just under
+    the skin so all 4 sides stay a single closed shell with 0 floating starts.
     Returns (ring, cutters)."""
     floor = grille_floor(tree)
-    u0, v0, u1, v1 = -GRILLE_Y, GRILLE_Z0, GRILLE_Y, GRILLE_Z1
-    outer = offset_rect(u0, v0, u1, v1, GRILLE_R, FIT)
-    inner = offset_rect(u0, v0, u1, v1, GRILLE_R, FIT + SURROUND_W)
-    ring = F.prism_cutter("GrilleSurround", "-X", outer, floor + 0.9, floor + 2.0)
-    hole = F.prism_cutter("GrilleSurround_Hole", "-X", inner, floor + 0.5, floor + 2.5)
-    proud = F.surface_solid("GrilleSurround_Skin", None, "-X", rect(u0 - 40.0, v0 - 40.0, u1 + 40.0, v1 + 40.0, GRILLE_R),
-                            lambda u, v: -0.1, lambda u, v: 3.0, tree=tree)
+    outer = grille_poly(FIT)
+    inner = grille_poly(FIT + SURROUND_W)
+    ring = F.prism_cutter("GrilleSurround", "-X", outer, floor + 0.92, floor + 4.4)
+    hole = F.prism_cutter("GrilleSurround_Hole", "-X", inner, floor + 0.5, floor + 5.0)
+    x_bot = -hit_w(tree, "-X", GRILLE_Y_BOT - 12.0, GRILLE_Z0 + 8.0) / SCALE + 2.0
+    x_top = -hit_w(tree, "-X", GRILLE_Y_TOP - 12.0, GRILLE_Z1 - 8.0) / SCALE + 2.0
+    slope = (x_top - x_bot) / (GRILLE_Z1 - GRILLE_Z0)
+    z0, z1 = GRILLE_Z0 - 40.0, GRILLE_Z1 + 40.0
+    x0 = x_bot + slope * (z0 - GRILLE_Z0)
+    x1 = x_bot + slope * (z1 - GRILLE_Z0)
+    proud = F.prism_cutter("GrilleSurround_Skin", "+Y", [(-120.0, z0), (x0, z0), (x1, z1), (-120.0, z1)],
+                           -700.0 * SCALE, 700.0 * SCALE)
     return ring, [hole, proud]
 
 
@@ -960,10 +1086,10 @@ def body_unions(tree, body_mesh):
 
     adds = [("Add_TailTrim", F.surface_strip("Add_TailTrim", tree, "+X", tail_trim_path(tree), TRIM_W, -0.4, 0.3, square=True)),
             # chrome surround: a raised band straddling the glass edge; the glass recess then trims its inside
-            ("Add_RearGlassTrim", F.surface_strip("Add_RearGlassTrim", tree, "+Z", F.resample(F.offset_closed(REAR_GLASS, 5.5), 20.0),
-                                                  17.0, -0.4, 0.25, closed=True)),
-            ("Add_WindshieldTrim", F.surface_strip("Add_WindshieldTrim", tree, "+Z", F.resample(F.offset_closed(WINDSHIELD, 5.5), 20.0),
-                                                   17.0, -0.4, 0.25, closed=True))]
+            ("Add_RearGlassTrim", F.surface_strip("Add_RearGlassTrim", tree, "+Z", F.resample(F.offset_closed(REAR_GLASS, 7.0), 15.0),
+                                                  21.0, -0.6, 0.38, closed=True)),
+            ("Add_WindshieldTrim", F.surface_strip("Add_WindshieldTrim", tree, "+Z", F.resample(F.offset_closed(WINDSHIELD, 7.0), 15.0),
+                                                   21.0, -0.6, 0.38, closed=True))]
 
     for side, axis in (("R", "+Y"), ("L", "-Y")):        # (door handles and locks live on the doors)
         adds.append((f"Add_RockerTrim_{side}", F.surface_solid(
@@ -983,12 +1109,24 @@ def body_unions(tree, body_mesh):
 
 
 def drip_rail(name, tree, axis):
-    """Chrome drip moulding just outside the side window opening: along the roof rail and down the
-    A-pillar's rear edge to the belt (the part of the outline from the pillar's foot to the rail's
-    rear corner), standing proud of the skin."""
+    """Chrome window frame moulding around the side window opening: from the A-pillar foot up the
+    A-pillar, along the roof rail, down the rear vertical quarter-window pillar, and forward along
+    the quarter window sill to the rear door gap, standing proud of the skin."""
     d0, d1, proud = DRIP_RAIL
-    path = F.offset_closed(WINDOW_OPEN, (d0 + d1) / 2)[OPENING_STEPS + 1:WINDOW_OPEN_UPPER]     # from above the foot's fillet
-    return F.surface_strip(name, tree, axis, path, d1 - d0, -0.3, proud)
+    mid = (d0 + d1) / 2
+    ring = F.offset_closed(WINDOW_OPEN, mid)
+    raw = [ring[i] for i in range(OPENING_STEPS, len(ring))
+           if i <= WINDOW_OPEN_UPPER + OPENING_STEPS + 1 or ring[i][0] >= 2810.0]
+    raw.append((2804.0, sill_z(2804.0) - mid))
+    path = []
+    for a, b in zip(raw[:-1], raw[1:]):
+        seg = math.dist(a, b)
+        k = max(1, int(math.ceil(seg / 14.0)))
+        for s in range(k):
+            t = s / k
+            path.append((a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t))
+    path.append(raw[-1])
+    return F.surface_strip(name, tree, axis, path, d1 - d0, -0.6, proud, square=True)
 
 
 # front fender emblem, just behind the wheel arch: a vertical red/white/blue tri-bar with the
@@ -1000,7 +1138,7 @@ FENDER_PONY = 96.0                              # nose to tail
 FENDER_LETTERS = (1290.0, 40.0, 562.0, 18.0)    # first letter's centre x, pitch, centre z, cap height (widely spaced)
 
 
-SCOOP_RIBS, SCOOP_RIB_H = 3, 12.0               # horizontal body-colour louvers across each scoop opening (real mm tall)
+SCOOP_RIBS, SCOOP_RIB_H = 3, 14.0               # horizontal body-colour louvers across each scoop opening (real mm tall)
 
 
 def scoop_ribs(tree):
@@ -1015,8 +1153,8 @@ def scoop_ribs(tree):
                 name = f"BodyScoopRib{i}{k}_{side}"
                 # run into the opening's end walls, so each rib bridges between them instead of jutting out
                 adds.append((name, F.surface_solid(name, None, axis, rect(min(xs) - 4.0, zc - SCOOP_RIB_H / 2, max(xs) + 4.0,
-                                                                          zc + SCOOP_RIB_H / 2, 0), lambda u, v: -1.7,
-                                                   lambda u, v, zc=zc: -0.3 - 0.35 * ((v - zc) / (SCOOP_RIB_H / 2)) ** 2,
+                                                                          zc + SCOOP_RIB_H / 2, 0), lambda u, v: -2.2,
+                                                   lambda u, v, zc=zc: -0.25 - 0.35 * ((v - zc) / (SCOOP_RIB_H / 2)) ** 2,
                                                    rings=4, tree=tree, step=0.2)))
     return adds
 
@@ -1094,9 +1232,9 @@ def lamp_parts(tree):
         tag = "L" if s < 0 else "R"
         y = s * HEADLIGHT_Y
         f = headlight_floor(tree, y)
-        # on the bucket floor, its lens ~0.6 mm behind the fender eyebrow
+        # deep-set at the back of the swept-back bucket, ~3.4 mm behind the overhanging fender eyebrow
         parts.append(sealed_beam(f"Headlight_{tag}", f"HeadRing_{tag}", f"HeadLens_{tag}", y, HEADLIGHT_Z, HEADLIGHT_R - FIT / SCALE,
-                                 f, f + 1.35))
+                                 f, f + 1.25))
         # each lamp: a red lens plate with its raised lens, under a chrome bezel whose face stands
         # TAILLIGHT_PROUD off the set-back panel and whose window frames the deep-set lens. All of
         # it curves like the real lamps (lamp_solid); the plate and bezel keep flat backs.
@@ -1135,6 +1273,11 @@ def lamp_parts(tree):
     return parts
 
 
+def front_bumper_bottom(y):
+    """Subtle 1967 Mustang centre V-dip along the front bumper's lower edge (real mm)."""
+    return -14.0 * max(0.0, 1.0 - (abs(y) / 420.0) ** 1.6)
+
+
 def bumper_parts(tree, skin=None):
     """[(bumper, union pieces, cut pieces)]. tree: the skin the bumpers hug, before the quarters tuck under; the
     rear one stands GAP clear of the finished `skin` (the tuck relaxes the skin under its bottom edge too)."""
@@ -1142,8 +1285,8 @@ def bumper_parts(tree, skin=None):
     # the full blade wraps round the corners, then thins over 2.5 mm of the side run to hug the fenders
     # closely; the tips round off from below, blunt (the top stays flat: it is the print bed)
     front = _bumper("Bumper_F", tree, "-X", FRONT_BUMPER_Z, FRONT_WRAP_END_X, half, 3 * half, FRONT_GUARDS,
-                    side_thin=True, side_ramp=2.5, min_t=FRONT_BUMPER_SIDE_T, end_gap=0.0, end_fade=0.08, end_height=0.5,
-                    path_smooth=30)
+                    bottom=front_bumper_bottom, side_thin=True, side_ramp=2.5, min_t=FRONT_BUMPER_SIDE_T, end_gap=0.0,
+                    end_fade=0.08, end_height=0.5, path_smooth=30)
     rear = _bumper("Bumper_R", tree, "+X", REAR_BUMPER_Z, REAR_BUMPER_CENTER_X, -REAR_BUMPER_WRAP, REAR_BUMPER_WRAP,
                    REAR_GUARDS, rise=rear_bumper_rise, face_rise=rear_bumper_face_rise, bottom=rear_bumper_bottom,
                    profile=REAR_BUMPER_PROFILE, end_fade=0.0, end_round=1.0, min_t=0.5, end_gap=0.0, step=0.25,
@@ -1193,38 +1336,73 @@ EXHAUST_X0, EXHAUST_X1 = 3880.0, 4400.0
 EXHAUST_FIN = [(4080.0 - (REAR_FLOOR_Z + 65.0 - EXHAUST_Z), EXHAUST_Z), (4080.0, REAR_FLOOR_Z + 65.0),
                (4150.0, REAR_FLOOR_Z + 65.0), (4150.0, EXHAUST_Z)]             # leading edge at 45 degrees
 EXHAUST_FIN_T = 20.0
-AXLE_HOLE_R = 1.4                        # 2.3 mm octagonal axle (2.49 over corners) spins in a 2.8 mm hole
+AXLE_HOLE_R = 1.535 * (SCALE / (1.0 / 24.0))  # 1:20 close-running bearing bore (Ø 3.68 mm) around 3.24 mm-flats axle
 
 
 def chassis_slots():
     """[(name, cutter)] transverse slots in the body bottom that the chassis axle bosses key into."""
-    from body import FRONT_AXLE_X, REAR_AXLE_X, Z_BOTTOM
+    from body import REAR_AXLE_X, Z_BOTTOM
     c = SLOT_CLEAR / SCALE
-    return [(f"Cut_BossSlot{tag}", F.prism_cutter(
-        f"Cut_BossSlot{tag}", "+Z", rect(ax - BOSS_HALF_X - c, -CHASSIS_Y - 26 - c, ax + BOSS_HALF_X + c, CHASSIS_Y + 26 + c, 8),
-        Z_BOTTOM * SCALE - 2.0, BOSS_TOP * SCALE + SLOT_CLEAR)) for tag, ax in (("F", FRONT_AXLE_X), ("R", REAR_AXLE_X))]
+    return [
+        ("Cut_BossSlotF", F.prism_cutter(
+            "Cut_BossSlotF", "+Z", rect(676.0 - c, -630.0 - c, 858.0 + c, 630.0 + c, 8),
+            Z_BOTTOM * SCALE - 2.0, BOSS_TOP * SCALE + SLOT_CLEAR)),
+        ("Cut_BossSlotR", F.prism_cutter(
+            "Cut_BossSlotR", "+Z", rect(REAR_AXLE_X - BOSS_HALF_X - c, -CHASSIS_Y - 26 - c,
+                                        REAR_AXLE_X + BOSS_HALF_X + c, CHASSIS_Y + 26 + c, 8),
+            Z_BOTTOM * SCALE - 2.0, BOSS_TOP * SCALE + SLOT_CLEAR)),
+    ]
 
 
 def chassis_parts():
     """Black chassis plate, inset well inside the rockers so the body stands clear of the ground.
 
-    Returns (plate, unions, plate_cuts). The plate's top mates with the body's flat bottom; two
-    bosses carrying the axle holes key into the slots from chassis_slots()."""
+    Returns (plate, unions, plate_cuts). The plate's top mates with the body's flat bottom; the rear
+    boss carries the rear drive axle bore, while the front boss carries lower kingpin control arms,
+    vertical kingpin posts (X = 792, |Y| = 596), and a tie-rod guide shelf."""
     from body import FRONT_AXLE_X, REAR_AXLE_X, WHEEL_RADIUS, Z_BOTTOM
     plate = F.prism_cutter("Chassis", "+Z", rect(CHASSIS_X0, -CHASSIS_Y, CHASSIS_X1, CHASSIS_Y, 60),
                            CHASSIS_Z0 * SCALE, Z_BOTTOM * SCALE)
-    unions, plate_cuts = [], []
-    for tag, ax in (("F", FRONT_AXLE_X), ("R", REAR_AXLE_X)):
-        unions.append(F.prism_cutter(f"Chassis_Boss{tag}", "+Z", rect(ax - BOSS_HALF_X, -CHASSIS_Y, ax + BOSS_HALF_X, CHASSIS_Y, 8),
-                                     Z_BOTTOM * SCALE - 0.2, BOSS_TOP * SCALE))
-        plate_cuts.append(F.loft_solid(f"Cut_ChassisAxle{tag}", "-Y", [
-            (F.circle(ax, WHEEL_RADIUS, AXLE_HOLE_R / SCALE, 24), -40.0), (F.circle(ax, WHEEL_RADIUS, AXLE_HOLE_R / SCALE, 24), 40.0)]))
+    unions = [
+        F.prism_cutter("Chassis_BossF", "+Z", rect(762.0, -450.0, 852.0, 450.0, 8),
+                       Z_BOTTOM * SCALE - 0.2, BOSS_TOP * SCALE),
+        F.prism_cutter("Chassis_SteeringShelf", "+Z", rect(696.0, -450.0, 768.0, 450.0, 8),
+                       Z_BOTTOM * SCALE - 0.2, 342.0 * SCALE),
+        F.prism_cutter("Chassis_BossR", "+Z", rect(REAR_AXLE_X - BOSS_HALF_X, -CHASSIS_Y - 22.0,
+                                                   REAR_AXLE_X + BOSS_HALF_X, CHASSIS_Y + 22.0, 8),
+                       Z_BOTTOM * SCALE - 0.2, BOSS_TOP * SCALE),
+    ]
+    plate_cuts = [
+        F.loft_solid("Cut_ChassisAxleR", "-Y", [
+            (F.circle(REAR_AXLE_X, WHEEL_RADIUS, AXLE_HOLE_R / SCALE, 28), -45.0),
+            (F.circle(REAR_AXLE_X, WHEEL_RADIUS, AXLE_HOLE_R / SCALE, 28), 45.0)]),
+    ]
+    for s, stag in ((-1, "L"), (1, "R")):
+        ya, yb = sorted((s * 435.0, s * 625.0))
+        unions.append(F.prism_cutter(f"Chassis_KingpinArm_{stag}", "+Z", rect(760.0, ya, 824.0, yb, 18.0),
+                                     CHASSIS_Z0 * SCALE, 294.0 * SCALE))
+        unions.append(F.prism_cutter(f"Chassis_KingpinBase_{stag}", "+Z", F.circle(FRONT_AXLE_X, s * 596.0, 28.0, 28),
+                                     CHASSIS_Z0 * SCALE, 294.0 * SCALE))
+        unions.append(F.prism_cutter(f"Chassis_Kingpin_{stag}", "+Z", F.circle(FRONT_AXLE_X, s * 596.0, 19.0, 28),
+                                     288.0 * SCALE, 388.0 * SCALE))
+        w_ya, w_yb = sorted((s * 520.0, s * 640.0))
+        plate_cuts.append(F.prism_cutter(f"Cut_ChassisSteerF_{stag}", "+Z", rect(415.0, w_ya, 758.0, w_yb, 16.0),
+                                         (CHASSIS_Z0 - 10.0) * SCALE, (Z_BOTTOM + 10.0) * SCALE))
+        plate_cuts.append(F.prism_cutter(f"Cut_ChassisSteerR_{stag}", "+Z", rect(826.0, w_ya, 1165.0, w_yb, 16.0),
+                                         (CHASSIS_Z0 - 10.0) * SCALE, (Z_BOTTOM + 10.0) * SCALE))
     dx, dz, dr = DIFF
     unions.append(F.loft_solid("Chassis_Diff", "+X", [
         (F.circle(0.0, dz, dr * math.sin(math.radians(a)), 24), (dx - dr * math.cos(math.radians(a))) * SCALE)
         for a in (12, 35, 60, 90, 120, 145, 168)]))
     plate_cuts.append(F.prism_cutter("Chassis_DiffFlat", "+Z", rect(dx - dr - 20, -dr - 20, dx + dr + 20, dr + 20, 0),
                                      (CHASSIS_Z0 - 100.0) * SCALE, CHASSIS_Z0 * SCALE))
+    # open-top U-channel pinion & crown bevel gear chamber inside Chassis_Diff for Driveshaft + AxleGear
+    plate_cuts.append(F.prism_cutter("Cut_ChassisAxlePinion", "+X",
+                                     rect(-58.0, 320.0, 58.0, 485.0, 0),
+                                     3380.0 * SCALE, 3528.0 * SCALE))
+    plate_cuts.append(F.prism_cutter("Cut_ChassisAxleGear", "+Z",
+                                     rect(3455.0, 10.0, 3615.0, 58.0, 8.0),
+                                     258.5 * SCALE, 485.0 * SCALE))
     return plate, unions, plate_cuts
 
 
@@ -1304,17 +1482,17 @@ def backup_light_parts():
 # ---------------------------------------------------------------- side mirrors
 
 MIRROR_SIDES = (-1,)                            # the car in the photos has only the driver's (left) mirror
-MIRROR_X0, MIRROR_X1 = 1986.0, 2014.0          # fore-aft thickness of the flat mirror part (~1.17 mm), just behind the vent post
+MIRROR_X0, MIRROR_X1 = 1983.0, 2017.0          # fore-aft thickness of the flat mirror part (1.70 mm at 1:20), just behind the vent post
 MIRROR_REF_Z = (858.0, 904.0)                   # u is measured outboard from the door's side skin over this band
 # the base sits on the door's rolled top, its underside following the surface from z0 up to z1 and
 # its top flat at z2; a peg drops from it into a slot in the door top. The stalk rises out and up to
 # a rectangular head above the sill (a little taller at its outboard end), its back domed forward.
 MIRROR_BASE_Z = (888.0, 912.0, 926.0)
 MIRROR_PEG = (-70.0, -56.0, 862.0)              # u0, u1, bottom z
-MIRROR_ARM = ((-60.0, 916.0), (-22.0, 972.0), 11.0)
+MIRROR_ARM = ((-60.0, 916.0), (-22.0, 972.0), 14.0)
 MIRROR_HEAD = [(-15.0, 970.0), (95.0, 962.0), (95.0, 1040.0), (-15.0, 1028.0)]   # (u, z) corners
 MIRROR_HEAD_R, MIRROR_DOME = 16.0, 17.0
-MIRROR_GAP = 0.15                               # print mm between the base and the door
+MIRROR_GAP = 0.38                               # print mm between the base and the door (clears DoorBeltTrim)
 
 
 def _door_skin_y(tree, z0, z1):

@@ -1,4 +1,4 @@
-"""1967 Mustang Fastback body shell for 1:24 printing.
+"""1967 Mustang Fastback body shell for 1:20 printing.
 
 Profiles are authored in real-car millimetres (x: front -> rear, y: left/right,
 z: up from the ground) and scaled by SCALE when the mesh is built, so the
@@ -10,7 +10,7 @@ import math
 import bmesh
 import bpy
 
-SCALE = 1.0 / 24.0
+SCALE = 1.0 / 20.0
 
 # Real-car reference dimensions (mm)
 WHEELBASE = 2743.0
@@ -170,10 +170,10 @@ def extend_quarter_corners(me):
 # ever faster below it, until one `length` down it runs in at QUARTER_TUCK_SLOPE (mm in per mm down:
 # under 45 degrees, so it still prints without support). (x, crease z, length) knots, joined smoothly;
 # ahead of the first the crease is under the body, and up to the arch's end it stays inside the arch.
-QUARTER_TUCK = [(3860.0, 250.0, 80.0), (3930.0, 530.0, 80.0), (4000.0, 590.0, 82.0), (4100.0, 622.0, 86.0),
-                (4200.0, 644.0, 89.0), (4300.0, 671.0, 92.0), (4400.0, 714.0, 96.0), (4500.0, 728.0, 99.0)]
-QUARTER_TUCK_SLOPE = 0.9
-QUARTER_TUCK_CAP = (190.0, 240.0)    # low down the draw eases off from the first toward the second
+QUARTER_TUCK = [(3860.0, 250.0, 80.0), (3930.0, 490.0, 85.0), (4000.0, 545.0, 88.0), (4100.0, 580.0, 90.0),
+                (4200.0, 610.0, 92.0), (4300.0, 650.0, 94.0), (4400.0, 710.0, 96.0), (4500.0, 728.0, 99.0)]
+QUARTER_TUCK_SLOPE = 0.72
+QUARTER_TUCK_CAP = (165.0, 215.0)    # low down the draw eases off from the first toward the second
 # The draw is full outboard of the second |y| and fades out inboard of it, to nothing at the first:
 # on the flat tail face it only slides the skin across, rounding the corners in. Fading over this
 # span the cap keeps every point outboard of its inboard neighbours, so the shell never folds.
@@ -314,16 +314,22 @@ def section(x):
     return pts
 
 
-def rake(x, z):
+def rake(x, z, y=0.0):
     """Lean the nose and tail faces: the grille recedes, the valances tuck under the bumpers.
 
     The shift fades out over several stations so rings stay ordered along X.
     """
     if x < 500:
         w = max(0.0, min(1.0, (500 - x) / 400.0))
-        # grille lean, valance tuck under the bumper, then a ~45 degree roll-under (prints unsupported)
-        push = 0.12 * max(0.0, 900 - z) + 0.45 * max(0.0, 520 - z) + 0.45 * max(0.0, 450 - z)
-        return x + push * w
+        w_tip = _smooth01((280.0 - x) / 220.0)
+        ay = abs(y)
+        # 1967 shark-nose plan-view V-prow + swept-back front fender nose outside the grille
+        v_prow = 18.0 * min(1.0, ay / 550.0) ** 1.4
+        fender_setback = 42.0 * _smooth01((ay - 550.0) / 260.0) * _smooth01((z - 555.0) / 70.0)
+        # shark-nose brow overhang at the nose tip, grille lean, valance tuck under the bumper, then ~45 deg roll-under
+        push = (0.12 * max(0.0, 900 - z) + 0.11 * max(0.0, 825 - z) * w_tip +
+                0.45 * max(0.0, 520 - z) + 0.45 * max(0.0, 450 - z))
+        return x + push * w + (v_prow + fender_setback) * w_tip
     if x > 4100:
         w = max(0.0, min(1.0, (x - 4100) / 350.0))
         # tail panel lean, valance tuck, then a ~45 degree roll-under so the tail stands clear of the ground
@@ -357,7 +363,7 @@ def build_base_mesh(name="Body"):
     rings += end_cap_rings(X_TAIL, +1, rear_prof, ((6, 0.96), (10, 0.82), (12, 0.3), (12.5, 0.08)))
 
     bm = bmesh.new()
-    vrings = [[bm.verts.new((rake(x, z) * SCALE, y * SCALE, z * SCALE)) for (x, y, z) in r] for r in rings]
+    vrings = [[bm.verts.new((rake(x, z, y) * SCALE, y * SCALE, z * SCALE)) for (x, y, z) in r] for r in rings]
     n = len(vrings[0])
     crease = bm.edges.layers.float.new("crease_edge")
     for a, b in zip(vrings[:-1], vrings[1:]):
