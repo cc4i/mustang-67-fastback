@@ -6,6 +6,24 @@ All notable changes and architectural upgrades to the procedural 1967 Ford Musta
 
 ---
 
+## [v2.9.1] - 2026-11-03 — Open-Bottom Driveshaft U-Channels, Straight-Vertical V8 Drop, Tie-Rod Assembly Notch & `1:20` Door Hinge Bores
+
+### Fixed
+- **Open-Bottom `45°` Gable Driveshaft U-Channels & Tie-Rod Straight-Lift Notch (`mustang/interior.py`, `mustang/details.py`, `mustang/engine_bay.py`)**:
+  - Opened the bottom floors of `Tub_ShaftTunnel` (`interior.py`, `FLOOR_Z0 - 15.0 = 275.0`), `Cut_DiffShaftWeb` (`details.py`, `body_z_bottom() - 20.0 = 270.0`), and `BayTub_ShaftTunnel` (`engine_bay.py`, `FLOOR_Z0 - 15.0 = 275.0`) into continuous `45°` self-supporting gable-roofed open-bottom U-channels while keeping the adjacent driver-side 5-wire conduit (`4.00 × 5.05 mm`) fully enclosed behind the `1.05 mm` partition wall. `Driveshaft + PinionGear` now lifts straight up from underneath into `MotorCoupler` without closed-tunnel threading, while `Body` (`209,970.67 mm³`), `InteriorTub` (`65,591.22 mm³`), and `BayTub` (`25,622.40 mm³`) each retain `shells == 1`, `non_manifold_edges == 0`, `floating == []`, and `cantilevers == []`.
+  - Added `BayTub_TieRodClear` (`X = 666..682, Y = -58..+58`, vertical through-notch at the rear lip of `BayTub_FloorFront`) so the complete rolling `Chassis` (`Chassis + Axle_R + AxleGear + Knuckle_L/R + SteeringLink + Rim_* + Tire_*`) pushes straight `+Z` from underneath into `Body + InteriorTub + BayTub + MotorCoupler + Driveshaft + PinionGear` with **`0.40 mm` front clearance** on `SteeringLink` (`X >= 674.0`) and **`0` BVH collisions** across all `35` vertical steps.
+- **Straight-Vertical (`0°` Pitch) `EngineBlock` Drop Past `BayTub_Booster` & Clean `TrunkLid` Swing (`mustang/engine_bay.py`)**:
+  - Trimmed `Engine_BellhousingMount` outer `|Y|` from `282.0` real mm (`14.10 mm` print) inward to `266.0` real mm (`13.30 mm` print, with a `45°` bevel to `(212.0, 436.0)`), eliminating the `0.35 mm` vertical-path overlap against `BayTub_Booster` (`Y = -275.0` real mm = `-13.75 mm` print). `EngineBlock + ValveCover_L/R + AirCleaner` now drops straight down (`-Z`, `dx = 0, dy = 0, pitch = 0°`) with **`0.45 mm` radial booster clearance**, **`0` BVH collisions**, `CoM = [52.17, 0.26, 29.14] mm` centered inside `[43.30, 79.00] mm`, and **`324.45 mm²` (`12.4×`)** flat floor contact.
+  - Widened `TRUNK_FRONT_GAP` from `11.0` to `15.0` real mm (`0.75 mm` print, safely behind `DECKLID_X0 = 3865.0`), bringing `TrunkLid`'s `0°..-40°` kinematic sweep overlap down from `0.014 mm³` to **`0.000 mm³`**.
+- **Calibrated `1:20` Door `1.75 mm` Filament Hinge Bores (`mustang/doors.py`)**:
+  - Tightened `PIN_HOLE_R, DOOR_HOLE_R` from `22.0, 24.0` real mm (`Ø 2.20 / Ø 2.40 mm` carried over from `1:24`) to **`18.4, 20.0` real mm**, producing **`Ø 1.84 mm` blind sill bores (`+0.045 mm`/side press/glue fit)** in `body.stl` and **`Ø 2.00 mm` blind door bores (`+0.125 mm`/side rattle-free running fit)** in `door_l.stl` and `door_r.stl` around standard `1.75 mm` PLA filament.
+
+### Verified
+- **Full `53`-STL, `9`-Plate Bambu `.3mf`, `67`-Solid STEP & `3D` Trajectory Regeneration**:
+  - Rebuilt `output/mustang_67_fastback.blend` (`4` studio cameras preserved), `output/stl/*.stl` (`53` STLs, `0` non-manifold edges, `floating == []` and `cantilevers == []` on all `48` support-free STLs), `output/stl_assembled/*.stl` (`67` parts), `output/mustang_67_fastback_1-24.3mf` (**`0` warnings across all `9` plates** in Bambu Studio `02.08.02.61` `--slice 0`, `tmp/bambu_slice_report.json`), and `output/step/*.step` + `output/mustang_67_fastback.step` (**`67` valid closed OpenCascade STEP solids**, `exit_code == 0`), with **`0` collisions across all 6 straight-line `3D` physical insertion trajectories** and **`0.000 mm³` across all kinematic sweeps** (`tmp/v291_assembly_trajectory_report.json`).
+
+---
+
 ## [v2.9.0] - 2026-11-03 — Multi-Fit Motor Coupler & Z-Shim Kit, Flat-Printed `7T:9T` Bevel Gears & `21 × 11 mm` Motor Cradle
 
 ### Fixed

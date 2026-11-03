@@ -874,7 +874,8 @@ def body_cutters(tree, body_mesh):
     cuts.append(("Cut_DiffTunnel", F.prism_cutter("Cut_DiffTunnel", "+Z", rect(3375.0, -130.0, 3665.0, 130.0, 60.0),
                                                   (body_z_bottom() - 2.0) * SCALE, 480.0 * SCALE)))
     cuts.append(("Cut_DiffShaftWeb", F.prism_cutter(
-        "Cut_DiffShaftWeb", "+X", [(-53.0, 310.0), (53.0, 310.0), (53.0, 448.0), (0.0, 501.0), (-53.0, 448.0)],
+        "Cut_DiffShaftWeb", "+X",
+        [(-56.0, body_z_bottom() - 20.0), (56.0, body_z_bottom() - 20.0), (56.0, 448.0), (0.0, 504.0), (-56.0, 448.0)],
         1610.0 * SCALE, 1760.0 * SCALE)))
     cuts.append(("Cut_FirewallWireWeb", F.prism_cutter(
         "Cut_FirewallWireWeb", "+X", [(-154.0, 310.0), (-74.0, 310.0), (-74.0, 423.0), (-114.0, 463.0), (-154.0, 423.0)],

@@ -374,6 +374,7 @@ def liner_parts(tree):
         pieces.append(_box(f"BayTub_ServoWall{'L' if s < 0 else 'R'}", 454.0, 669.0, sy0, sy1, FLOOR_Z0, 380.0, 6.0))
     cuts.append(_box("BayTub_ServoBed", 466.0, 657.0, -152.0, 152.0, 296.0, FLOOR_Z1 + 5.0, 4.0))
     cuts.append(_box("BayTub_ServoHornSlot", 652.0, 680.0, -152.0, 90.0, 305.0, 386.0, 4.0))
+    cuts.append(_box("BayTub_TieRodClear", 666.0, 682.0, -58.0, 58.0, FLOOR_Z0 - 10.0, 390.0, 6.0))
     # Motor snap-in cradle on the bay floor: internal slot 425 x 225 real mm (21.25 x 11.25 print mm)
     # sized for a 21.0 x 11.0 mm flat-can DC motor (with 2 x 0.48 mm Z-shims for 9.0 / 8.0 mm flat heights),
     # recessed to Z = 295 (shaft axis Z = 395) with symmetric front solder-tab window and side wire return
@@ -391,9 +392,9 @@ def liner_parts(tree):
     # Partitioned wire chute on driver side (Y = -156..-76) separated from MotorCoupler by a 0.70 mm solid wall
     pieces.append(_box("BayTub_WirePartition", 1376.0, xb, -80.0, -58.0, FLOOR_Z0, 422.0, 0.0))
     pieces.append(_box("BayTub_WireOuterWall", 1376.0, xb, -167.5, -152.0, FLOOR_Z0, 422.0, 0.0))
-    # 45-deg gable-roofed driveshaft/coupler tunnel (Y = -62..+62) and wire conduit (Y = -156..-76) through firewall
+    # 45-deg gable-roofed open-bottom driveshaft/coupler U-channel (Y = -62..+62) and wire conduit (Y = -156..-76) through firewall
     cuts.append(F.prism_cutter("BayTub_ShaftTunnel", "+X",
-                               [(-62.0, 318.0), (62.0, 318.0), (62.0, 460.0), (0.0, 522.0), (-62.0, 460.0)],
+                               [(-62.0, FLOOR_Z0 - 15.0), (62.0, FLOOR_Z0 - 15.0), (62.0, 460.0), (0.0, 522.0), (-62.0, 460.0)],
                                1365.0 * SCALE, 1630.0 * SCALE))
     cuts.append(F.prism_cutter("BayTub_WireTunnel", "+X",
                                [(-156.0, 335.0), (-76.0, 335.0), (-76.0, 423.0), (-116.0, 463.0), (-156.0, 423.0)],
@@ -583,9 +584,9 @@ def engine_parts(tree):
         ]
         bell_mount_prof = [
             (s * 135.0, FLOOR_Z1),
-            (s * 282.0, FLOOR_Z1),
-            (s * 282.0, 382.0),
-            (s * 212.0, 432.0),
+            (s * 266.0, FLOOR_Z1),
+            (s * 266.0, 382.0),
+            (s * 212.0, 436.0),
             (s * 212.0, 540.0),
             (s * 135.0, 540.0),
         ]
@@ -920,7 +921,7 @@ def prop_rod(P, tree):
 TRUNK_FRONT_X, TRUNK_REAR_X = 3885.0, 4410.0
 TRUNK_SIDE = [(3885.0, 548.0), (4100.0, 565.0), (4300.0, 614.0), (4410.0, 660.0)]
 TRUNK_OUTLINE = F.rounded_poly(TRUNK_SIDE + [(x, -y) for x, y in reversed(TRUNK_SIDE)], [20, 0, 0, 24, 24, 0, 0, 20])
-TRUNK_GAP, TRUNK_FRONT_GAP = 6.0, 11.0
+TRUNK_GAP, TRUNK_FRONT_GAP = 6.0, 15.0
 TRUNK_RECESS_SIDE = [(3885.0 - TRUNK_FRONT_GAP, 548.0 + TRUNK_GAP), (4100.0, 565.0 + TRUNK_GAP),
                      (4300.0, 614.0 + TRUNK_GAP), (4410.0 + TRUNK_GAP, 660.0 + TRUNK_GAP)]
 TRUNK_RECESS_OUTLINE = F.rounded_poly(

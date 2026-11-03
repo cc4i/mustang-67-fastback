@@ -37,7 +37,7 @@ OPEN_DEG = 65.0                 # how far the doors swing open (renders, animati
 # it clears the hinge pillar and the hood-hinge area as it swings in behind the fender.
 HINGE_AXIS = (1660.0, 795.0)    # (x, |y|)
 GAP_FRONT = 21.0                # the front shut line (0.88 mm print): >= 0.24 mm clearance through the swing
-PIN_HOLE_R, DOOR_HOLE_R = 22.0, 24.0       # 1.83 mm glue fit in the sill, 2.0 mm running fit in the door
+PIN_HOLE_R, DOOR_HOLE_R = 18.4, 20.0       # 1:20 filament hinge bores: Ø1.84 mm glue/press fit in sill, Ø2.00 mm running fit in door
 PIN_Z0, DOOR_HOLE_TOP = 320.0, 850.0       # the sill hole stays inside the rocker, above its roll-under
 BOSS_R = 40.0                   # bearing boss round the pin on the sill, GAP high
 SCUFF_Y1, SCUFF_DEPTH = 790.0, 2.5              # sill scuff plate: outer edge (the sill runs out to ~840), depth

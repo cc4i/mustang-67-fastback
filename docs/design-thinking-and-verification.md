@@ -1,6 +1,6 @@
 # Engineering Design Thinking & Build Verification Dossier (`1:20 e-Mustang`)
 
-> ** Quick Links**: [Back to Main README](../README.md) | [Printing, CAD & RC Wiring Guide](printing-and-rc-guide.md) | [Reference Photo & Camera Index](reference-media.md) | [Changelog (`v1.0.0` → `v2.9.0`)](../CHANGELOG.md)
+> ** Quick Links**: [Back to Main README](../README.md) | [Printing, CAD & RC Wiring Guide](printing-and-rc-guide.md) | [Reference Photo & Camera Index](reference-media.md) | [Changelog (`v1.0.0` → `v2.9.1`)](../CHANGELOG.md)
 
 This dossier documents the engineering design thinking, root-cause diagnostics, mechanical trade-offs, and quantitative verification proofs behind the **1:20 scale (`SCALE = 1/20`) procedural 1967 Ford Mustang Fastback (`e-Mustang`)**.
 
@@ -65,15 +65,15 @@ In the original static V8 design, the engine rested on a single pair of narrow s
 | Stability Metric / Feature | Previous Design (`1` Stand Pair) | Upgraded Design (`3` Gusseted Stand Pairs + Cradle Rails) | Engineering Improvement |
 | :--- | :--- | :--- | :--- |
 | **Floor Support Fore–Aft Span (`X`)** | `3.50 mm` (`X = 46.00..49.50 mm`) | **`35.70 mm`** (`X = 43.30..79.00 mm`) | **`10.2×` longer longitudinal base** from front cylinder bank to rear bellhousing |
-| **Center of Mass (`CoM`) Pitch Stability** | `CoM X = 50.42 mm` (**outside** support base; tips backward) | **`CoM X = 52.38 mm`**, `Y = 0.26 mm`, `Z = 28.99 mm` (**centered** inside `[43.30, 79.00] mm`) | **Zero pitching moment** (`+9.08 mm` front margin, `+26.62 mm` rear margin) |
-| **Floor Contact Surface Area (`Z = 16.50 mm`)** | `26.25 mm²` (`8` vertices) | **`356.35 mm²`** (`Y = -15.40..+15.40 mm`) | **`13.6×` larger flat bed contact area** |
+| **Center of Mass (`CoM`) Pitch Stability** | `CoM X = 50.42 mm` (**outside** support base; tips backward) | **`CoM X = 52.17 mm`**, `Y = 0.26 mm`, `Z = 29.14 mm` (**centered** inside `[43.30, 79.00] mm`) | **Zero pitching moment** (`+8.87 mm` front margin, `+26.83 mm` rear margin) |
+| **Floor Contact Surface Area (`Z = 16.50 mm`)** | `26.25 mm²` (`8` vertices) | **`324.45 mm²`** (`Y = -15.40..+15.40 mm`; rear `Engine_BellhousingMount` bevelled to `\|Y\| <= 13.30 mm`) | **`12.4×` larger flat bed contact area** + **`0.45 mm` straight `-Z` drop clearance** past `BayTub_Booster` (`Y = -13.75 mm`) |
 | **Positive Lock on `BayTub`** | Flat pads on flat floor (`0` lateral/fore-aft guides) | `BayTub_EngineGuideL/R` + inner `BayTub_N25WallL/R` | **4-way mechanical capture**: `53.203 mm³` lateral lock & `97.731 mm³` fore-aft lock |
 
 ---
 
-## 4. Approach A: Partitioned Motor-to-Battery Floor Wire Conduit
+## 4. Approach A: Partitioned Motor-to-Battery Floor Wire Conduit & Open-Bottom Driveshaft U-Channel
 
-To prevent the 5-wire RC harness (2 motor power leads + 3 steering servo leads) from rubbing against the high-RPM `Driveshaft`, the floor pan implements **Approach A** — a continuous, enclosed driver-side conduit (`Y = -7.70..-3.70 mm` print, `4.00 × 5.05 mm` clear interior cross-section) physically isolated from the central driveshaft tunnel (`Y = -2.65..+2.65 mm`) by a solid **`1.05 mm` partition wall**:
+To prevent the 5-wire RC harness (2 motor power leads + 3 steering servo leads) from rubbing against the high-RPM `Driveshaft` while allowing effortless bottom-up assembly, the floor pan implements **Approach A** — a continuous, enclosed driver-side conduit (`Y = -7.70..-3.70 mm` print, `4.00 × 5.05 mm` clear interior cross-section) physically isolated by a solid **`1.05 mm` partition wall** from the central **open-bottom `45°` gable-roofed driveshaft U-channel** (`BayTub_ShaftTunnel`, `Cut_DiffShaftWeb`, `Tub_ShaftTunnel`, `shells == 1` preserved across `BayTub`, `Body`, and `InteriorTub`):
 
 | Zone (`X` in `1:20` Print mm / Real mm) | Part & Boolean Feature | Conduit Cross-Section (`W × H` Print mm) | Mechanical Isolation & Routing Geometry | 3D Wire Gauge Overlap |
 | :--- | :--- | :--- | :--- | :--- |
@@ -100,14 +100,15 @@ Rather than relying on flat butt-gluing for the inner door cards and chrome quar
 
 Every build is verified programmatically in Blender (`printcheck.run()`, `export.run()`, kinematic sweep scripts), Bambu Studio CLI (`--slice 0`), and OpenCascade (`make_step.py`):
 
-| Verification Gate | Target Requirement | Measured Result (`v2.9.0` Build) | Status |
+| Verification Gate | Target Requirement | Measured Result (`v2.9.1` Build) | Status |
 | :--- | :--- | :--- | :--- |
 | **Scene Part Count (`printcheck.run()`)** | `67` mesh objects across `Body`, `Wheels`, `Parts` (`+5` accessories/spares in `Accessories`) | `67` scene parts (`53` STL files making `73` printed pieces incl. `2` glass inlays) | **PASS** |
-| **Mesh Manifold & Shell Integrity (`problems`)** | `{}` (`0` non-manifold edges/verts, `0` boundary edges, `body.shells == 1`) | `{}` across all `67` scene objects (`Body`: `1` shell, `210,071.3 mm³`) | **PASS** |
+| **Mesh Manifold & Shell Integrity (`problems`)** | `{}` (`0` non-manifold edges/verts, `0` boundary edges, `body.shells == 1`) | `{}` across all `67` scene objects (`Body`: `1` shell, `209,970.7 mm³`; `InteriorTub`: `1` shell, `65,591.2 mm³`; `BayTub`: `1` shell, `25,622.4 mm³`) | **PASS** |
 | **Body Clearance (`overlaps_with_body`)** | `{}` (`<= 0.001 mm³` with `Body`) | `{}` (`0.000 mm³` across all `66` parts) | **PASS** |
-| **L/R Mirror Symmetry (`mirror_mismatches`)** | `{}` (`<= 0.05 mm` bounding-box delta) | `{}` across all left/right pairs (incl. `DoorCard_L` ↔ `DoorCard_R` & `Knuckle_L` ↔ `Knuckle_R`) | **PASS** |
+| **L/R Mirror Symmetry (`mirror_mismatches`)** | `{}` (`<= 0.05 mm` bounding-box delta) | `{}` across all left/right pairs (incl. `Door_L` ↔ `Door_R`, `DoorCard_L` ↔ `DoorCard_R` & `Knuckle_L` ↔ `Knuckle_R`) | **PASS** |
 | **Inter-Part Clearance (`part_overlaps`)** | `{}` (`<= 0.05 mm³` excluding `Axle\|Rim` & `Knuckle\|Rim` press-fits) | `{}` across all part pairs (`BayTub\|EngineBlock = 0.000 mm³`, `PinionGear\|AxleGear = 0.047 mm³`) | **PASS** |
-| **Kinematic Closure, Steering & `360°` `7:9` Drivetrain Sweeps** | `0.000 mm³` across `Hood` (`0°..42°`), `Doors` (`0°..65°`), `Knuckles` (`-15°..+15°`), & `360°` `7:9` coupled drivetrain; `<= 0.001 mm³` on `TrunkLid` (`0°..-40°`) | **`0.000 mm³`** housing interference across `36`-step `360°` drivetrain sweep, `Hood`, `Doors`, & `Knuckles`; `0.099 mm³` locked-crown interlock | **PASS** |
+| **3D Straight-Line Insertion Trajectories & `1:20` Hinge Bores** | `0` BVH collisions across all 6 straight-line `+Z`/`-Z` assembly sweeps; `Ø 1.84 / 2.00 mm` bores for `1.75 mm` PLA filament | **`0` collisions** across `InteriorTub +Z`, `BayTub +Z`, `Driveshaft + PinionGear` open-bottom U-channel, rolling `Chassis +Z` (clearing `BayTub_TieRodClear`), `EngineBlock -Z` (`0°` pitch, `0.45 mm` booster gap), & `BootTub -Z`; **`Ø 1.84 mm` sill / `Ø 2.00 mm` door** verified on exported STLs | **PASS** |
+| **Kinematic Closure, Steering & `360°` `7:9` Drivetrain Sweeps** | `0.000 mm³` across `Hood` (`0°..42°`), `TrunkLid` (`0°..-40°`), `Doors` (`0°..65°`), `Knuckles` (`-15°..+15°`), & `360°` `7:9` coupled drivetrain | **`0.000 mm³`** across `Hood`, `TrunkLid`, `Doors`, `Knuckles`, and `36`-step `360°` `7:9` drivetrain sweep (`0.099 mm³` locked-crown interlock) | **PASS** |
 | **RC Electronics & Multi-Height Motor Fit Matrix** | `0.000 mm³` collision for `1.7g Servo`, `21 × 11 mm` Motor (`10/9/8 mm` + `0/1/2` shims), `Rx + 5A ESC`, `LiPo`, & `5-Wire Gauge` | **`0.000 mm³`** against all printed parts (`Z = 19.75 / 19.73 / 19.71 mm` shaft alignment; `0.108–0.136 mm³` 3-lobe pin crush grip) | **PASS** |
 | **Exported STL Manifold & Overhang Gate (`export.run()`)** | `0` non-manifold edges across all `53` STLs; `floating == []` and `cantilevers == []` on all `48` support-free STLs | **`0` non-manifold edges** on all `53` STLs; **`floating == []` & `cantilevers == []`** on all `48` support-free STLs | **PASS** |
 | **Bambu Studio 9-Plate Slice Gate (`--slice 0`)** | `return_code == 0`, `warning_message == ""` across `Plates 1..9` | **`0` warnings across all `9` plates** (`3_silver` `9` pcs, `max_z = 28.16 mm`; `3_silver_small` `25` pcs, `max_z = 10.04 mm`) | **PASS** |

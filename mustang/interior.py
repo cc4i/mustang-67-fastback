@@ -574,9 +574,9 @@ def tub_parts():
     pieces.append(_box("Tub_CargoShelf", 3235.0, CAB_X1 - i, -(REAR_HALF - i), REAR_HALF - i, FLOOR_Z0, 710.0, 20))
     for k, sy in enumerate((-360.0, -180.0, 0.0, 180.0, 360.0)):
         pieces.append(_box(f"Tub_SeatTrimCargo{k}", 3315.0, CAB_X1 - i - 8.0, sy - 8.0, sy + 8.0, 706.0, 716.0, 3))
-    # self-supporting 45-deg gable-roofed driveshaft tunnel (Y = -53..+53) and partitioned wire conduit (Y = -154..-74)
+    # self-supporting 45-deg gable-roofed open-bottom driveshaft U-channel (Y = -53..+53) and partitioned wire conduit (Y = -154..-74)
     cuts.append(F.prism_cutter("Tub_ShaftTunnel", "+X",
-                               [(-53.0, 335.0), (53.0, 335.0), (53.0, 448.0), (0.0, 501.0), (-53.0, 448.0)],
+                               [(-53.0, FLOOR_Z0 - 15.0), (53.0, FLOOR_Z0 - 15.0), (53.0, 448.0), (0.0, 501.0), (-53.0, 448.0)],
                                (CAB_X0 - 15.0) * SCALE, (CAB_X1 + 15.0) * SCALE))
 
     def _wire_prof(z0):
