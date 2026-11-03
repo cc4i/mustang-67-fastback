@@ -27,6 +27,28 @@ P_UUID = "{%s}UUID" % NS["p"]
 # bead) where the classic generator silently drops anything narrower than one 0.42 mm line, and a
 # 1:24 model is full of such details (plug wires, fan blades, lettering, lamp rims)
 ALL_OBJECT_SETTINGS = {"wall_generator": "arachne"}
+# small/miniature parts (< ~50 mm^2 bed contact or thin open frames) get an outer-only brim so delicate
+# inner windows/bores stay brim-free while Textured PEI adhesion and low wall speeds prevent mid-print knock-offs
+SMALL_PART_BRIM = {
+    "brim_type": "outer_only",
+    "brim_width": "4",
+    "brim_object_gap": "0.08",
+    "outer_wall_speed": "25",
+    "inner_wall_speed": "40",
+    "small_perimeter_speed": "20",
+    "small_perimeter_threshold": "25",
+}
+SLENDER_BAR_BRIM = {
+    "brim_type": "outer_only",
+    "brim_width": "3",
+    "brim_object_gap": "0.1",
+    "outer_wall_speed": "30",
+    "inner_wall_speed": "45",
+}
+TALL_PIPE_BRIM = {
+    **SMALL_PART_BRIM,
+    "brim_width": "5",
+}
 # per-object overrides (Bambu stores them as object metadata); the print profile itself stays stock
 OBJECT_SETTINGS = {
     # the cabin roof overhangs inside the hollow body: tree supports grow up through the open
@@ -42,6 +64,37 @@ OBJECT_SETTINGS = {
     # the rear blade's ends sweep up, so it has no flat top to stand on: upright, supported under
     # its (hidden) lower edge and the guards
     "bumper_rear.stl": {"enable_support": "1", "support_type": "tree(auto)", "support_on_build_plate_only": "1"},
+    # larger slender silver parts (3_silver)
+    "grille_surround.stl": SLENDER_BAR_BRIM,
+    "driveshaft.stl": SLENDER_BAR_BRIM,
+    "exhaust_x2.stl": TALL_PIPE_BRIM,
+    # precision miniature chrome parts (3_silver_small)
+    "corral_emblem.stl": SMALL_PART_BRIM,
+    "fog_lamp_x2.stl": SMALL_PART_BRIM,
+    "headlight_x2.stl": SMALL_PART_BRIM,
+    "park_light_x2.stl": SMALL_PART_BRIM,
+    "taillight_bezel_r_x3.stl": SMALL_PART_BRIM,
+    "taillight_bezel_l_x3.stl": SMALL_PART_BRIM,
+    "gas_cap.stl": SMALL_PART_BRIM,
+    "mirror.stl": SMALL_PART_BRIM,
+    "backup_light_x2.stl": SMALL_PART_BRIM,
+    "vent_window_r.stl": SMALL_PART_BRIM,
+    "vent_window_l.stl": SMALL_PART_BRIM,
+    "pinion_gear.stl": SMALL_PART_BRIM,
+    "axle_gear.stl": SMALL_PART_BRIM,
+    "motor_coupler_1p0.stl": SMALL_PART_BRIM,
+    "motor_coupler_1p5.stl": SMALL_PART_BRIM,
+    "motor_coupler_tube.stl": SMALL_PART_BRIM,
+    "motor_coupler_n25.stl": SMALL_PART_BRIM,
+    # small parts on 2_black and 4_red
+    "taillight_lens_r_x3.stl": SMALL_PART_BRIM,
+    "taillight_lens_l_x3.stl": SMALL_PART_BRIM,
+    "knuckle_r.stl": SMALL_PART_BRIM,
+    "knuckle_l.stl": SMALL_PART_BRIM,
+    "steering_wheel.stl": SMALL_PART_BRIM,
+    "hood_prop.stl": SMALL_PART_BRIM,
+    "steering_link.stl": SLENDER_BAR_BRIM,
+    "axle.stl": SLENDER_BAR_BRIM,
 }
 
 
@@ -85,13 +138,17 @@ def read_project(path):
 
 
 def complete_settings(cfg):
-    """Fill what the CLI leaves out of exported (unsliced) projects.
+    """Fill what the CLI leaves out of exported (unsliced) projects, plus gentle first-layer adhesion
+    and wall-crossing avoidance so 1000 mm/s travels do not knock small parts off Textured PEI.
 
     Without a nozzle inventory a dual-nozzle printer (X2D) fails to slice with "No valid nozzle
     found"; Bambu writes one standard nozzle per extruder when it slices, so do the same."""
     if not cfg.get("extruder_nozzle_stats"):
         volumes = cfg.get("nozzle_volume_type") or cfg.get("default_nozzle_volume_type") or ["Standard"]
         cfg["extruder_nozzle_stats"] = [f"{v}#1" for v in volumes]
+    cfg["reduce_crossing_wall"] = "1"
+    if isinstance(cfg.get("initial_layer_speed"), list):
+        cfg["initial_layer_speed"] = ["25" for _ in cfg["initial_layer_speed"]]
     return cfg
 
 

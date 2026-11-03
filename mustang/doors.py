@@ -44,12 +44,13 @@ SCUFF_Y1, SCUFF_DEPTH = 790.0, 2.5              # sill scuff plate: outer edge (
 REAR_RELIEF = 9.0               # the inner rear edge is bevelled this much: it swings back ~4.5 mm early on
 CORNER_R = 99.0                 # door material stays within this radius of the axis where it swings inboard
 
-CARD_T = 30.0                   # door card thickness (y 666..696)
+CARD_T = 30.0                   # door card cabin-face stand-off from INNER_Y (y 666..696)
+CARD_EDGE_Y = 670.5             # outer vinyl rim depth before 45-deg self-supporting rear bevel
 CARD_X0 = details.BELTLINE_X0 + 6.0   # the card stays inside the cabin and the cleared beltline
 CARD_Z0, CARD_TOP_GAP = BOTTOM_Z + 20.0, 2.5    # the card runs right up to the door's top window sill (top trim +1.0 caps at -1.5)
-CARD_BAYS_X = ((1835.0, 2082.0), (2118.0, 2382.0), (2418.0, 2675.0))   # 3x2 mortise-and-tenon registration grid (x spans)
-CARD_BAYS_Z = ((455.0, 652.0), (688.0, 860.0))                         # 2 rows separated by horizontal locating rail
-BAY_Y_DOOR, PAD_Y_CARD = 712.5, 710.5   # mortise bay floor in Door (0.825 mm deep) and mating tenon pad on DoorCard (0.725 mm proud)
+BAY_Y_DOOR, PAD_Y_CARD = 706.5, 704.5   # 45-deg mortise bay in Door (0.525 mm deep) and bed-flat boss on DoorCard (0.425 mm proud)
+MIRROR_BOSS_X = (1975.0, 2025.0)        # upper central tongue on Door (preserves wall behind DoorMirrorSlot_L and keys DoorCard in X)
+MIRROR_BOSS_Z = 852.0
 VENT_FRAME, VENT_T, VENT_PANE = 18.0, 1.25, 0.65  # vent window: chrome frame width (real), thickness, pane (print mm)
 VENT_Z_IN, VENT_Z_OUT = -0.75, 0.50               # local z range in glass plane (print mm), centred on the door sill
 TENON_DEPTH, TENON_CLEAR = 24.0, 2.4              # vent window bottom mounting tenon depth (1.20 mm print) and slot clearance
@@ -179,20 +180,48 @@ def _vent_y_bounds(q1, nz, x, z):
     return y_mid + (VENT_Z_IN / SCALE) / abs(nz.y), y_mid + (VENT_Z_OUT / SCALE) / abs(nz.y)
 
 
-def _frustum_y(name, side, x0, z0, x1, z1, y0, y1, bevel):
-    """8-vertex hexahedral frustum along Y (real mm coordinates scaled by SCALE), tapering inward by `bevel` from y0 to y1."""
+def _card_profile():
+    """Side-view outer cabin silhouette (x, z) of DoorCard, real mm."""
+    xr = lambda z: _edge_x(details.DOOR_REAR, z) - GAP - 10.0
+    card_top = lambda x: top_z(x) - GAP - CARD_TOP_GAP
+    xs = [CARD_X0 + (xr(card_top(2600.0)) - CARD_X0) * k / 16 for k in range(17)]
+    return [(CARD_X0, CARD_Z0), (xr(CARD_Z0), CARD_Z0)] + [(x, card_top(x)) for x in reversed(xs)], xs, xr, card_top
+
+
+def _door_card_bay(name, side):
+    """Contoured 45-deg mortise bay in Door's inner face receiving DoorCard's self-supporting rear boss,
+    leaving an upper tongue at MIRROR_BOSS_X to preserve wall thickness behind DoorMirrorSlot_L and key X."""
+    y_mouth = INNER_Y - 2.0
+    bevel_door = BAY_Y_DOOR - y_mouth
+    profile, _, _, card_top = _card_profile()
+    mouth_base = F.offset_closed(profile, -18.5)
+    mx0, mx1 = MIRROR_BOSS_X
+    z_notch = lambda x: card_top(x) - 18.5
+    top_rear = [p for p in mouth_base[2:] if p[0] > mx1 + 15.0]
+    top_front = [p for p in mouth_base[2:] if p[0] < mx0 - 15.0]
+    notch = [(mx1, z_notch(mx1)), (mx1, MIRROR_BOSS_Z), (mx0, MIRROR_BOSS_Z), (mx0, z_notch(mx0))]
+    mouth_poly = [mouth_base[0], mouth_base[1]] + top_rear + notch + top_front
+    floor_poly = F.offset_closed(mouth_poly, -bevel_door)
+    return F.loft_solid(name, axis(side), [(mouth_poly, y_mouth * SCALE), (floor_poly, BAY_Y_DOOR * SCALE)])
+
+
+def _card_mirror_key(name, side):
+    """Self-supporting gable keyway in the back of DoorCard mating with Door's upper MIRROR_BOSS_X tongue."""
     import bmesh
+    mx0, mx1 = MIRROR_BOSS_X
+    xm = 0.5 * (mx0 + mx1)
+    y_out, y_sh, y_peak = PAD_Y_CARD + 3.0, INNER_Y - 2.0, 675.0
+    kx0, kx1 = mx0 - 5.0, mx1 + 5.0
+    ramp_x = y_out - y_sh
+    prof_xy = [(kx0 - ramp_x, y_out), (kx0, y_sh), (xm, y_peak), (kx1, y_sh), (kx1 + ramp_x, y_out)]
     bm = bmesh.new()
-    quad0 = [(x0, z0), (x1, z0), (x1, z1), (x0, z1)]
-    quad1 = [(x0 + bevel, z0 + bevel), (x1 - bevel, z0 + bevel),
-             (x1 - bevel, z1 - bevel), (x0 + bevel, z1 - bevel)]
-    v0 = [bm.verts.new((x * SCALE, side * y0 * SCALE, z * SCALE)) for x, z in quad0]
-    v1 = [bm.verts.new((x * SCALE, side * y1 * SCALE, z * SCALE)) for x, z in quad1]
-    bm.faces.new(v0)
-    bm.faces.new(list(reversed(v1)))
-    for i in range(4):
-        j = (i + 1) % 4
-        bm.faces.new((v0[i], v0[j], v1[j], v1[i]))
+    lo = [bm.verts.new((x * SCALE, side * y * SCALE, (836.5 - (y_out - y)) * SCALE)) for x, y in prof_xy]
+    hi = [bm.verts.new((x * SCALE, side * y * SCALE, 955.0 * SCALE)) for x, y in prof_xy]
+    bm.faces.new(lo)
+    bm.faces.new(list(reversed(hi)))
+    for i in range(len(prof_xy)):
+        j = (i + 1) % len(prof_xy)
+        bm.faces.new((lo[i], lo[j], hi[j], hi[i]))
     F.outward(bm)
     me = bpy.data.meshes.new(name)
     bm.to_mesh(me)
@@ -238,7 +267,7 @@ def _door_vent_slot(name, side, q1, nz, x0, x1, z_drop):
 
 def _card_vent_slot(name, side, q1, nz, x0, x1, z_drop):
     """Mortise slot cutter in the top edge of DoorCard for the inboard side of DoorVent's tenon,
-    with 45-deg lower and end ramps out to PAD_Y_CARD so DoorCard prints with zero floating starts."""
+    sloping along DoorVent's natural glass tumblehome with 45-deg lower and end ramps out to PAD_Y_CARD."""
     import bmesh
     door_top = lambda x: top_z(x) - GAP
     y_out = PAD_Y_CARD + 3.0
@@ -250,13 +279,17 @@ def _card_vent_slot(name, side, q1, nz, x0, x1, z_drop):
         zb = zt - z_drop
         vy_in_top, _ = _vent_y_bounds(q1, nz, x, zt + 2.0)
         vy_in_bot, _ = _vent_y_bounds(q1, nz, x, zb)
-        y_in = min(INNER_Y - 12.0, min(vy_in_top, vy_in_bot) - TENON_CLEAR)
-        ramp = y_out - y_in
-        dx_out = -ramp if i == 0 else (ramp if i == len(xs) - 1 else 0.0)
-        pts_out = [((x + dx_out) * SCALE, side * y_out * SCALE, (zb - ramp) * SCALE),
-                   ((x + dx_out) * SCALE, side * y_out * SCALE, (zt + 15.0) * SCALE)]
-        pts_in = [(x * SCALE, side * y_in * SCALE, zb * SCALE),
-                  (x * SCALE, side * y_in * SCALE, (zt + 15.0) * SCALE)]
+        y_in_bot = min(INNER_Y - 8.0, vy_in_bot - TENON_CLEAR)
+        y_in_top = min(INNER_Y - 12.0, vy_in_top - TENON_CLEAR)
+        z_hi = zt + 15.0
+        y_in_hi = y_in_bot + (y_in_top - y_in_bot) * (z_hi - zb) / (zt + 2.0 - zb)
+        ramp_bot = max(4.0, y_out - y_in_bot)
+        ramp_end = max(4.0, y_out - y_in_hi)
+        dx_out = -ramp_end if i == 0 else (ramp_end if i == len(xs) - 1 else 0.0)
+        pts_out = [((x + dx_out) * SCALE, side * y_out * SCALE, (zb - ramp_bot) * SCALE),
+                   ((x + dx_out) * SCALE, side * y_out * SCALE, z_hi * SCALE)]
+        pts_in = [(x * SCALE, side * y_in_bot * SCALE, zb * SCALE),
+                  (x * SCALE, side * y_in_hi * SCALE, z_hi * SCALE)]
         ring = [bm.verts.new(pts_in[0]), bm.verts.new(pts_out[0]),
                 bm.verts.new(pts_out[1]), bm.verts.new(pts_in[1])]
         rings.append(ring)
@@ -277,8 +310,8 @@ def door_parts(tree, body_mesh, body_ob):
     """[(door, intersect_with, pre_cuts, unions, post_cuts)] for both doors, modelled closed, in
     place. The skin intersect comes first, then the side-scoop sculpting, the handle, lock, and
     window-sill beltline chrome moulding, and last the mirror socket, the hinge (pin hole, rounded
-    inner front corner, bevelled rear edge), the 3x2 mortise bays for the door card, the top
-    window-sill mortise channel for the vent window tenon, and the shut-face details."""
+    inner front corner, bevelled rear edge), the contoured 45-deg mortise bay for the door card,
+    the top window-sill mortise channel for the vent window tenon, and the shut-face details."""
     out = []
     slots = dict(details.mirror_slots(tree))
     xb0, xb1 = 1785.0, 2784.0
@@ -301,14 +334,7 @@ def door_parts(tree, body_mesh, body_ob):
         if slot:
             slot.name = slot.data.name = f"DoorMirrorSlot_{t}"
         hx, hy = HINGE_AXIS
-        bays = []
-        idx = 0
-        bevel_door = BAY_Y_DOOR - (INNER_Y - 2.0)
-        for bx0, bx1 in CARD_BAYS_X:
-            for bz0, bz1 in CARD_BAYS_Z:
-                bays.append(_frustum_y(f"Door_{t}_CardBay{idx}", s, bx0, bz0, bx1, bz1,
-                                       INNER_Y - 2.0, BAY_Y_DOOR, bevel_door))
-                idx += 1
+        card_bay = _door_card_bay(f"Door_{t}_CardBay", s)
         vent_slot = _door_vent_slot(f"Door_{t}_VentSlot", s, q1, nz, tenon_x0 - 7.0, tenon_x1 + 7.0,
                                     TENON_DEPTH + TENON_CLEAR)
         post = ([slot] if slot else []) + [
@@ -316,42 +342,40 @@ def door_parts(tree, body_mesh, body_ob):
                                (BOTTOM_Z - 20.0) * SCALE, DOOR_HOLE_TOP * SCALE),
                 F.prism_cutter(f"DoorHinge_{t}_Corner", "+Z", _corner_trim(s), (BOTTOM_Z - 20.0) * SCALE, 1000.0 * SCALE),
                 F.loft_solid(f"DoorHinge_{t}_Rear", "+Z", _rear_relief(s)),
-                vent_slot] + bays + shut_face_parts(s, tree)
+                vent_slot, card_bay] + shut_face_parts(s, tree)
         out.append((door, skin, pre, unions, post))
     return out
 
 
 def card_parts(tree=None):
     """[(card, unions, cuts)] black door cards for the doors' inner faces (modelled closed, in place):
-    keyed into the door's inner face by a 3x2 grid of 45-deg bevelled rear tenon pads (mating with
-    Door_CardBay0..5) and a top window-sill U-channel slot that captures the vent window's tenon."""
+    built on a continuous bed-flat rear boss (PAD_Y_CARD) with 45-deg self-supporting perimeter bevels
+    mating into Door_CardBay, an upper gable keyway mating with Door's mirror-boss tongue, and a
+    sloped top window-sill U-channel slot that captures the vent window's tenon."""
     if tree is None:
         tree = F._bvh(bpy.data.objects["Body"].data)
     out = []
+    profile, xs, xr, card_top = _card_profile()
+    bevel_card = PAD_Y_CARD - CARD_EDGE_Y
+    bed_profile = F.offset_closed(profile, -bevel_card)
+    trim_front = [(x, card_top(x) - 18.0) for x in xs] + [(x, card_top(x) + 1.0) for x in reversed(xs)]
+    trim_back = [(x, card_top(x) - 18.0) for x in xs] + [(x, card_top(x) - 16.0) for x in reversed(xs)]
     for s in SIDES:
         t, ax = tag(s), axis(s)
         q1, _ux, _up, nz, fb, _ft, xb, _xt = _vent_plane(tree, s)
         tenon_x0, tenon_x1 = fb.x + 22.0, xb - 6.0
-        y_out, y_in = INNER_Y - 1.5, INNER_Y - CARD_T
-        xr = lambda z: _edge_x(details.DOOR_REAR, z) - GAP - 10.0
-        card_top = lambda x: top_z(x) - GAP - CARD_TOP_GAP                   # follows the door's top edge
-        xs = [CARD_X0 + (xr(card_top(2600.0)) - CARD_X0) * k / 12 for k in range(13)]
-        profile = [(CARD_X0, CARD_Z0), (xr(CARD_Z0), CARD_Z0)] + [(x, card_top(x)) for x in reversed(xs)]
-        card = F.prism_cutter(f"DoorCard_{t}", ax, profile, y_in * SCALE, y_out * SCALE)
-        # chrome belt moulding along the card's top edge (forms the inner wall of the vent window U-channel)
-        trim = [(x, card_top(x) - 18.0) for x in xs] + [(x, card_top(x) + 1.0) for x in reversed(xs)]
-        unions = [F.prism_cutter(f"DoorCardTrim_{t}", ax, trim, (y_in - 8.0) * SCALE, (y_out - 0.5) * SCALE)]
-        # 6 mating 45-deg bevelled tenon pads on the back of DoorCard
-        idx = 0
-        bevel_card = PAD_Y_CARD - (y_out - 2.5)
-        for bx0, bx1 in CARD_BAYS_X:
-            for bz0, bz1 in CARD_BAYS_Z:
-                unions.append(_frustum_y(
-                    f"DoorCard_{t}_Pad{idx}", s,
-                    bx0 + 3.5, bz0 + 3.5, bx1 - 3.5, bz1 - 3.5,
-                    y_out - 2.5, PAD_Y_CARD, bevel_card
-                ))
-                idx += 1
+        y_in = INNER_Y - CARD_T
+        card = F.loft_solid(f"DoorCard_{t}", ax, [
+            (profile, y_in * SCALE),
+            (profile, CARD_EDGE_Y * SCALE),
+            (bed_profile, PAD_Y_CARD * SCALE),
+        ])
+        # chrome belt moulding along the card's top edge (45-deg tapered back flush with the card's bevel)
+        unions = [F.loft_solid(f"DoorCardTrim_{t}", ax, [
+            (trim_front, (y_in - 8.0) * SCALE),
+            (trim_front, (CARD_EDGE_Y - 1.0) * SCALE),
+            (trim_back, (CARD_EDGE_Y + 16.0) * SCALE),
+        ])]
         # padded rolls along the panel behind the dash: the top roll under the moulding, then the pleats
         z_hi = -18.0
         for k, (h, proud) in enumerate([ROLL] + [PLEAT] * PLEATS):
@@ -381,8 +405,11 @@ def card_parts(tree=None):
         unions.append(F.prism_cutter(f"DoorCardTrim_{t}_CrankArm", ax, details.line_band((cx, cz), (kx, kz), 12.0),
                                      (y_in - 13.0) * SCALE, (y_in + 3.0) * SCALE))
         unions.append(interior._cylinder(f"DoorCardKnob_{t}", (kx, s * (y_in - 10.0), kz), (kx, s * (y_in - 40.0), kz), 11.0))
-        cuts = [_card_vent_slot(f"DoorCard_{t}_VentSlot", s, q1, nz, tenon_x0 - 7.0, tenon_x1 + 7.0,
-                                TENON_DEPTH + TENON_CLEAR)]
+        cuts = [
+            _card_vent_slot(f"DoorCard_{t}_VentSlot", s, q1, nz, tenon_x0 - 7.0, tenon_x1 + 7.0,
+                            TENON_DEPTH + TENON_CLEAR),
+            _card_mirror_key(f"DoorCard_{t}_MirrorKey", s),
+        ]
         out.append((card, unions, cuts))
     return out
 

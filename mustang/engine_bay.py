@@ -276,7 +276,7 @@ def liner_parts(tree):
     # end (clear of it) into the floor
     pieces.append(tube("BayTub_RadOverflow", F.chaikin([(cx + 14, cy - 12, tank_top + 6), (tank_x1 - 12, cy - 60, tank_top - 2),
                                                         (tank_x1 - 10, -300.0, tank_top - 8), (tank_x1 - 10, -405.0, tank_top - 30),
-                                                        (tank_x1 - 10, -405.0, FLOOR_Z1 - 5.0)], 2), 7, 8))
+                                                        (tank_x1 - 10, -405.0, FLOOR_Z1 - 5.0)], 2), 9.0, 12))
     pieces.append(_cylinder("BayTub_RadInlet", (rad_x1 - 5, UPPER_HOSE_Y, hose_z), (RAD_INLET_X1, UPPER_HOSE_Y, hose_z), 19))
     _, oy, oz = LOWER_HOSE_END
     pieces.append(_cylinder("BayTub_RadOutlet", (rad_x1 - 5, oy, oz), (RAD_INLET_X1, oy, oz), 16))
@@ -345,9 +345,7 @@ def liner_parts(tree):
     mc_top = min(790.0, headroom(tree, 1420, 1480, -400, -320) - 30.0)
     pieces.append(_box("BayTub_MasterCyl", 1415.0, 1485.0, -400.0, -320.0, 650.0, mc_top, 12))
     pieces.append(_box("BayTub_MCCap", 1418.0, 1482.0, -397.0, -323.0, mc_top - 3, mc_top + 9, 10))
-    pieces.append(tube("BayTub_MCBail", F.chaikin([(1424.0, -360.0, mc_top + 4), (1428.0, -360.0, mc_top + 12),
-                                                   (1450.0, -360.0, mc_top + 15), (1472.0, -360.0, mc_top + 12),
-                                                   (1476.0, -360.0, mc_top + 4)], 2), 3.5, 8))
+    pieces.append(_box("BayTub_MCBail", 1422.0, 1478.0, -365.5, -354.5, mc_top + 5.0, mc_top + 14.5, 4))
     pieces.append(tube("BayTub_BrakeLine", [(1420.0, -340.0, 690.0), (1360.0, -420.0, 640.0),
                                             (1180.0, wall_in - 3, 620.0)], 8, 8))   # lowest end buried in the apron
     # heater core fittings on the passenger side of the firewall (the heater hoses end at them)
@@ -376,27 +374,29 @@ def liner_parts(tree):
         pieces.append(_box(f"BayTub_ServoWall{'L' if s < 0 else 'R'}", 454.0, 669.0, sy0, sy1, FLOOR_Z0, 380.0, 6.0))
     cuts.append(_box("BayTub_ServoBed", 466.0, 657.0, -152.0, 152.0, 296.0, FLOOR_Z1 + 5.0, 4.0))
     cuts.append(_box("BayTub_ServoHornSlot", 652.0, 680.0, -152.0, 90.0, 305.0, 386.0, 4.0))
-    # N25 gearmotor snap-in cradle on the bay floor: internal slot 496 x 252 real mm (24.80 x 12.60 print mm)
-    # for a standard 24.0 x 12.0 x 10.0 mm N25 gearmotor, with floor recessed to Z = 295 (shaft axis Z = 395)
-    pieces.append(_box("BayTub_N25Front", 862.0, 880.0, -154.0, 154.0, FLOOR_Z0, 435.0, 8.0))
-    pieces.append(_box("BayTub_N25Rear", 1376.0, 1400.0, -154.0, 154.0, FLOOR_Z0, 435.0, 8.0))
+    # Motor snap-in cradle on the bay floor: internal slot 425 x 225 real mm (21.25 x 11.25 print mm)
+    # sized for a 21.0 x 11.0 mm flat-can DC motor (with 2 x 0.48 mm Z-shims for 9.0 / 8.0 mm flat heights),
+    # recessed to Z = 295 (shaft axis Z = 395) with symmetric front solder-tab window and side wire return
+    pieces.append(_box("BayTub_N25Front", 927.0, 951.0, -162.0, 162.0, FLOOR_Z0, 422.0, 8.0))
+    pieces.append(_box("BayTub_N25Rear", 1376.0, 1400.0, -162.0, 162.0, FLOOR_Z0, 422.0, 8.0))
     for s in (-1, 1):
-        y0, y1 = sorted((s * 126.0, s * 154.0))
-        pieces.append(_box(f"BayTub_N25Wall{'L' if s < 0 else 'R'}", 868.0, 1388.0, y0, y1, FLOOR_Z0, 435.0, 6.0))
+        y0, y1 = sorted((s * 112.5, s * 162.0))
+        pieces.append(_box(f"BayTub_N25Wall{'L' if s < 0 else 'R'}", 933.0, 1392.0, y0, y1, FLOOR_Z0, 422.0, 6.0))
         gy0, gy1 = sorted((s * 220.0, s * 268.0))
         pieces.append(_box(f"BayTub_EngineGuide{'L' if s < 0 else 'R'}", 1018.0, 1172.0, gy0, gy1, FLOOR_Z0, 395.0, 8.0))
-    cuts.append(_box("BayTub_N25Bed", 880.0, 1376.0, -126.0, 126.0, 295.0, FLOOR_Z1 + 5.0, 4.0))
-    cuts.append(_box("BayTub_N25WireFront", 855.0, 885.0, -138.0, 85.0, 340.0, 445.0, 4.0))
-    cuts.append(_box("BayTub_N25WireRear", 1370.0, 1405.0, -138.0, -74.0, 340.0, 445.0, 4.0))
-    # Partitioned wire chute on driver side (Y = -154..-74) separated from Driveshaft coupler by a 0.80 mm solid wall
-    pieces.append(_box("BayTub_WirePartition", 1376.0, xb, -74.0, -58.0, FLOOR_Z0, 435.0, 4.0))
-    pieces.append(_box("BayTub_WireOuterWall", 1376.0, xb, -166.0, -154.0, FLOOR_Z0, 435.0, 4.0))
-    # 45-deg gable-roofed driveshaft tunnel (Y = -58..+58) and dedicated wire conduit (Y = -154..-74) through firewall
+    cuts.append(_box("BayTub_N25Bed", 951.0, 1376.0, -112.5, 112.5, 295.0, FLOOR_Z1 + 5.0, 3.0))
+    cuts.append(_box("BayTub_N25WireFront", 920.0, 958.0, -92.0, 92.0, 330.0, 435.0, 4.0))
+    cuts.append(_box("BayTub_N25WireSideL", 920.0, 1405.0, -140.0, -110.0, 396.0, 435.0, 3.0))
+    cuts.append(_box("BayTub_N25WireRear", 1370.0, 1405.0, -148.0, -78.0, 335.0, 435.0, 4.0))
+    # Partitioned wire chute on driver side (Y = -156..-76) separated from MotorCoupler by a 0.70 mm solid wall
+    pieces.append(_box("BayTub_WirePartition", 1376.0, xb, -80.0, -58.0, FLOOR_Z0, 422.0, 0.0))
+    pieces.append(_box("BayTub_WireOuterWall", 1376.0, xb, -167.5, -152.0, FLOOR_Z0, 422.0, 0.0))
+    # 45-deg gable-roofed driveshaft/coupler tunnel (Y = -62..+62) and wire conduit (Y = -156..-76) through firewall
     cuts.append(F.prism_cutter("BayTub_ShaftTunnel", "+X",
-                               [(-58.0, 320.0), (58.0, 320.0), (58.0, 455.0), (0.0, 513.0), (-58.0, 455.0)],
+                               [(-62.0, 318.0), (62.0, 318.0), (62.0, 460.0), (0.0, 522.0), (-62.0, 460.0)],
                                1365.0 * SCALE, 1630.0 * SCALE))
     cuts.append(F.prism_cutter("BayTub_WireTunnel", "+X",
-                               [(-154.0, 335.0), (-74.0, 335.0), (-74.0, 423.0), (-114.0, 463.0), (-154.0, 423.0)],
+                               [(-156.0, 335.0), (-76.0, 335.0), (-76.0, 423.0), (-116.0, 463.0), (-156.0, 423.0)],
                                1365.0 * SCALE, 1630.0 * SCALE))
     return liner, pieces, cuts, level
 
@@ -931,66 +931,195 @@ TRUNK_PEG_R, TRUNK_PEG_Y0, TRUNK_PEG_Y1 = 12.0, 515.0, 598.0
 TRUNK_OPEN_DEG = 40.0
 
 
-def _gear_ring(cu, cv, r_root, r_tip, teeth, phase_rad=0.0):
-    """Toothed gear cross-section around (cu, cv) with 4 * teeth vertices; circular when r_root == r_tip."""
+def _gear_ring(cu, cv, r_root, r_tip, teeth, phase_rad=0.0, tip_frac=0.115, root_frac=0.285):
+    """Coarse bevel-gear cross-section around (cu, cv) with 4 * teeth vertices (40% tooth / 60% space)."""
     pts = []
     pitch = 2.0 * math.pi / teeth
     for t in range(teeth):
         a0 = phase_rad + t * pitch
-        for frac, r in ((-0.35, r_root), (-0.09, r_tip), (0.09, r_tip), (0.35, r_root)):
+        for frac, r in ((-root_frac, r_root), (-tip_frac, r_tip), (tip_frac, r_tip), (root_frac, r_root)):
             a = a0 + frac * pitch
             pts.append((cu + r * math.cos(a), cv + r * math.sin(a)))
     return pts
 
 
-def _d_bore_ring(cy, cz, r, flat_top, steps=32):
-    """D-shaft bore cross-section around (cy, cz), clipped flat at cz + flat_top."""
-    return [(cy + r * math.cos(2.0 * math.pi * k / steps),
-             cz + min(r * math.sin(2.0 * math.pi * k / steps), flat_top)) for k in range(steps)]
+def _oct_beam_ring(cy, cz, hy, hz_top, hz_bot):
+    """8-vertex octagonal shaft cross-section around (cy, cz): exact regular octagon when
+    hy == hz_top == hz_bot, and keeps +Z_car at cz + hz_top (flush on Z=0 bed under UPSIDE_DOWN)."""
+    t22 = math.tan(math.pi / 8)
+    return [
+        (cy + hy, cz + hz_top * t22),
+        (cy + hy * t22, cz + hz_top),
+        (cy - hy * t22, cz + hz_top),
+        (cy - hy, cz + hz_top * t22),
+        (cy - hy, cz - hz_bot * t22),
+        (cy - hy * t22, cz - hz_bot),
+        (cy + hy * t22, cz - hz_bot),
+        (cy + hy, cz - hz_bot * t22),
+    ]
+
+
+def _oct_bore_ring48(cy, cz, half_flat=33.20, steps=48):
+    """48-vertex regular octagonal spline socket (axis-aligned flats, exact corners at 22.5 + 45*k deg)."""
+    pts = []
+    rt2 = math.sqrt(2.0)
+    for k in range(steps):
+        a = 2.0 * math.pi * k / steps
+        c, s = math.cos(a), math.sin(a)
+        r = half_flat / max(abs(c), abs(s), (abs(c) + abs(s)) / rt2)
+        pts.append((cy + r * c, cz + r * s))
+    return pts
+
+
+def _motor_bore_ring48(cy, cz, mode, extra=0.0, steps=48):
+    """48-vertex precision XY motor-shaft bore cross-section for upright printing (RY_UP_FROM_POS_X):
+    - '1p0': 3-lobe crush bore (0.92 mm inscribed / 1.14 mm relief) for Ø1.0 mm smooth pin
+    - '1p5': 3-lobe crush bore (1.42 mm inscribed / 1.64 mm relief) for Ø1.5 mm smooth pin
+    - 'tube': 6-spline collet bore (2.28 mm inscribed / 2.50 mm valleys) for silicone-sleeve grip
+    - 'n25': Ø3.08 mm / 2.58 mm-flat D-bore for geared N20/N25 Ø3.0 mm D-shaft."""
+    pts = []
+    for k in range(steps):
+        a = 2.0 * math.pi * k / steps
+        c, s = math.cos(a), math.sin(a)
+        if mode == "1p0":
+            r = (10.3 - 1.1 * math.cos(3.0 * a)) + extra
+            dy, dz = r * c, r * s
+        elif mode == "1p5":
+            r = (15.3 - 1.1 * math.cos(3.0 * a)) + extra
+            dy, dz = r * c, r * s
+        elif mode == "tube":
+            r = (23.9 - 1.1 * math.cos(6.0 * a)) + extra
+            dy, dz = r * c, r * s
+        elif mode == "n25":
+            r = 30.8 + extra
+            dy, dz = r * c, min(r * s, 20.8 + extra)
+        else:
+            raise ValueError(f"unknown motor bore mode: {mode}")
+        pts.append((cy + dy, cz + dz))
+    return pts
+
+
+def _coupler_outer_ring48(cy, cz, r_out, n_flutes=0, steps=48):
+    """Outer cylinder ring with `n_flutes` shallow vertical V-notches so the 4 multi-fit couplers
+    are visually distinguishable off the print bed (1 = 1.0 mm, 2 = 1.5 mm, 3 = tube, 0 = N25 D)."""
+    flute_angles = {
+        0: (),
+        1: (-math.pi / 2,),
+        2: (-math.pi / 2 - 0.36, -math.pi / 2 + 0.36),
+        3: (-math.pi / 2 - 0.50, -math.pi / 2, -math.pi / 2 + 0.50),
+    }[n_flutes]
+    pts = []
+    for k in range(steps):
+        a = 2.0 * math.pi * k / steps
+        r = r_out
+        for fa in flute_angles:
+            da = abs((a - fa + math.pi) % (2.0 * math.pi) - math.pi)
+            if da < 0.14:
+                r = min(r, r_out - 6.5 * (1.0 - da / 0.14))
+        pts.append((cy + r * math.cos(a), cz + r * math.sin(a)))
+    return pts
+
+
+def _build_motor_coupler(name, bore_mode, n_flutes, x_base=1404.0, y_center=0.0, z_center=395.0):
+    """Upright-printed (RY_UP_FROM_POS_X) modular motor-to-driveshaft coupler (10.0 mm long, Ø5.50 mm OD):
+    front XY precision motor bore + self-supporting 45-deg diamond transverse M2/glue lock port,
+    flaring upward (zero internal ceiling overhang) into a 3.32 mm-flats octagonal spline socket."""
+    outer = F.loft_solid(name, "+X", [
+        (_coupler_outer_ring48(y_center, z_center, 55.0, n_flutes), x_base * SCALE),
+        (_coupler_outer_ring48(y_center, z_center, 55.0, n_flutes), (x_base + 196.0) * SCALE),
+        (_coupler_outer_ring48(y_center, z_center, 51.0, n_flutes), (x_base + 200.0) * SCALE),
+    ])
+    bore = F.loft_solid(f"{name}_Bore", "+X", [
+        (_motor_bore_ring48(y_center, z_center, bore_mode, extra=3.5), (x_base - 4.0) * SCALE),
+        (_motor_bore_ring48(y_center, z_center, bore_mode, extra=0.0), (x_base + 8.0) * SCALE),
+        (_motor_bore_ring48(y_center, z_center, bore_mode, extra=0.0), (x_base + 110.0) * SCALE),
+        (_oct_bore_ring48(y_center, z_center, half_flat=33.20), (x_base + 124.0) * SCALE),
+        (_oct_bore_ring48(y_center, z_center, half_flat=33.20), (x_base + 204.0) * SCALE),
+    ])
+    xl = x_base + 56.0
+    lock_diamond = [(xl, y_center - 18.0), (xl + 22.0, y_center), (xl, y_center + 18.0), (xl - 22.0, y_center)]
+    lock_hole = F.prism_cutter(f"{name}_LockHole", "+Z", lock_diamond,
+                               (z_center - 64.0) * SCALE, (z_center + 64.0) * SCALE)
+    return outer, [bore, lock_hole]
+
+
+def motor_coupler_part():
+    """Installed car coupler (`MotorCoupler`, 1.0 mm 3-lobe crush bore + M2 side lock + rear spline socket)."""
+    return _build_motor_coupler("MotorCoupler", "1p0", n_flutes=1, x_base=1404.0, y_center=0.0, z_center=395.0)
+
+
+def motor_fit_kit_parts():
+    """Multi-fit spare couplers (1.5 mm crush, silicone-sleeve collet, 3.0 mm N25 D-shaft) and
+    0.48 mm bed-flat Z-shims (`MotorShim_0p5`, qty 2) stored in Accessories for Bambu plate export."""
+    spares = [
+        _build_motor_coupler("MotorCoupler_1p5", "1p5", n_flutes=2, x_base=1404.0, y_center=-1500.0, z_center=395.0),
+        _build_motor_coupler("MotorCoupler_Tube", "tube", n_flutes=3, x_base=1404.0, y_center=-1700.0, z_center=395.0),
+        _build_motor_coupler("MotorCoupler_N25", "n25", n_flutes=0, x_base=1404.0, y_center=-1900.0, z_center=395.0),
+    ]
+    shim = F.prism_cutter("MotorShim_0p5", "+Z", rect(955.0, -2250.0, 1371.0, -2034.0, 20.0),
+                          295.0 * SCALE, (295.0 + 9.6) * SCALE)
+    return spares, shim
 
 
 def driveshaft_part():
-    """Center N25 prop shaft (X = 1404..3514, Y = 0, Z = 395): front D-shaft coupler sleeve with
-    subtracted D-bore (Ø3.20 mm, 2.70 mm across flat, 45-deg ceiling), central shaft through firewall
-    and cabin tunnel, and rear 10-tooth bevel pinion meshing with AxleGear on Axle_R."""
+    """Toothless horizontal-printed prop shaft (X = 1528..3471, Y = 0, Z = 395, UPSIDE_DOWN):
+    symmetric 3.24 mm-flats octagonal spline tenons at front (locking into MotorCoupler) and rear
+    (locking into PinionGear), bridged by a reinforced central octagonal beam whose +Z_car top flat
+    stays flush at Z = 427.4 from tip to tip so all 97.15 mm rest flat on the Z=0 print bed."""
     zc = 395.0
-    teeth = 10
-    # Phase one pinion tooth crest directly toward the AxleGear mesh centre M = (3490, +28, 366)
-    phase = math.atan2(366.0 - zc, 28.0 - 0.0)
-    stations = [
-        (1404.0, 52.0, 52.0),
-        (1564.0, 52.0, 52.0),
-        (1594.0, 34.0, 34.0),
-        (3456.0, 34.0, 34.0),
-        (3470.0, 26.0, 44.0),
-        (3502.0, 21.0, 37.0),
-        (3514.0, 15.0, 15.0),
+    tenon = _oct_beam_ring(0.0, zc, 32.40, 32.40, 32.40)
+    beam = _oct_beam_ring(0.0, zc, 38.00, 32.40, 40.00)
+    sections = [
+        (tenon, 1528.0 * SCALE),
+        (tenon, 1602.0 * SCALE),
+        (beam, 1614.0 * SCALE),
+        (beam, 3418.0 * SCALE),
+        (tenon, 3430.0 * SCALE),
+        (tenon, 3471.0 * SCALE),
     ]
-    sections = [(_gear_ring(0.0, zc, r0, r1, teeth, phase), x * SCALE) for x, r0, r1 in stations]
-    shaft = F.loft_solid("Driveshaft", "+X", sections)
-    d_bore = F.loft_solid("Driveshaft_DBore", "+X", [
-        (_d_bore_ring(0.0, zc, 32.0, 22.0), 1400.0 * SCALE),
-        (_d_bore_ring(0.0, zc, 32.0, 22.0), 1532.0 * SCALE),
-        (_d_bore_ring(0.0, zc, 2.0, 2.0), 1564.0 * SCALE),
+    return F.loft_solid("Driveshaft", "+X", sections), []
+
+
+def pinion_gear_part():
+    """7-tooth coarse bevel pinion (X = 3428..3504, Y = 0, Z = 395), printed flat in the XY plane
+    (RY_UP_FROM_POS_X) on its Ø5.40 mm front spline collar so every tooth is traced as crisp closed
+    XY perimeters (0.54 mm heel crest, 0.43 mm toe crest) with backlash-free engagement into AxleGear."""
+    zc = 395.0
+    teeth = 7
+    phase = math.atan2(363.5 - zc, 30.0 - 0.0)
+    sections = [
+        (_gear_ring(0.0, zc, 54.0, 54.0, teeth, phase), 3428.0 * SCALE),
+        (_gear_ring(0.0, zc, 54.0, 54.0, teeth, phase), 3468.0 * SCALE),
+        (_gear_ring(0.0, zc, 34.0, 52.0, teeth, phase), 3472.0 * SCALE),
+        (_gear_ring(0.0, zc, 26.0, 41.5, teeth, phase), 3500.0 * SCALE),
+        (_gear_ring(0.0, zc, 24.5, 24.5, teeth, phase), 3504.0 * SCALE),
+    ]
+    pinion = F.loft_solid("PinionGear", "+X", sections)
+    bore = F.loft_solid("PinionGear_Bore", "+X", [
+        (_oct_bore_ring48(0.0, zc, half_flat=33.20), 3424.0 * SCALE),
+        (_oct_bore_ring48(0.0, zc, half_flat=33.20), 3473.0 * SCALE),
+        (_oct_bore_ring48(0.0, zc, half_flat=10.00), 3499.0 * SCALE),
+        (_oct_bore_ring48(0.0, zc, half_flat=10.00), 3508.0 * SCALE),
     ])
-    return shaft, [d_bore]
+    return pinion, [bore]
 
 
 def axle_gear_part():
-    """12-tooth bevel crown gear mounted coaxially on Axle_R (X = 3535, Z = 330, Y = +21.5..+54.5) inside
-    Chassis_Diff, with an aligned 3.32 mm across-flats octagonal spline bore that locks rotationally
-    onto Axle_R's 3.24 mm flats / 3.51 mm corners while maintaining 0.0 mm^3 static overlap."""
+    """9-tooth coarse bevel crown gear mounted coaxially on Axle_R (X = 3535, Z = 330, Y = +19.5..+54.5)
+    inside Chassis_Diff, printed flat in the XY plane (RX_UP_FROM_NEG_Y, 0.60 mm heel crest) with a
+    3.32 mm across-flats octagonal spline bore locking onto Axle_R."""
     gx, gz = 3535.0, 330.0
-    teeth = 12
-    # Phase a crown tooth valley at M = (3490, +28, 366) so the pinion tooth crest sits cleanly inside it
-    phase = math.atan2(366.0 - gz, 3490.0 - gx) + math.pi / teeth
+    teeth = 9
+    # Phase a crown tooth valley at M = (3486, +30, 363.5) so PinionGear's tooth crest sits cleanly inside it
+    phase = math.atan2(363.5 - gz, 3486.0 - gx) + math.pi / teeth
     stations = [
-        (21.5, 42.0, 56.0),
-        (39.5, 49.0, 68.0),
-        (43.5, 70.0, 70.0),
-        (54.5, 70.0, 70.0),
+        (19.5, 42.5, 58.0),
+        (40.0, 49.0, 69.0),
+        (43.5, 69.5, 69.5),
+        (54.5, 69.5, 69.5),
     ]
-    sections = [(_gear_ring(gx, gz, r0, r1, teeth, phase), y * SCALE) for y, r0, r1 in stations]
+    sections = [(_gear_ring(gx, gz, r0, r1, teeth, phase, tip_frac=0.125, root_frac=0.285), y * SCALE)
+                for y, r0, r1 in stations]
     gear = F.loft_solid("AxleGear", "+Y", sections)
     r_oct = 33.20 / math.cos(math.pi / 8)
     oct_ring = [(gx + r_oct * math.cos(math.pi / 8 + k * math.pi / 4),

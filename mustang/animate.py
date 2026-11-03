@@ -101,7 +101,7 @@ def bake_showcase():
     copies = {}
     for name in BUILD_COLLECTIONS:
         for src in bpy.data.collections[name].objects:
-            if src.type != 'MESH':
+            if src.type != 'MESH' or (name == "Accessories" and src.name != "HoodProp"):
                 continue
             me = bpy.data.meshes.new_from_object(src.evaluated_get(dg))
             me.name = f"SC_{src.name}"

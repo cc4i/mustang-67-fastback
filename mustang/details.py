@@ -874,7 +874,7 @@ def body_cutters(tree, body_mesh):
     cuts.append(("Cut_DiffTunnel", F.prism_cutter("Cut_DiffTunnel", "+Z", rect(3375.0, -130.0, 3665.0, 130.0, 60.0),
                                                   (body_z_bottom() - 2.0) * SCALE, 480.0 * SCALE)))
     cuts.append(("Cut_DiffShaftWeb", F.prism_cutter(
-        "Cut_DiffShaftWeb", "+X", [(-50.0, 310.0), (50.0, 310.0), (50.0, 445.0), (0.0, 495.0), (-50.0, 445.0)],
+        "Cut_DiffShaftWeb", "+X", [(-53.0, 310.0), (53.0, 310.0), (53.0, 448.0), (0.0, 501.0), (-53.0, 448.0)],
         1610.0 * SCALE, 1760.0 * SCALE)))
     cuts.append(("Cut_FirewallWireWeb", F.prism_cutter(
         "Cut_FirewallWireWeb", "+X", [(-154.0, 310.0), (-74.0, 310.0), (-74.0, 423.0), (-114.0, 463.0), (-154.0, 423.0)],
@@ -924,11 +924,11 @@ def _bumper(name, tree, axis, z_range, center_x, theta0, theta1, guards, rise=No
 
 
 def grille_parts(tree):
-    """Grille insert: base plate, egg-crate grid, corral emblem with bars, fog lamps (unioned in build)."""
+    """Grille insert: stepped base plate with perimeter surround rabbet, egg-crate grid, corral emblem with bars, fog lamps."""
     floor = grille_floor(tree)
     v0, v1 = GRILLE_Z0, GRILLE_Z1
-    plate = F.prism_cutter("Grille", "-X", grille_poly(FIT), floor, floor + 0.9)
-    pieces = []
+    plate = F.prism_cutter("Grille", "-X", grille_poly(FIT), floor, floor + 0.45)
+    pieces = [F.prism_cutter("Grille_Step", "-X", grille_poly(FIT + SURROUND_W + 0.08), floor + 0.40, floor + 0.90)]
     rib, pitch = 16.0, 42.0          # ~0.67 mm ribs on a ~1.75 mm grid
     top = floor + 1.5
     border = SURROUND_W / SCALE + FIT / SCALE + 18.0    # ribs stop short of the slanted chrome surround
@@ -1051,17 +1051,17 @@ SURROUND_W = 1.0       # chrome grille surround ring width (print mm)
 
 
 def grille_surround(tree):
-    """Chrome ring framing the slanted shark-nose grille; sits on the insert's flat border inside the
-    pocket and extends forward to the raked shark-nose lip, trimmed by a clean raked plane just under
-    the skin so all 4 sides stay a single closed shell with 0 floating starts.
+    """Chrome ring framing the slanted shark-nose grille; seats into the insert's 0.48 mm perimeter
+    rabbet and extends slightly proud of the shark-nose lip, trimmed by a clean raked plane so all
+    4 sides (including the lower horizontal bar) print solidly (>= 8 layers) with 0 floating starts.
     Returns (ring, cutters)."""
     floor = grille_floor(tree)
     outer = grille_poly(FIT)
     inner = grille_poly(FIT + SURROUND_W)
-    ring = F.prism_cutter("GrilleSurround", "-X", outer, floor + 0.92, floor + 4.4)
-    hole = F.prism_cutter("GrilleSurround_Hole", "-X", inner, floor + 0.5, floor + 5.0)
-    x_bot = -hit_w(tree, "-X", GRILLE_Y_BOT - 12.0, GRILLE_Z0 + 8.0) / SCALE + 2.0
-    x_top = -hit_w(tree, "-X", GRILLE_Y_TOP - 12.0, GRILLE_Z1 - 8.0) / SCALE + 2.0
+    ring = F.prism_cutter("GrilleSurround", "-X", outer, floor + 0.48, floor + 4.4)
+    hole = F.prism_cutter("GrilleSurround_Hole", "-X", inner, floor + 0.2, floor + 5.0)
+    x_bot = -hit_w(tree, "-X", GRILLE_Y_BOT - 12.0, GRILLE_Z0 + 8.0) / SCALE - 8.0
+    x_top = -hit_w(tree, "-X", GRILLE_Y_TOP - 12.0, GRILLE_Z1 - 8.0) / SCALE - 8.0
     slope = (x_top - x_bot) / (GRILLE_Z1 - GRILLE_Z0)
     z0, z1 = GRILLE_Z0 - 40.0, GRILLE_Z1 + 40.0
     x0 = x_bot + slope * (z0 - GRILLE_Z0)
@@ -1396,9 +1396,9 @@ def chassis_parts():
         for a in (12, 35, 60, 90, 120, 145, 168)]))
     plate_cuts.append(F.prism_cutter("Chassis_DiffFlat", "+Z", rect(dx - dr - 20, -dr - 20, dx + dr + 20, dr + 20, 0),
                                      (CHASSIS_Z0 - 100.0) * SCALE, CHASSIS_Z0 * SCALE))
-    # open-top U-channel pinion & crown bevel gear chamber inside Chassis_Diff for Driveshaft + AxleGear
+    # open-top U-channel pinion & crown bevel gear chamber inside Chassis_Diff for PinionGear + AxleGear
     plate_cuts.append(F.prism_cutter("Cut_ChassisAxlePinion", "+X",
-                                     rect(-58.0, 320.0, 58.0, 485.0, 0),
+                                     rect(-62.0, 318.0, 62.0, 485.0, 0),
                                      3380.0 * SCALE, 3528.0 * SCALE))
     plate_cuts.append(F.prism_cutter("Cut_ChassisAxleGear", "+Z",
                                      rect(3455.0, 10.0, 3615.0, 58.0, 8.0),
@@ -1429,19 +1429,24 @@ def exhaust_slots():
 
 
 def exhaust_parts():
-    """[(part, union pieces, cut pieces)] chrome tailpipes: pipe, a turndown tip (a sleeve over the
-    pipe, its last stretch bent down 45 degrees) with an open dark bore, and the hanger fin."""
+    """[(part, union pieces, cut pieces)] chrome tailpipes: concealed oval muffler-outlet base foot for
+    print-bed stability, pipe, a self-supporting 45-deg tapered turndown tip with open dark bore, and hanger fin."""
     parts = []
     z = EXHAUST_Z
     for s in (-1, 1):
         tag, y = ("L" if s < 0 else "R"), s * EXHAUST_Y
         pipe = F.tube(f"Exhaust_{tag}", [(EXHAUST_X0, y, z), (EXHAUST_X1 - 60.0, y, z)], EXHAUST_R, 24)
-        tip = F.tube(f"Exhaust_{tag}_Tip", [(EXHAUST_X1 - 70.0, y, z), (EXHAUST_X1 - 5.0, y, z), (EXHAUST_X1 + 22.0, y, z - 27.0)],
-                     EXHAUST_TIP_R, 24)
+        base = F.loft_solid(f"Exhaust_{tag}_Base", "+X", [
+            (rect(y - 62.0, z - 44.0, y + 62.0, z + EXHAUST_R, 34.0), EXHAUST_X0 * SCALE),
+            (rect(y - 26.0, z - 26.0, y + 26.0, z + 26.0, 24.0), (EXHAUST_X0 + 42.0) * SCALE),
+        ])
+        tip = F.tube(f"Exhaust_{tag}_Tip",
+                     [(EXHAUST_X1 - 76.0, y, z), (EXHAUST_X1 - 68.0, y, z), (EXHAUST_X1 - 5.0, y, z), (EXHAUST_X1 + 22.0, y, z - 27.0)],
+                     [EXHAUST_R - 2.0, EXHAUST_TIP_R, EXHAUST_TIP_R, EXHAUST_TIP_R], 24)
         bore = F.tube(f"ExhaustBore_{tag}", [(EXHAUST_X1 - 40.0, y, z), (EXHAUST_X1 - 5.0, y, z), (EXHAUST_X1 + 50.0, y, z - 55.0)],
                       EXHAUST_BORE_R, 24)
         fin = F.prism_cutter(f"Exhaust_{tag}_Fin", "+Y", EXHAUST_FIN, (y - EXHAUST_FIN_T / 2) * SCALE, (y + EXHAUST_FIN_T / 2) * SCALE)
-        parts.append((pipe, [tip, fin], [bore]))
+        parts.append((pipe, [base, tip, fin], [bore]))
     return parts
 
 

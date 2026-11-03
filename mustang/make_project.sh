@@ -63,9 +63,12 @@ build_group 1_body 1 --assemble body.stl:1 windshield.stl:1:2 rear_glass.stl:1:2
 build_group 1_hood 1 hood.stl:1 trunk_lid.stl:1   # own plate: their supports collide with neighbours' paths (body, doors)
 build_group 1_doors 1 door_l.stl:1 door_r.stl:1
 build_group 2_black 2 chassis.stl:1 tire_x4.stl:4 grille.stl:1 axle.stl:1 knuckle_l.stl:1 knuckle_r.stl:1 steering_link.stl:1 interior_tub.stl:1 steering_wheel.stl:1 \
-  bay_tub.stl:1 boot_tub.stl:1 valve_cover_r.stl:1 valve_cover_l.stl:1 air_cleaner.stl:1 brace.stl:1 hood_prop.stl:1 door_card_l.stl:1 door_card_r.stl:1 diff_cover.stl:1
-build_group 3_silver 3 rim_x4.stl:4 grille_surround.stl:1 corral_emblem.stl:1 fog_lamp_x2.stl:2 headlight_x2.stl:2 park_light_x2.stl:2 \
-  taillight_bezel_r_x3.stl:3 taillight_bezel_l_x3.stl:3 gas_cap.stl:1 bumper_front.stl:1 mirror.stl:1 exhaust_x2.stl:2 backup_light_x2.stl:2 vent_window_r.stl:1 vent_window_l.stl:1 driveshaft.stl:1 axle_gear.stl:1
+  bay_tub.stl:1 boot_tub.stl:1 valve_cover_r.stl:1 valve_cover_l.stl:1 air_cleaner.stl:1 brace.stl:1 hood_prop.stl:1 door_card_l.stl:1 door_card_r.stl:1 diff_cover.stl:1 motor_shim_x2.stl:2
+build_group 3_silver 3 rim_x4.stl:4 bumper_front.stl:1 grille_surround.stl:1 driveshaft.stl:1 exhaust_x2.stl:2
+build_group 3_silver_small 3 corral_emblem.stl:1 fog_lamp_x2.stl:2 headlight_x2.stl:2 park_light_x2.stl:2 \
+  taillight_bezel_r_x3.stl:3 taillight_bezel_l_x3.stl:3 gas_cap.stl:1 mirror.stl:1 backup_light_x2.stl:2 \
+  vent_window_r.stl:1 vent_window_l.stl:1 pinion_gear.stl:1 axle_gear.stl:1 \
+  motor_coupler_1p0.stl:1 motor_coupler_1p5.stl:1 motor_coupler_tube.stl:1 motor_coupler_n25.stl:1   # isolated precision plate with outer brims & gentle speeds
 build_group 3_bumper 3 bumper_rear.stl:1   # own plate: it stands upright on tree supports that crowd its neighbours
 build_group 4_red 4 taillight_lens_r_x3.stl:3 taillight_lens_l_x3.stl:3
 build_group 5_blue 5 engine_block.stl:1
@@ -92,7 +95,7 @@ bad += [f for f, g in group.items() if g != "-" and f != host[g] and part_of.get
 if bad:
     sys.exit(f"plate groups disagree with the export manifest: {bad}")
 PY
-python3 "$HERE/merge_3mf.py" "$WORK/merged.3mf" "$WORK/1_body.3mf" "$WORK/1_hood.3mf" "$WORK/1_doors.3mf" "$WORK/2_black.3mf" "$WORK/3_silver.3mf" "$WORK/3_bumper.3mf" "$WORK/4_red.3mf" \
+python3 "$HERE/merge_3mf.py" "$WORK/merged.3mf" "$WORK/1_body.3mf" "$WORK/1_hood.3mf" "$WORK/1_doors.3mf" "$WORK/2_black.3mf" "$WORK/3_silver.3mf" "$WORK/3_silver_small.3mf" "$WORK/3_bumper.3mf" "$WORK/4_red.3mf" \
   "$WORK/5_blue.3mf"
 
 # Re-save through Bambu Studio so the final file is written by Bambu itself.

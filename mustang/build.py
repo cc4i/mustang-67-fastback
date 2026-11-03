@@ -154,12 +154,14 @@ def build_parts(body_ob, shell):
             add_boolean(part, link(h, "Cutters"))
         for p in pieces:
             add_union(part, link(p, "Cutters"))
-    tub, pieces, cuts = interior.tub_parts()
+    tub, pieces, cuts, late_pieces = interior.tub_parts()
     link(tub, "Parts")
     for p in pieces:
         add_union(tub, link(p, "Cutters"))
     for c in cuts:
         add_boolean(tub, link(c, "Cutters"))
+    for p in late_pieces:                   # details rising out of recesses (shifter in its gate slot)
+        add_union(tub, link(p, "Cutters"))
     wheel, pieces, placement = interior.steering_wheel()
     link(wheel, "Parts")
     wheel.matrix_world = placement
@@ -258,14 +260,29 @@ def build_engine_bay(tree, me):
     link(brace, "Parts")
     for p in pieces:
         add_union(brace, link(p, "Cutters"))
+    coupler, c_cuts = engine_bay.motor_coupler_part()
+    link(coupler, "Parts")
+    for c in c_cuts:
+        add_boolean(coupler, link(c, "Cutters"))
     shaft, s_cuts = engine_bay.driveshaft_part()
     link(shaft, "Parts")
     for c in s_cuts:
         add_boolean(shaft, link(c, "Cutters"))
+    pinion, p_cuts = engine_bay.pinion_gear_part()
+    link(pinion, "Parts")
+    for c in p_cuts:
+        add_boolean(pinion, link(c, "Cutters"))
     gear, g_cuts = engine_bay.axle_gear_part()
     link(gear, "Parts")
     for c in g_cuts:
         add_boolean(gear, link(c, "Cutters"))
+    spares, shim = engine_bay.motor_fit_kit_parts()
+    for sp, sp_cuts in spares:
+        link(sp, "Accessories")
+        sp.hide_render = True
+        for c in sp_cuts:
+            add_boolean(sp, link(c, "Cutters"))
+    link(shim, "Accessories").hide_render = True
     trunk, t_pieces, t_cuts, t_pivot = engine_bay.trunk_parts(tree, me)
     link(trunk, "Parts")
     for p in t_pieces:

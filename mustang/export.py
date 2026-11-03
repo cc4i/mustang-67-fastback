@@ -67,8 +67,14 @@ PARTS = [
     ("hood_prop", "HoodProp", "LOCAL", 1, "#1A1A1A"),
     ("trunk_lid", "TrunkLid", IDENTITY, 1, "#6B0F1A"),
     ("boot_tub", "BootTub", IDENTITY, 1, "#1A1A1A"),
-    ("driveshaft", "Driveshaft", RY_UP_FROM_POS_X, 1, "#C8C8CC"),
-    ("axle_gear", "AxleGear", RX_UP_FROM_NEG_Y, 1, "#C8C8CC"),
+    ("driveshaft", "Driveshaft", UPSIDE_DOWN, 1, "#C8C8CC"),        # lies horizontally on its flat octagonal face
+    ("pinion_gear", "PinionGear", RY_UP_FROM_POS_X, 1, "#C8C8CC"),  # flat front collar down, 7 bevel teeth in XY
+    ("axle_gear", "AxleGear", RX_UP_FROM_NEG_Y, 1, "#C8C8CC"),      # flat back hub down, 9 bevel teeth in XY
+    ("motor_coupler_1p0", "MotorCoupler", RY_UP_FROM_POS_X, 1, "#C8C8CC"),
+    ("motor_coupler_1p5", "MotorCoupler_1p5", RY_UP_FROM_POS_X, 1, "#C8C8CC"),
+    ("motor_coupler_tube", "MotorCoupler_Tube", RY_UP_FROM_POS_X, 1, "#C8C8CC"),
+    ("motor_coupler_n25", "MotorCoupler_N25", RY_UP_FROM_POS_X, 1, "#C8C8CC"),
+    ("motor_shim", "MotorShim_0p5", IDENTITY, 2, "#1A1A1A"),
 ]
 # extra parts of another part's print object (its unique part key), in another colour: the tinted
 # glass inlays print in black inside the body. Exported in the host's print frame, so they land in place.
@@ -242,7 +248,8 @@ def _write_parts(stl_dir, poses):
         info = check(bm)
         info["size_mm"] = [round(s, 2) for s in size(bm)]
         info["qty"] = qty
-        info["floating"] = printcheck.floating_starts(bm)   # mid-air island starts (slicer "floating regions")
+        info["floating"] = printcheck.floating_starts(bm)          # mid-air island starts (slicer "floating regions")
+        info["cantilevers"] = printcheck.floating_cantilevers(bm)  # unanchored overhangs (slicer "floating cantilever")
         fname = f"{key}_x{qty}.stl" if qty > 1 else f"{key}.stl"
         write_stl(bm, os.path.join(stl_dir, fname), f"mustang67 {key}")
         report[fname] = info
@@ -257,6 +264,7 @@ def _write_parts(stl_dir, poses):
         info["size_mm"] = [round(s, 2) for s in size(bm)]
         info["qty"] = 1
         info["floating"] = []                # it starts on the host, not in mid-air
+        info["cantilevers"] = []
         fname = f"{key}.stl"
         write_stl(bm, os.path.join(stl_dir, fname), f"mustang67 {key}")
         report[fname] = info

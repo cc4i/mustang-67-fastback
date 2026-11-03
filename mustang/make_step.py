@@ -75,9 +75,9 @@ def solid_from_stl(path):
         builder.Add(shell, face)
     closed = BRep_Tool.IsClosed_s(shell)
     shell.Closed(closed)
-    solid = BRepBuilderAPI_MakeSolid(shell).Solid()
-    mesh_volume = volume(solid)
-    unify = ShapeUpgrade_UnifySameDomain(solid, True, True, False)
+    raw_solid = BRepBuilderAPI_MakeSolid(shell).Solid()
+    mesh_volume = volume(raw_solid)
+    unify = ShapeUpgrade_UnifySameDomain(raw_solid, True, True, False)
     unify.SetAngularTolerance(FLAT_ANGLE)
     unify.SetLinearTolerance(FLAT_DIST)
     unify.Build()
@@ -88,10 +88,15 @@ def solid_from_stl(path):
         fix.Perform()
         solid = fix.Shape()
     v = volume(solid)
+    vol_change = abs(v - mesh_volume) / abs(mesh_volume) if mesh_volume else 1.0
+    if not BRepCheck_Analyzer(solid).IsValid() or vol_change > VOLUME_TOL:
+        solid = raw_solid
+        v = mesh_volume
+        vol_change = 0.0
     return solid, {
         "triangles": mesh.NbTriangles(), "faces": sum(1 for _ in faces(solid)), "closed": closed,
         "valid": BRepCheck_Analyzer(solid).IsValid(), "healed": healed, "volume_mm3": round(v, 3),
-        "volume_change": abs(v - mesh_volume) / abs(mesh_volume) if mesh_volume else 1.0,
+        "volume_change": vol_change,
     }
 
 

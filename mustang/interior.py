@@ -265,7 +265,7 @@ def _dash_brow_loft(dash_half):
     return F.loft_solid("Tub_DashBrow", "+Y", sections)
 
 
-def _waterfall_console_parts(pieces, cuts):
+def _waterfall_console_parts(pieces, cuts, late_pieces):
     """Full-length 1967 Mustang waterfall center console, radio/tambour fascia, and curved T-handle shifter."""
     # Main console body sweeping continuously from under the dash (Z=758) down to the floor tunnel (Z=522..538)
     base_pts = [
@@ -384,10 +384,11 @@ def _waterfall_console_parts(pieces, cuts):
         cuts.append(_box(f"Tub_BucklePocket{k}", 2466.0, 2518.0, by - 16.0, by + 16.0, 514.0, 532.0, 5.0))
     pieces.append(_box("Tub_ConsoleTrimLatch", 2545.0, 2568.0, -18.0, 18.0, 530.0, 541.5, 4.0))
 
-    # Iconic 1967 Ford Cruise-O-Matic forward-swept chrome T-handle shifter
-    pieces.append(_cylinder("Tub_ShifterCollar", (2238.0, 0.0, 508.0), (2228.0, 0.0, 536.0), 14.5, 24, r2=11.0))
-    stalk_pts = [(2238.0, 0.0, 508.0), (2225.0, 0.0, 548.0), (2206.0, 0.0, 588.0), (2186.0, 0.0, 624.0)]
-    pieces.append(F.tube("Tub_Shifter", stalk_pts, [12.0, 10.0, 9.2, 10.8], 24))
+    # Iconic 1967 Ford Cruise-O-Matic forward-swept chrome T-handle shifter (unioned after Tub_ShiftSlot
+    # so the recessed gate slot never severs the shifter stalk base into a floating island)
+    late_pieces.append(_cylinder("Tub_ShifterCollar", (2238.0, 0.0, 510.0), (2228.0, 0.0, 536.0), 14.5, 24, r2=11.0))
+    stalk_pts = [(2238.0, 0.0, 510.0), (2225.0, 0.0, 548.0), (2206.0, 0.0, 588.0), (2186.0, 0.0, 624.0)]
+    late_pieces.append(F.tube("Tub_Shifter", stalk_pts, [12.0, 10.0, 9.2, 10.8], 24))
     # Horizontal T-bar sweeps subtly upward from the stalk so every point on its underside drains into the stalk
     t_bar_pts = [
         (2184.0, -46.0, 626.0),
@@ -396,11 +397,11 @@ def _waterfall_console_parts(pieces, cuts):
         (2185.0, 18.0, 622.5),
         (2184.0, 46.0, 626.0),
     ]
-    pieces.append(F.tube("Tub_ShifterKnob", t_bar_pts, [11.0, 12.8, 14.2, 12.8, 11.0], 24))
+    late_pieces.append(F.tube("Tub_ShifterKnob", t_bar_pts, [11.0, 12.8, 14.2, 12.8, 11.0], 24))
 
 
 def tub_parts():
-    """(tub object, union pieces, cut pieces) for the black interior."""
+    """(tub object, union pieces, cut pieces, post-cut union pieces) for the black interior."""
     i = FIT
     xr = REAR_NARROW_X0
     # floor: wide up front, narrow between the rear wheelhouses
@@ -408,7 +409,7 @@ def tub_parts():
                      (CAB_X1 - i, -(REAR_HALF - i)), (CAB_X1 - i, REAR_HALF - i), (REAR_NARROW_X1, REAR_HALF - i),
                      (xr, CABIN_HALF - i), (CAB_X0 + i, CABIN_HALF - i)]
     tub = F.prism_cutter("InteriorTub", "+Z", floor_outline, FLOOR_Z0 * SCALE, FLOOR_Z1 * SCALE)
-    pieces, cuts = [], []
+    pieces, cuts, late_pieces = [], [], []
     # trim panels behind the doorway (the door cards themselves ride on the opening doors) and the
     # rear quarter trim (up to the wheelhouse top)
     import doors
@@ -483,7 +484,7 @@ def tub_parts():
 
     # transmission tunnel, sculpted waterfall center console, and forward-swept T-handle shifter
     pieces.append(_box("Tub_Tunnel", CAB_X0 + i, CAB_X1 - i, -168, 168, FLOOR_Z0, 515, 40))
-    _waterfall_console_parts(pieces, cuts)
+    _waterfall_console_parts(pieces, cuts, late_pieces)
 
     # front bucket seats: smooth cushion with rounded front nose, lofted horseshoe thigh bolsters, reclined backrest,
     # lofted side bolsters, chrome side trim, and soft comfort-weave pleats
@@ -573,9 +574,9 @@ def tub_parts():
     pieces.append(_box("Tub_CargoShelf", 3235.0, CAB_X1 - i, -(REAR_HALF - i), REAR_HALF - i, FLOOR_Z0, 710.0, 20))
     for k, sy in enumerate((-360.0, -180.0, 0.0, 180.0, 360.0)):
         pieces.append(_box(f"Tub_SeatTrimCargo{k}", 3315.0, CAB_X1 - i - 8.0, sy - 8.0, sy + 8.0, 706.0, 716.0, 3))
-    # self-supporting 45-deg gable-roofed driveshaft tunnel (Y = -50..+50) and partitioned wire conduit (Y = -154..-74)
+    # self-supporting 45-deg gable-roofed driveshaft tunnel (Y = -53..+53) and partitioned wire conduit (Y = -154..-74)
     cuts.append(F.prism_cutter("Tub_ShaftTunnel", "+X",
-                               [(-50.0, 335.0), (50.0, 335.0), (50.0, 445.0), (0.0, 495.0), (-50.0, 445.0)],
+                               [(-53.0, 335.0), (53.0, 335.0), (53.0, 448.0), (0.0, 501.0), (-53.0, 448.0)],
                                (CAB_X0 - 15.0) * SCALE, (CAB_X1 + 15.0) * SCALE))
 
     def _wire_prof(z0):
@@ -589,7 +590,7 @@ def tub_parts():
         (CAB_X1 + 15.0, 598.0),
     ]
     cuts.append(F.loft_solid("Tub_WireTunnel", "+X", [(_wire_prof(z0), x * SCALE) for x, z0 in wire_stations]))
-    return tub, pieces, cuts
+    return tub, pieces, cuts, late_pieces
 
 
 # ---------------------------------------------------------------- steering wheel

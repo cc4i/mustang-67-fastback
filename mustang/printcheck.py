@@ -1,4 +1,5 @@
 """Print-readiness checks on the evaluated (post-modifier) meshes."""
+import math
 import re
 
 import bmesh
@@ -170,9 +171,149 @@ def run():
             "body": reports["Body"]}
 
 
+def _seg_dist_2d(p, a, b):
+    abx, aby = b[0] - a[0], b[1] - a[1]
+    apx, apy = p[0] - a[0], p[1] - a[1]
+    d2 = abx * abx + aby * aby
+    t = 0.0 if d2 < 1e-12 else max(0.0, min(1.0, (apx * abx + apy * aby) / d2))
+    return math.hypot(apx - t * abx, apy - t * aby)
+
+
+def _overhang_hazards(bm, layer=0.12, bed_tol=0.20):
+    """Scan downward-facing horizontal patches above the bed for (thin_necks, cantilevers):
+    - thin_necks: islands >= 0.50 mm^2 whose only downward support squeezes through a sub-nozzle
+      (< 0.20 mm minor-axis width) sliver that Arachne drops during slicing ("floating regions").
+    - cantilevers: open perimeter overhangs extending > 1.5 mm horizontally from anchored walls
+      with >= 30 mm^2 of unbridged area ("floating cantilever")."""
+    if not bm.verts or not bm.faces:
+        return [], []
+    tris = []
+    for f in bm.faces:
+        vs = [ (round(v.co.x, 5), round(v.co.y, 5), round(v.co.z, 5)) for v in f.verts ]
+        for k in range(1, len(vs) - 1):
+            p0, p1, p2 = vs[0], vs[k], vs[k + 1]
+            ux, uy, uz = p1[0] - p0[0], p1[1] - p0[1], p1[2] - p0[2]
+            vx, vy, vz = p2[0] - p0[0], p2[1] - p0[1], p2[2] - p0[2]
+            nx, ny, nz = uy * vz - uz * vy, uz * vx - ux * vz, ux * vy - uy * vx
+            area2 = math.sqrt(nx * nx + ny * ny + nz * nz)
+            if area2 > 2e-7:
+                tris.append((p0, p1, p2, nz / area2, 0.5 * area2))
+    if not tris:
+        return [], []
+    zmin = min(min(t[0][2], t[1][2], t[2][2]) for t in tris)
+    edge_tris = {}
+    for i, (p0, p1, p2, _, _) in enumerate(tris):
+        for a, b in ((p0, p1), (p1, p2), (p2, p0)):
+            e = (a, b) if a < b else (b, a)
+            edge_tris.setdefault(e, []).append(i)
+    down = {
+        i for i, (p0, p1, p2, nz, _) in enumerate(tris)
+        if nz < -0.90 and (p0[2] + p1[2] + p2[2]) / 3.0 > zmin + bed_tol
+    }
+    seen = set()
+    thin_necks, cantilevers = [], []
+    for i0 in down:
+        if i0 in seen:
+            continue
+        patch, stack = [], [i0]
+        seen.add(i0)
+        while stack:
+            cur = stack.pop()
+            patch.append(cur)
+            p0, p1, p2, _, _ = tris[cur]
+            zc = (p0[2] + p1[2] + p2[2]) / 3.0
+            for a, b in ((p0, p1), (p1, p2), (p2, p0)):
+                e = (a, b) if a < b else (b, a)
+                for j in edge_tris[e]:
+                    if j in down and j not in seen:
+                        q0, q1, q2, _, _ = tris[j]
+                        if abs((q0[2] + q1[2] + q2[2]) / 3.0 - zc) < 0.15:
+                            seen.add(j)
+                            stack.append(j)
+        area = sum(tris[i][4] for i in patch)
+        if area < 0.50:
+            continue
+        pset = set(patch)
+        exit_pts = set()
+
+        def edge_reaches_below(e0, z_ref):
+            st = [j for j in edge_tris[e0] if j not in pset]
+            seen_f = set(st)
+            reached = False
+            while st:
+                f_idx = st.pop()
+                q0, q1, q2, _, _ = tris[f_idx]
+                if min(q0[2], q1[2], q2[2]) < z_ref - 0.04:
+                    reached = True
+                    for q in (q0, q1, q2):
+                        if q[2] <= z_ref + 1e-3:
+                            exit_pts.add((q[0], q[1]))
+                    continue
+                if min(q0[2], q1[2], q2[2]) <= z_ref + layer:
+                    for a, b in ((q0, q1), (q1, q2), (q2, q0)):
+                        ek = (a, b) if a < b else (b, a)
+                        for g_idx in edge_tris[ek]:
+                            if g_idx not in pset and g_idx not in seen_f:
+                                seen_f.add(g_idx)
+                                st.append(g_idx)
+            return reached
+
+        anchors, frees = [], []
+        for i in patch:
+            p0, p1, p2, _, _ = tris[i]
+            for a, b in ((p0, p1), (p1, p2), (p2, p0)):
+                e = (a, b) if a < b else (b, a)
+                if all(j in pset for j in edge_tris[e]):
+                    continue
+                if edge_reaches_below(e, min(a[2], b[2])):
+                    anchors.append((a, b))
+                else:
+                    frees.append((a, b))
+        cx = sum((tris[i][0][0] + tris[i][1][0] + tris[i][2][0]) / 3.0 * tris[i][4] for i in patch) / area
+        cy = sum((tris[i][0][1] + tris[i][1][1] + tris[i][2][1]) / 3.0 * tris[i][4] for i in patch) / area
+        cz = sum((tris[i][0][2] + tris[i][1][2] + tris[i][2][2]) / 3.0 * tris[i][4] for i in patch) / area
+        pt = [round(cx, 2), round(cy, 2), round(cz, 2)]
+        if not anchors:
+            thin_necks.append(pt)
+            continue
+        if exit_pts:
+            pts = list(exit_pts)
+            mx = sum(p[0] for p in pts) / len(pts)
+            my = sum(p[1] for p in pts) / len(pts)
+            cxx = sum((p[0] - mx) ** 2 for p in pts) / len(pts)
+            cyy = sum((p[1] - my) ** 2 for p in pts) / len(pts)
+            cxy = sum((p[0] - mx) * (p[1] - my) for p in pts) / len(pts)
+            tr = cxx + cyy
+            det = max(0.0, cxx * cyy - cxy * cxy)
+            lam_min = max(0.0, 0.5 * (tr - math.sqrt(max(0.0, tr * tr - 4.0 * det))))
+            span_max = max(math.hypot(a[0] - b[0], a[1] - b[1]) for a in pts for b in pts)
+            if 3.464 * math.sqrt(lam_min) < 0.20 and span_max < 1.20:
+                thin_necks.append(pt)
+                continue
+        if frees:
+            unanchored_area = 0.0
+            for i in patch:
+                p0, p1, p2, _, fa = tris[i]
+                m = ((p0[0] + p1[0] + p2[0]) / 3.0, (p0[1] + p1[1] + p2[1]) / 3.0)
+                da = min(_seg_dist_2d(m, s0, s1) for s0, s1 in anchors)
+                df = min(_seg_dist_2d(m, s0, s1) for s0, s1 in frees)
+                if da > 1.5 and df < da:
+                    unanchored_area += fa
+            if unanchored_area >= 30.0:
+                cantilevers.append(pt)
+    return thin_necks, cantilevers
+
+
+def floating_cantilevers(bm, layer=0.12, bed_tol=0.20):
+    """Locations [x, y, z] of unanchored horizontal overhangs that trigger slicer 'floating cantilever' warnings."""
+    _, cantilevers = _overhang_hazards(bm, layer=layer, bed_tol=bed_tol)
+    return cantilevers
+
+
 def floating_starts(bm, layer=0.12, bed_tol=0.15, tol=1e-4):
     """Places where printing this mesh as oriented (Z up, bed at its lowest point) would start a
-    new island in mid-air, i.e. what slicers report as "floating regions".
+    new island in mid-air, i.e. what slicers report as "floating regions" (including islands joined
+    to lower layers only through a sub-nozzle < 0.20 mm sliver that Arachne drops).
 
     Such an island begins at a local minimum of height over the surface: a vertex, or a flat patch
     of vertices at one height (a tube's bottom line, a box's underside), whose every neighbour is
@@ -182,6 +323,7 @@ def floating_starts(bm, layer=0.12, bed_tol=0.15, tol=1e-4):
     reaching geometry that goes lower (the slicer never sees thinner slivers). Anything starting
     within `bed_tol` of the bed prints as part of the first layer. Returns each island's lowest point."""
     bm.verts.index_update()
+    bm.normal_update()
     seen = set()
     starts = []
     zmin = min(v.co.z for v in bm.verts)
@@ -225,6 +367,10 @@ def floating_starts(bm, layer=0.12, bed_tol=0.15, tol=1e-4):
             continue
         c = sum((p.co for p in patch), v.co * 0) / len(patch)
         starts.append([round(c.x, 2), round(c.y, 2), round(c.z, 2)])
+    thin_necks, _ = _overhang_hazards(bm, layer=layer, bed_tol=max(bed_tol, 0.20))
+    for pt in thin_necks:
+        if all(math.hypot(pt[0] - s[0], pt[1] - s[1]) > 0.5 or abs(pt[2] - s[2]) > 0.5 for s in starts):
+            starts.append(pt)
     return starts
 
 
