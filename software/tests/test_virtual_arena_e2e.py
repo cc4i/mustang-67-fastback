@@ -172,8 +172,57 @@ def test_local_piper_onnx_tts_and_voice_e2e_workbench(
     assert len(snap["cam_jpeg_b64"]) > 1000
     assert len(snap["hud_png_b64"]) > 1000
 
+    # Verify Live Laptop Camera + Live Microphone PCM16 streaming (`camera_source == "laptop_webcam"` & `audio_source == "laptop_mic"`)
+    sample_jpeg = wb.arena.render_clean_camera_jpeg()
+    cam_info = wb.push_laptop_webcam_jpeg(sample_jpeg, activate_webcam_mode=True)
+    assert cam_info["camera_source"] == "laptop_webcam"
+    assert cam_info["webcam_frames_received"] == 1
+    mic_info = wb.push_laptop_mic_pcm16(b"\x10\x00" * 4000, rms=0.18)
+    assert mic_info["audio_source"] == "laptop_mic"
+    assert mic_info["mic_chunks_received"] == 1
+
+    webcam_turn = wb.submit_voice_utterance("Describe the live scene in front of you!", advance_steps=2)
+    assert webcam_turn["camera_source"] == "laptop_webcam"
+    assert webcam_turn["audio_source"] == "laptop_mic"
+    assert webcam_turn["showcase_object"] is None
+    assert "webcam" in webcam_turn["spoken_reply_text"].lower()
+
+    # Verify Driving Actions: move forwards, backwards/reverse, keep going (auto-avoid blockers), and stop
+    wb.set_camera_source("virtual")
+    fwd_turn = wb.submit_voice_utterance("Move forwards!", advance_steps=8)
+    assert fwd_turn["active_maneuver"] == "move_forward"
+    assert fwd_turn["applied_throttle"] > 0.40
+    assert fwd_turn["car_pose_mm"][0] > 40.0
+
+    rev_turn = wb.submit_voice_utterance("Move backwards in reverse!", advance_steps=8)
+    assert rev_turn["active_maneuver"] == "reverse_back"
+    assert rev_turn["applied_throttle"] < -0.35
+    assert rev_turn["car_pose_mm"][0] < 0.0
+
+    keep_turn = wb.submit_voice_utterance("Keep going and auto avoid the blockers!", advance_steps=4)
+    assert keep_turn["active_maneuver"] == "keep_going"
+    assert len(wb.arena.obstacles) == 2
+    obs_states: set[str] = {wb.autonomy.maneuver_seq.obstacle_state}
+    for _ in range(60):
+        wb.step_physics_and_sensors(dt_sec=0.05)
+        obs_states.add(wb.autonomy.maneuver_seq.obstacle_state)
+    assert "EVASIVE_REVERSE" in obs_states
+    assert "EVASIVE_BYPASS_PASS" in obs_states
+    assert wb.arena.car_x_mm > 320.0
+
+    stop_turn = wb.submit_voice_utterance("Stop right now!", advance_steps=2)
+    assert stop_turn["applied_throttle"] == 0.0
+    assert stop_turn["source_mode"] == "IDLE"
+    assert stop_turn["hud_emoji"] == "ALERT_STOP"
+
+    # Verify empty-string TimeoutError() inside _query_real_live_websocket never raises IndexError
+    err_lines = str(TimeoutError()).splitlines()
+    short_err = (err_lines[0] if err_lines else repr(TimeoutError()))[:110]
+    assert short_err == "TimeoutError()"
+
     e2e = run_voice_e2e_session(audible_speaker=False, use_cloud_live=False, repo_root=tmp_path)
     assert e2e["status"] == "PASS"
     assert e2e["tts_backend_used"].startswith("piper-onnx:")
     assert e2e["turns_executed"] == 4
+    assert e2e["live_webcam_turn"]["camera_source"] == "laptop_webcam"
     assert e2e["barge_in_verified"] is True

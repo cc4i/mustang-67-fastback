@@ -54,9 +54,10 @@ def build_gemini_tool_declarations() -> list[dict[str, Any]]:
         {
             "name": "execute_maneuver",
             "description": (
-                "Trigger one of the 7 predefined maneuvers (`circle_left`, `circle_right`, "
-                "`figure_eight`, `slalom`, `spin_wiggle`, `u_turn_3pt`, `patrol`) with automatic "
-                "<20 ms VL53L1X obstacle braking, ~150 mm reverse, and S-curve bypass recovery."
+                "Trigger a driving action (`move_forward`, `reverse_back`, `keep_going`, `turn_left`, `turn_right`) "
+                "or one of the 7 predefined trick maneuvers (`circle_left`, `circle_right`, `figure_eight`, "
+                "`slalom`, `spin_wiggle`, `u_turn_3pt`, `patrol`) with automatic <20 ms VL53L1X obstacle braking, "
+                "~150 mm reverse, and S-curve bypass recovery."
             ),
             "behavior": "NON_BLOCKING",
             "parameters": {

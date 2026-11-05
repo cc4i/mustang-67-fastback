@@ -30,9 +30,14 @@ from typing import Any
 
 import google.genai as genai
 from google.genai import types
+from PIL import Image
 
 from mustang_ai.config import CORE_12_EMOJIS, GeminiERConfig, load_gemini_api_key
-from mustang_ai.features.maneuver_obstacle import MANEUVER_LIBRARY
+from mustang_ai.features.maneuver_obstacle import (
+    DRIVING_ACTION_LIBRARY,
+    MANEUVER_LIBRARY,
+    normalize_maneuver_name,
+)
 from mustang_ai.hal.audio_i2s import MacLaptopAudio, pcm16_to_wav_bytes
 from mustang_ai.hal.camera_ov5647 import SimFisheyeCamera
 from mustang_ai.hal.display_gc9a01 import SimGC9A01Display
@@ -96,6 +101,67 @@ def coalesce_turn_tool_calls(
     return other_calls + [merged_speak]
 
 
+def normalize_webcam_jpeg(raw_image_bytes: bytes, width: int = 640, height: int = 480) -> tuple[bytes, bytes]:
+    """Decode any uploaded or WebRTC-streamed laptop camera frame into `(clean_640x480_jpeg, raw_640x480_rgb)`."""
+    img = Image.open(io.BytesIO(raw_image_bytes)).convert("RGB")
+    if img.size != (width, height):
+        img = img.resize((width, height), Image.Resampling.BILINEAR)
+    rgb_bytes = img.tobytes()
+    out_buf = io.BytesIO()
+    img.save(out_buf, format="JPEG", quality=88)
+    return out_buf.getvalue(), rgb_bytes
+
+
+def capture_mac_webcam_jpeg_once(device_index: str = "0", timeout_s: float = 2.2) -> bytes | None:
+    """Attempt a non-blocking single-frame capture from the MacBook FaceTime camera via `ffmpeg -f avfoundation`.
+
+    Uses `subprocess.Popen` with `stdin=DEVNULL` and `proc.kill()` on timeout so it never hangs if macOS TCC
+    camera permission has not been granted to the terminal emulator.
+    """
+    ffmpeg_bin = "/opt/homebrew/bin/ffmpeg" if os.path.exists("/opt/homebrew/bin/ffmpeg") else "ffmpeg"
+    cmd = [
+        ffmpeg_bin,
+        "-nostdin",
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-f",
+        "avfoundation",
+        "-framerate",
+        "30",
+        "-video_size",
+        "640x480",
+        "-i",
+        str(device_index),
+        "-frames:v",
+        "1",
+        "-f",
+        "image2pipe",
+        "-vcodec",
+        "mjpeg",
+        "-",
+    ]
+    try:
+        proc = subprocess.Popen(
+            cmd,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        try:
+            stdout, _ = proc.communicate(timeout=timeout_s)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            proc.communicate()
+            return None
+        if proc.returncode == 0 and stdout and len(stdout) > 512:
+            clean_jpeg, _ = normalize_webcam_jpeg(stdout)
+            return clean_jpeg
+    except Exception:
+        return None
+    return None
+
+
 class LocalGeminiERBrain:
     """Real Cloud Live WebSocket Client (`client.aio.live.connect`) targeting `gemini-robotics-er-2-streaming-preview`
     (with automatic Vertex AI ADC fallback to `gemini-3.8-live` only if `GEMINI_API_KEY` is absent).
@@ -127,6 +193,7 @@ class LocalGeminiERBrain:
         user_pcm16_bytes: bytes | None = None,
         active_maneuver: str = "",
         showcase_object: str | None = None,
+        camera_source: str = "virtual",
     ) -> list[tuple[str, dict[str, Any], str]]:
         """Open a real `client.aio.live.connect` WebSocket session to `gemini-robotics-er-2-streaming-preview`,
         stream the `OV5647` camera JPEG + `16 kHz` `PCM16` voice audio + multimodal prompt, and collect tool calls.
@@ -135,19 +202,29 @@ class LocalGeminiERBrain:
         if not self.api_key:
             self.api_key = load_gemini_api_key().strip()
 
+        camera_instruction = (
+            "CAMERA SOURCE: LIVE LAPTOP WEBCAM STREAM (real-world 640x480 video frame streamed from the user's laptop camera "
+            "into the OV5647 pipeline). Carefully inspect the attached real-world camera image and describe the actual live "
+            "objects, people, hands, clothing, colors, text, or room scene visible in the frame!"
+            if camera_source == "laptop_webcam"
+            else "Inspect the attached 640x480 OV5647 front camera image carefully if the user asks what object is in front "
+            "of the car or what you see."
+        )
+
         prompt_text = (
             f"User voice command: \"{utterance}\"\n"
-            f"Live sensor telemetry: VL53L1X front laser={tof_mm}mm, "
+            f"Live sensor telemetry: camera_source={camera_source}, VL53L1X front laser={tof_mm}mm, "
             f"person_detected={vision.person_detected}, person_bearing_deg={vision.person_bearing_deg}.\n"
-            "Inspect the attached 640x480 OV5647 front camera image carefully if the user asks what object is in front "
-            "of the car or what you see.\n"
+            f"{camera_instruction}\n"
             "Always call `speak_with_emoji` ONCE with one of the 12 allowed emojis (CRUISE, HAPPY, WINK, LAUGH, "
             "COOL_SHADES, HEART_EYES, SURPRISED, THINKING, CONFUSED, SLEEPY, ANGRY_REV, ALERT_STOP), a short "
             "hud_message (<=16 chars), and a concise, single-paragraph spoken_text reply. "
-            "If the user asks for a driving trick/maneuver (circle_left, circle_right, figure_eight, slalom, "
-            "spin_wiggle, u_turn_3pt, patrol), ALSO call `execute_maneuver`. "
+            "If the user asks to drive/move forward, go straight, reverse/move backwards/back up, keep going and "
+            "auto-avoid blockers, turn left, turn right, or perform a driving maneuver, ALSO call `execute_maneuver` "
+            "with `maneuver_name` set to one of: `move_forward`, `reverse_back`, `keep_going`, `turn_left`, "
+            "`turn_right`, `circle_left`, `circle_right`, `figure_eight`, `slalom`, `spin_wiggle`, `u_turn_3pt`, `patrol`. "
             "If the user asks to follow them, ALSO call `set_follow_person_mode`. "
-            "If the user asks to stop, ALSO call `emergency_stop`."
+            "If the user asks to stop/halt/brake, ALSO call `emergency_stop`."
         )
 
         candidates: list[tuple[str, genai.Client, str, types.Modality]] = []
@@ -162,40 +239,46 @@ class LocalGeminiERBrain:
                 )
             )
 
-        proj = os.environ.get("GOOGLE_CLOUD_PROJECT", "multi-gke-ops")
-        loc = os.environ.get("GOOGLE_CLOUD_LOCATION", "us-central1")
-        try:
-            vertex_client = genai.Client(vertexai=True, project=proj, location=loc)
-            candidates.append(
-                (
-                    f"vertex-adc:{self.config.fallback_live_model}",
-                    vertex_client,
-                    self.config.fallback_live_model,
-                    types.Modality.AUDIO,
+        if not candidates:
+            proj = os.environ.get("GOOGLE_CLOUD_PROJECT", "multi-gke-ops")
+            loc = os.environ.get("GOOGLE_CLOUD_LOCATION", "us-central1")
+            try:
+                vertex_client = genai.Client(vertexai=True, project=proj, location=loc)
+                candidates.append(
+                    (
+                        f"vertex-adc:{self.config.fallback_live_model}",
+                        vertex_client,
+                        self.config.fallback_live_model,
+                        types.Modality.AUDIO,
+                    )
                 )
-            )
-        except Exception as exc:
-            self.last_cloud_probe_log.append(f"vertex-init-err:{type(exc).__name__}")
+            except Exception as exc:
+                self.last_cloud_probe_log.append(f"vertex-init-err:{type(exc).__name__}")
 
         for label, client, model_name, modality in candidates:
             live_cfg = build_gemini_live_connect_config(self.config, modality=modality)
             try:
                 async with asyncio.timeout(7.5):
                     async with client.aio.live.connect(model=model_name, config=live_cfg) as sess:
-                        # 1. Stream realtime video JPEG + 16 kHz PCM16 voice audio chunk
+                        # 1. Stream realtime video JPEG frame
                         if jpeg_bytes:
                             await sess.send_realtime_input(
                                 video=types.Blob(data=jpeg_bytes, mime_type="image/jpeg")
                             )
-                        if user_pcm16_bytes:
-                            await sess.send_realtime_input(
-                                audio=types.Blob(data=user_pcm16_bytes[:6400], mime_type="audio/pcm;rate=16000")
-                            )
 
-                        # 2. Send atomic multimodal turn (Camera JPEG Part + Text Part) with turn_complete=True
+                        # 2. Send atomic multimodal turn (Camera JPEG Part + 16 kHz Audio WAV Part + Text Part)
+                        # Passing speech audio as an inline audio/wav Part inside send_client_content(turn_complete=True)
+                        # avoids the server-side realtime VAD open-stream deadlock on gemini-robotics-er-2-streaming-preview.
                         turn_parts: list[types.Part] = []
                         if jpeg_bytes:
                             turn_parts.append(types.Part.from_bytes(data=jpeg_bytes, mime_type="image/jpeg"))
+                        if user_pcm16_bytes:
+                            recent_pcm16 = user_pcm16_bytes[-32000:]
+                            if len(recent_pcm16) % 2 == 1:
+                                recent_pcm16 = recent_pcm16[:-1]
+                            if recent_pcm16:
+                                user_wav_bytes = pcm16_to_wav_bytes(recent_pcm16, sample_rate_hz=16000)
+                                turn_parts.append(types.Part.from_bytes(data=user_wav_bytes, mime_type="audio/wav"))
                         turn_parts.append(types.Part.from_text(text=prompt_text))
                         await sess.send_client_content(
                             turns=types.Content(role="user", parts=turn_parts),
@@ -252,8 +335,10 @@ class LocalGeminiERBrain:
                             self.last_cloud_model_used = label
                             self.last_cloud_probe_log.append(f"{label}->OK({len(coalesced)} tool_calls)")
                             return coalesced
+                        self.last_cloud_probe_log.append(f"{label}->EMPTY_TURN")
             except Exception as exc:
-                short_err = str(exc).splitlines()[0][:110]
+                err_lines = str(exc).splitlines()
+                short_err = (err_lines[0] if err_lines else repr(exc))[:110]
                 self.last_cloud_probe_log.append(f"{label}->{type(exc).__name__}: {short_err}")
 
         return []
@@ -264,6 +349,7 @@ class LocalGeminiERBrain:
         vision: VisionFrameMetrics,
         tof_mm: int,
         showcase_object: str | None = None,
+        camera_source: str = "virtual",
     ) -> list[tuple[str, dict[str, Any], str]]:
         """Deterministic rule-based tool planner ensuring complete coverage across all 12 emojis, 7 maneuvers, and visual objects."""
         clean = (utterance or "").strip()
@@ -271,8 +357,34 @@ class LocalGeminiERBrain:
 
         if any(
             phrase in low
-            for phrase in ("what's this", "what is this", "what object", "what do you see", "in front of you", "in front of the car")
+            for phrase in (
+                "what's this",
+                "what is this",
+                "what object",
+                "what do you see",
+                "describe",
+                "live scene",
+                "holding",
+                "in front of you",
+                "in front of the car",
+            )
         ):
+            if camera_source == "laptop_webcam":
+                return [
+                    (
+                        "speak_with_emoji",
+                        {
+                            "emoji": "COOL_SHADES",
+                            "hud_message": "LIVE WEBCAM",
+                            "spoken_text": (
+                                f"Receiving your live 640 by 480 laptop webcam feed! Optical clearance is "
+                                f"{vision.left_clearance_score:.2f} left, {vision.right_clearance_score:.2f} right, "
+                                f"and front range is {tof_mm} millimeters."
+                            ),
+                        },
+                        self._next_call_id("call_webcam_vision"),
+                    )
+                ]
             if showcase_object and showcase_object in SHOWCASE_OBJECT_CATALOG:
                 desc = SHOWCASE_OBJECT_CATALOG[showcase_object]
                 if showcase_object == "stop_sign":
@@ -410,11 +522,78 @@ class LocalGeminiERBrain:
                 "Executing a three-point U-turn!",
             ),
             (
-                ("patrol", "cruise", "explore"),
+                (
+                    "keep going",
+                    "auto avoid",
+                    "avoid the blocker",
+                    "avoid blocker",
+                    "avoid obstacle",
+                    "keep driving",
+                    "auto cruise",
+                ),
+                "keep_going",
+                "CRUISE",
+                "KEEP GOING AUTO",
+                "Cruising forward continuously! I will automatically brake, reverse, and steer around any blockers in my path.",
+            ),
+            (
+                ("patrol", "explore"),
                 "patrol",
                 "CRUISE",
                 "PATROL CRUISE",
                 "Cruising on autonomous patrol with laser guard active.",
+            ),
+            (
+                (
+                    "move backward",
+                    "move backwards",
+                    "go backward",
+                    "go backwards",
+                    "backwards",
+                    "backward",
+                    "reverse",
+                    "back up",
+                    "backup",
+                    "go back",
+                ),
+                "reverse_back",
+                "THINKING",
+                "REVERSE BACK",
+                "Shifting into reverse and backing up smoothly!",
+            ),
+            (
+                (
+                    "move forward",
+                    "move forwards",
+                    "go forward",
+                    "go forwards",
+                    "drive forward",
+                    "drive straight",
+                    "go straight",
+                    "go ahead",
+                    "advance",
+                    "forwards",
+                    "forward",
+                    "cruise",
+                ),
+                "move_forward",
+                "CRUISE",
+                "MOVE FORWARD",
+                "Moving straight forward with laser obstacle guard active!",
+            ),
+            (
+                ("turn left", "steer left", "go left", "left turn"),
+                "turn_left",
+                "WINK",
+                "TURN LEFT -15D",
+                "Turning left at fifteen degrees!",
+            ),
+            (
+                ("turn right", "steer right", "go right", "right turn"),
+                "turn_right",
+                "WINK",
+                "TURN RIGHT +15D",
+                "Turning right at fifteen degrees!",
             ),
         ]
         for keywords, m_name, emo, caption, speech in maneuver_map:
@@ -504,6 +683,7 @@ class LocalGeminiERBrain:
         jpeg_bytes: bytes | None = None,
         user_pcm16_bytes: bytes | None = None,
         showcase_object: str | None = None,
+        camera_source: str = "virtual",
     ) -> list[tuple[str, dict[str, Any], str]]:
         """Query the real cloud Live WebSocket API (`client.aio.live.connect`), augmenting with deterministic
         companions if the cloud turn omits `speak_with_emoji` or the requested motion tool, and coalescing
@@ -514,6 +694,7 @@ class LocalGeminiERBrain:
             vision=vision,
             tof_mm=tof_mm,
             showcase_object=showcase_object,
+            camera_source=camera_source,
         )
         if not self.use_cloud_live:
             self.last_cloud_model_used = "deterministic-local"
@@ -527,15 +708,27 @@ class LocalGeminiERBrain:
                 jpeg_bytes=jpeg_bytes,
                 user_pcm16_bytes=user_pcm16_bytes,
                 showcase_object=showcase_object,
+                camera_source=camera_source,
             )
         )
         if not cloud_calls:
             self.last_cloud_model_used = "deterministic-fallback"
             return coalesce_turn_tool_calls(det_calls, self._next_call_id("fallback_coalesced"))
 
-        # Ensure that if cloud emitted a motion tool without `speak_with_emoji` (or vice versa), both are present
-        cloud_names = {c[0] for c in cloud_calls}
-        merged = list(cloud_calls)
+        # Normalize cloud maneuver names and ensure deterministic driving actions are preserved
+        det_maneuver = next((c[1].get("maneuver_name") for c in det_calls if c[0] == "execute_maneuver"), None)
+        merged: list[tuple[str, dict[str, Any], str]] = []
+        for c_name, c_args, c_id in cloud_calls:
+            if c_name == "execute_maneuver":
+                norm_m = normalize_maneuver_name(str(c_args.get("maneuver_name", "")))
+                if norm_m not in MANEUVER_LIBRARY and norm_m not in DRIVING_ACTION_LIBRARY:
+                    norm_m = str(det_maneuver or "move_forward")
+                elif det_maneuver in DRIVING_ACTION_LIBRARY and norm_m != det_maneuver:
+                    norm_m = str(det_maneuver)
+                c_args = {**c_args, "maneuver_name": norm_m}
+            merged.append((c_name, c_args, c_id))
+
+        cloud_names = {c[0] for c in merged}
         for det_name, det_args, det_id in det_calls:
             if det_name not in cloud_names:
                 merged.append((det_name, det_args, det_id))
@@ -560,8 +753,19 @@ class MacLiveWorkbench:
         self.arena.setup_maneuver_course("slalom", speed_scale=0.90)
 
         self.bus = StateBus()
+        self.camera_source: str = "virtual"
+        self.live_webcam_jpeg: bytes | None = None
+        self.live_webcam_rgb: bytes | None = None
+        self.live_webcam_updated_at: float = 0.0
+        self.live_webcam_frames_received: int = 0
+        self.audio_source: str = "synthetic"
+        self.live_mic_pcm16_buffer: bytes = b""
+        self.live_mic_updated_at: float = 0.0
+        self.live_mic_chunks_received: int = 0
+        self.live_mic_rms: float = 0.0
+
         self.tof = SimRangefinder(self.config.pins, distance_provider=self.arena.compute_tof_distance_mm)
-        self.camera = SimFisheyeCamera(self.config.camera, frame_provider=self.arena.render_fisheye_rgb)
+        self.camera = SimFisheyeCamera(self.config.camera, frame_provider=self._provide_camera_rgb)
         self.audio = MacLaptopAudio(self.config.pins, audible_speaker=audible_speaker)
         self.tts = LocalPiperTTS(self.config.tts)
         self.display = SimGC9A01Display(self.config.pins)
@@ -594,6 +798,74 @@ class MacLiveWorkbench:
         self.last_user_utterance: str = "Ready for voice command..."
         self.step_physics_and_sensors(dt_sec=0.05)
 
+    def _provide_camera_rgb(self) -> bytes:
+        """Return either the live 640x480 RGB laptop webcam frame or the 3D VirtualArena fisheye RGB frame."""
+        expected_len = self.config.camera.width * self.config.camera.height * 3
+        if self.camera_source == "laptop_webcam" and self.live_webcam_rgb and len(self.live_webcam_rgb) == expected_len:
+            return self.live_webcam_rgb
+        return self.arena.render_fisheye_rgb()
+
+    def push_laptop_webcam_jpeg(self, raw_image_bytes: bytes, *, activate_webcam_mode: bool = True) -> dict[str, Any]:
+        """Ingest a live laptop camera JPEG/PNG frame (from browser WebRTC or AVFoundation) into the OV5647 pipeline."""
+        with self._lock:
+            clean_jpeg, rgb_bytes = normalize_webcam_jpeg(
+                raw_image_bytes,
+                width=self.config.camera.width,
+                height=self.config.camera.height,
+            )
+            self.live_webcam_jpeg = clean_jpeg
+            self.live_webcam_rgb = rgb_bytes
+            self.live_webcam_updated_at = round(time.time(), 3)
+            self.live_webcam_frames_received += 1
+            if activate_webcam_mode:
+                self.camera_source = "laptop_webcam"
+                self.arena.showcase_object = None
+            self.step_physics_and_sensors(dt_sec=0.02)
+            return {
+                "camera_source": self.camera_source,
+                "webcam_frames_received": self.live_webcam_frames_received,
+                "jpeg_bytes": len(clean_jpeg),
+                "updated_at": self.live_webcam_updated_at,
+            }
+
+    def set_camera_source(self, source: str) -> dict[str, Any]:
+        """Switch the OV5647 camera feed between `'virtual'` (3D VirtualArena) and `'laptop_webcam'` (Live MacBook Camera)."""
+        with self._lock:
+            low = (source or "").strip().lower()
+            norm = "laptop_webcam" if ("webcam" in low or "laptop" in low or "live" in low) else "virtual"
+            self.camera_source = norm
+            if norm == "laptop_webcam" and self.live_webcam_jpeg is None:
+                snap = capture_mac_webcam_jpeg_once()
+                if snap:
+                    self.push_laptop_webcam_jpeg(snap, activate_webcam_mode=True)
+            self.step_physics_and_sensors(dt_sec=0.02)
+            return {
+                "camera_source": self.camera_source,
+                "webcam_frames_received": self.live_webcam_frames_received,
+                "has_live_frame": self.live_webcam_jpeg is not None,
+            }
+
+    def push_laptop_mic_pcm16(self, pcm16_bytes: bytes, *, rms: float = 0.0) -> dict[str, Any]:
+        """Ingest a live 16 kHz PCM16 microphone audio chunk from the laptop browser WebAudio stream."""
+        with self._lock:
+            if pcm16_bytes:
+                combined = self.live_mic_pcm16_buffer + pcm16_bytes
+                # Keep rolling 1.5s window (48,000 bytes at 16 kHz 16-bit mono)
+                self.live_mic_pcm16_buffer = combined[-48000:]
+                self.live_mic_updated_at = round(time.time(), 3)
+                self.live_mic_chunks_received += 1
+                self.audio_source = "laptop_mic"
+            self.live_mic_rms = round(float(rms), 4)
+            # If user shouts loudly (RMS >= 0.55) while speaker is playing, trigger hardware barge-in
+            if self.live_mic_rms >= 0.55 and self.audio.is_playing():
+                self.trigger_barge_in()
+            return {
+                "audio_source": self.audio_source,
+                "mic_chunks_received": self.live_mic_chunks_received,
+                "buffer_bytes": len(self.live_mic_pcm16_buffer),
+                "mic_rms": self.live_mic_rms,
+            }
+
     def step_physics_and_sensors(self, dt_sec: float = 0.05) -> None:
         """Advance Tier-0 (50Hz Reflex), Tier-1 (15Hz Autonomy/HUD), and 2D VirtualArena kinematics."""
         with self._lock:
@@ -606,6 +878,7 @@ class MacLiveWorkbench:
     def set_showcase_object(self, kind: str | None) -> dict[str, Any]:
         """Place a recognizable visual object (`stop_sign`, `traffic_cone`, `soccer_ball`, etc.) in front of `OV5647`."""
         with self._lock:
+            self.camera_source = "virtual"
             info = self.arena.set_showcase_object(kind)
             if info.get("showcase_object"):
                 self.autonomy.maneuver_seq.stop()
@@ -628,47 +901,107 @@ class MacLiveWorkbench:
         utterance: str,
         *,
         user_pcm16_bytes: bytes | None = None,
+        webcam_jpeg_bytes: bytes | None = None,
+        camera_source: str | None = None,
         advance_steps: int = 4,
     ) -> dict[str, Any]:
         """Execute a complete Voice + Video -> Gemini ER -> Local Piper ONNX Speech + Emoji HUD + Car Control turn."""
         with self._lock:
+            # Stop any currently playing speech so back-to-back voice turns never overlap or block
+            self.audio.stop_playback()
             clean_utt = (utterance or "").strip() or "Hey Mustang, how are you?"
             self.last_user_utterance = clean_utt
 
-            # If the user asks "What's this object?" and no showcase object was placed yet, place a STOP sign automatically
+            if webcam_jpeg_bytes:
+                self.push_laptop_webcam_jpeg(webcam_jpeg_bytes, activate_webcam_mode=True)
+            elif camera_source:
+                self.set_camera_source(camera_source)
+
+            active_cam_source = (
+                "laptop_webcam"
+                if self.camera_source == "laptop_webcam" and self.live_webcam_jpeg is not None
+                else "virtual"
+            )
+
+            if user_pcm16_bytes:
+                self.push_laptop_mic_pcm16(user_pcm16_bytes)
+                active_audio_source = "laptop_mic"
+            elif self.live_mic_pcm16_buffer and (time.time() - self.live_mic_updated_at) <= 8.0:
+                user_pcm16_bytes = self.live_mic_pcm16_buffer
+                active_audio_source = "laptop_mic"
+            else:
+                user_pcm16_bytes = _synthesize_formant_pcm16(clean_utt, self.config.pins.audio_sample_rate_hz)
+                active_audio_source = "synthetic"
+
+            # Only auto-place a virtual STOP sign in virtual arena mode when no showcase object is active
             low_utt = clean_utt.lower()
             if (
-                any(p in low_utt for p in ("what's this", "what is this", "what object", "in front of"))
+                active_cam_source == "virtual"
+                and any(p in low_utt for p in ("what's this", "what is this", "what object", "in front of"))
                 and self.arena.showcase_object is None
             ):
                 self.arena.set_showcase_object("stop_sign")
 
             self.step_physics_and_sensors(dt_sec=0.05)
-            if user_pcm16_bytes is None:
-                user_pcm16_bytes = _synthesize_formant_pcm16(clean_utt, self.config.pins.audio_sample_rate_hz)
-
             asyncio.run(self.session.send_audio_pcm16(user_pcm16_bytes))
             asyncio.run(self.orchestrator.push_telemetry_frame_and_audio())
 
-            # Render a clean 640x480 JPEG of the OV5647 camera view for Gemini ER visual inspection
-            clean_camera_jpeg = self.arena.render_clean_camera_jpeg()
+            # Select either the live 640x480 laptop webcam JPEG or the clean 3D VirtualArena OV5647 JPEG
+            if active_cam_source == "laptop_webcam" and self.live_webcam_jpeg is not None:
+                clean_camera_jpeg = self.live_webcam_jpeg
+            else:
+                clean_camera_jpeg = self.arena.render_clean_camera_jpeg()
 
-            planned_calls = self.brain.plan_tool_calls(
+            vision_snap = self.bus.vision
+            tof_snap = self.bus.tof.distance_mm
+            showcase_snap = self.arena.showcase_object if active_cam_source == "virtual" else None
+
+            # Pre-start deterministic driving/stop action immediately (<5ms) so the car moves while cloud responds
+            pre_started_maneuver: str | None = None
+            det_preview = self.brain._deterministic_tool_calls(
                 utterance=clean_utt,
-                vision=self.bus.vision,
-                tof_mm=self.bus.tof.distance_mm,
-                jpeg_bytes=clean_camera_jpeg,
-                user_pcm16_bytes=user_pcm16_bytes,
-                showcase_object=self.arena.showcase_object,
+                vision=vision_snap,
+                tof_mm=tof_snap,
+                showcase_object=showcase_snap,
+                camera_source=active_cam_source,
             )
-
-            # Set up 2D track markers & planned trajectory curve whenever a maneuver is triggered
-            for tool_name, tool_args, _ in planned_calls:
-                if tool_name == "execute_maneuver":
-                    m_name = str(tool_args.get("maneuver_name", "slalom"))
-                    s_scale = float(tool_args.get("speed_scale", 0.90))
+            for d_name, d_args, _ in det_preview:
+                if d_name == "execute_maneuver":
+                    m_name = normalize_maneuver_name(str(d_args.get("maneuver_name", "slalom")))
+                    s_scale = float(d_args.get("speed_scale", 0.90))
                     self.arena.showcase_object = None
                     self.arena.setup_maneuver_course(m_name, speed_scale=s_scale)
+                    self.autonomy.handle_tool_call("execute_maneuver", {"maneuver_name": m_name, "speed_scale": s_scale})
+                    pre_started_maneuver = m_name
+                elif d_name == "emergency_stop":
+                    self.arena.active_maneuver_name = "STOPPED"
+                    self.autonomy.handle_tool_call("emergency_stop", d_args)
+                elif d_name == "set_follow_person_mode":
+                    self.arena.showcase_object = None
+                    self.autonomy.handle_tool_call("set_follow_person_mode", d_args)
+
+        # Query Cloud Live WebSocket OUTSIDE self._lock so 15Hz physics, /api/state, and webcam/mic streams never freeze
+        planned_calls = self.brain.plan_tool_calls(
+            utterance=clean_utt,
+            vision=vision_snap,
+            tof_mm=tof_snap,
+            jpeg_bytes=clean_camera_jpeg,
+            user_pcm16_bytes=user_pcm16_bytes,
+            showcase_object=showcase_snap,
+            camera_source=active_cam_source,
+        )
+
+        with self._lock:
+            # Set up 2D track markers & planned trajectory curve if a new maneuver was emitted by the cloud turn
+            for tool_name, tool_args, _ in planned_calls:
+                if tool_name == "execute_maneuver":
+                    m_name = normalize_maneuver_name(str(tool_args.get("maneuver_name", "slalom")))
+                    s_scale = float(tool_args.get("speed_scale", 0.90))
+                    self.arena.showcase_object = None
+                    if m_name != pre_started_maneuver:
+                        self.arena.setup_maneuver_course(m_name, speed_scale=s_scale)
+                elif tool_name == "emergency_stop":
+                    self.arena.active_maneuver_name = "STOPPED"
 
             emitted_calls: list[dict[str, Any]] = []
             for tool_name, tool_args, call_id in planned_calls:
@@ -683,7 +1016,11 @@ class MacLiveWorkbench:
             turn_record = {
                 "timestamp": round(time.time(), 3),
                 "user_utterance": clean_utt,
-                "showcase_object": self.arena.showcase_object,
+                "camera_source": active_cam_source,
+                "audio_source": active_audio_source,
+                "webcam_frames_received": self.live_webcam_frames_received,
+                "mic_chunks_received": self.live_mic_chunks_received,
+                "showcase_object": self.arena.showcase_object if active_cam_source == "virtual" else None,
                 "cloud_live_model_used": self.brain.last_cloud_model_used,
                 "cloud_probe_log": list(self.brain.last_cloud_probe_log),
                 "user_audio_pcm16_bytes": len(user_pcm16_bytes),
@@ -701,6 +1038,7 @@ class MacLiveWorkbench:
                 "hud_rgb565_bytes": len(self.display.last_rgb565_bytes),
                 "source_mode": self.bus.intent.source_mode,
                 "active_maneuver": self.autonomy.maneuver_seq.active_maneuver,
+                "obstacle_state": self.autonomy.maneuver_seq.obstacle_state,
                 "tof_mm": self.bus.tof.distance_mm,
                 "applied_throttle": self.bus.actuator_cmd.applied_throttle,
                 "applied_steering_deg": self.bus.actuator_cmd.applied_steering_deg,
@@ -821,7 +1159,13 @@ class MacLiveWorkbench:
                 "cloud_live_model_used": self.brain.last_cloud_model_used,
                 "tts_backend_used": self.tts.backend_used,
                 "audible_speaker": self.audible_speaker,
-                "showcase_object": self.arena.showcase_object,
+                "camera_source": self.camera_source,
+                "audio_source": self.audio_source,
+                "webcam_frames_received": self.live_webcam_frames_received,
+                "webcam_updated_at": self.live_webcam_updated_at,
+                "mic_chunks_received": self.live_mic_chunks_received,
+                "mic_rms": self.live_mic_rms,
+                "showcase_object": self.arena.showcase_object if self.camera_source == "virtual" else None,
                 "last_user_utterance": self.last_user_utterance,
                 "spoken_reply_text": self.tts.last_spoken_text,
                 "tts_latency_ms": self.tts.last_latency_ms,
@@ -889,8 +1233,9 @@ WORKBENCH_HTML = """<!DOCTYPE html>
   button:hover { background: #264066; border-color: var(--cyan); }
   button.primary { background: #006688; border-color: var(--cyan); color: #fff; font-weight: 600; }
   button.vision { background: #3b2860; border-color: #b48cff; color: #f3eaff; font-weight: 600; }
+  button.webcam-active { background: #0d5c3a; border-color: var(--green); color: #fff; font-weight: 700; }
   button.danger { background: #681818; border-color: var(--red); color: #fff; font-weight: 600; }
-  .chips { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; align-items: center; }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; align-items: center; }
   .chips span.lbl { font-size: 11px; color: var(--amber); font-weight: 600; margin-right: 4px; }
   .grid { display: grid; grid-template-columns: 280px 1fr 1fr 370px; gap: 10px; }
   .card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 10px; }
@@ -898,6 +1243,13 @@ WORKBENCH_HTML = """<!DOCTYPE html>
   .hud-wrap { display: flex; flex-direction: column; align-items: center; }
   .hud-wrap img { width: 220px; height: 220px; border-radius: 50%; border: 2px solid #2b4468; }
   .cam-wrap img, .arena-wrap img { width: 100%; max-height: 310px; object-fit: contain; border-radius: 8px; border: 1px solid #2b4468; }
+  .webcam-pip-wrap {
+    position: relative; width: 100%;
+  }
+  .webcam-pip {
+    position: absolute; bottom: 10px; right: 10px; width: 145px; height: 108px;
+    border-radius: 6px; border: 2px solid var(--green); background: #000; object-fit: cover; display: none;
+  }
   .kv { display: flex; justify-content: space-between; font-size: 11.5px; padding: 4px 0; border-bottom: 1px solid #1b2638; }
   .kv span.v { color: var(--green); font-weight: 600; }
   .kv span.v.alert { color: var(--red); }
@@ -912,6 +1264,8 @@ WORKBENCH_HTML = """<!DOCTYPE html>
 <header>
   <h1>1967 Ford Mustang Fastback AI Edition (v3.2.0) — Local MacBook <-> Radxa Zero 3W Live Workbench</h1>
   <div>
+    <span class="badge" id="camSourceBadge">CAM: VIRTUAL 3D</span>
+    <span class="badge" id="micSourceBadge">MIC: READY</span>
     <span class="badge" id="sdkBadge">google-genai</span>
     <span class="badge" id="ttsBadge">piper-onnx</span>
     <span class="badge" id="modeBadge">MODE: IDLE</span>
@@ -919,10 +1273,14 @@ WORKBENCH_HTML = """<!DOCTYPE html>
 </header>
 
 <div class="voice-bar">
-  <button class="primary" id="micBtn" onclick="startBrowserSpeech()">🎙️ Speak (Mac Mic)</button>
+  <button class="primary" id="avStreamBtn" onclick="toggleContinuousAVStream()">
+    🎙️📷 Continuous Live Mic + Camera (Hands-Free)
+  </button>
+  <button class="primary" id="micBtn" onclick="toggleContinuousMic()">🎙️ Continuous Mic (Hands-Free)</button>
   <input type="text" id="voiceInput"
-    placeholder="Speak or type a voice command to gemini-robotics-er-2-streaming-preview..."
-    value="Weave through the slalom!"/>
+    placeholder="Speak continuously or type any command (e.g. move forward, reverse, keep going, slalom, stop)..."
+    value="Keep going and auto avoid the blockers!"
+    onkeydown="if(event.key==='Enter') sendVoiceInput()"/>
   <button class="primary" onclick="sendVoiceInput()">Send Voice Turn ➔</button>
   <button onclick="replayAudio()">🔊 Replay Piper ONNX Audio</button>
   <button class="danger" onclick="triggerBargeIn()">⚡ Shout Barge-In (RMS 0.76)</button>
@@ -930,7 +1288,36 @@ WORKBENCH_HTML = """<!DOCTYPE html>
 </div>
 
 <div class="chips">
-  <span class="lbl">VOICE & MANEUVERS:</span>
+  <span class="lbl">🏎️ DRIVING ACTIONS & AUTO-AVOID BLOCKERS:</span>
+  <button class="primary" onclick="quickVoice('Move forwards!')">⬆️ Move Forward</button>
+  <button class="primary" onclick="quickVoice('Move backwards in reverse!')">⬇️ Move Backwards / Reverse</button>
+  <button class="webcam-active" onclick="quickVoice('Keep going and auto avoid the blockers!')">
+    🧭 Keep Going (Auto-Avoid Blockers)
+  </button>
+  <button onclick="quickVoice('Turn left!')">⬅️ Turn Left (-15°)</button>
+  <button onclick="quickVoice('Turn right!')">➡️ Turn Right (+15°)</button>
+  <button class="danger" onclick="quickVoice('Stop right now!')">🛑 Stop Now</button>
+</div>
+
+<div class="chips">
+  <span class="lbl">📷 LIVE LAPTOP CAMERA + MIC -> GEMINI ER:</span>
+  <button class="primary" id="webcamToggleBtn" onclick="toggleLaptopWebcam()">📷 Enable Live MacBook Camera</button>
+  <button class="vision"
+    onclick="askWithLiveWebcam('Describe the live scene and objects you see in front of the camera right now!')">
+    🔍 Describe Live Scene & Objects
+  </button>
+  <button class="vision" onclick="askWithLiveWebcam('What object am I holding up to the camera?')">
+    ✋ What Object Am I Holding?
+  </button>
+  <button class="vision" onclick="askWithLiveWebcam('Describe the person and background in front of you!')">
+    🧑 Describe Person & Background
+  </button>
+  <button onclick="document.getElementById('photoUploadInput').click()">📁 Upload Real Photo -> Camera</button>
+  <input type="file" id="photoUploadInput" accept="image/*" style="display:none" onchange="uploadPhotoFrame(event)"/>
+</div>
+
+<div class="chips">
+  <span class="lbl">VOICE & TRICK MANEUVERS:</span>
   <button onclick="quickVoice('Hey Mustang, how do you feel today?')">💬 How do you feel?</button>
   <button onclick="quickVoice('Weave through the slalom!')">🐍 Slalom Weave (4 Cones)</button>
   <button onclick="quickVoice('Carve a left circle and avoid obstacles!')">🔄 Circle Left</button>
@@ -941,13 +1328,13 @@ WORKBENCH_HTML = """<!DOCTYPE html>
 </div>
 
 <div class="chips">
-  <span class="lbl">AUDIO + VIDEO OBJECT Q&A (OV5647 -> Gemini ER):</span>
+  <span class="lbl">VIRTUAL 3D OBJECT Q&A (OV5647 -> Gemini ER):</span>
   <button class="vision" onclick="placeObjectAndAsk('stop_sign')">🛑 Show STOP Sign & Ask "What's this object?"</button>
   <button class="vision" onclick="placeObjectAndAsk('traffic_cone')">🚧 Show Traffic Cone & Ask</button>
   <button class="vision" onclick="placeObjectAndAsk('soccer_ball')">⚽ Show Soccer Ball & Ask</button>
   <button class="vision" onclick="placeObjectAndAsk('coffee_mug')">☕ Show Coffee Mug & Ask</button>
   <button class="vision" onclick="placeObjectAndAsk('checkered_flag')">🏁 Show Racing Flag & Ask</button>
-  <button onclick="apiAction('/api/object/clear')">🧹 Clear Visual Object</button>
+  <button onclick="apiAction('/api/object/clear')">🧹 Switch to Virtual 3D / Clear Object</button>
 </div>
 
 <div class="grid">
@@ -966,13 +1353,19 @@ WORKBENCH_HTML = """<!DOCTYPE html>
   </div>
 
   <div class="card cam-wrap">
-    <h2>H1-A: OV5647 160° First-Person Camera (640×480 JPEG)</h2>
-    <img id="camImg" src="" alt="OV5647 Fisheye Stream"/>
+    <h2 id="camTitle">H1-A: OV5647 160° First-Person Camera (640×480 JPEG)</h2>
+    <div class="webcam-pip-wrap">
+      <img id="camImg" src="" alt="OV5647 Fisheye Stream"/>
+      <video id="webcamVideo" class="webcam-pip" autoplay playsinline muted></video>
+      <canvas id="webcamCanvas" width="640" height="480" style="display:none"></canvas>
+    </div>
     <div style="display:flex; gap:6px; margin-top:8px; flex-wrap:wrap;">
-      <button onclick="apiAction('/api/object/stop_sign')">🛑 Place STOP Sign</button>
-      <button onclick="apiAction('/api/object/traffic_cone')">🚧 Place Cone</button>
-      <button onclick="apiAction('/api/object/soccer_ball')">⚽ Place Ball</button>
-      <button class="primary" onclick="quickVoice('What is this object in front of you?')">❓ Ask "What's this object?"</button>
+      <button onclick="toggleLaptopWebcam()" id="camCardWebcamBtn">📷 Toggle MacBook Camera</button>
+      <button class="vision" onclick="askWithLiveWebcam('Describe what you see in front of the camera!')">
+        🔍 Ask Gemini ER to Describe Live Feed
+      </button>
+      <button onclick="apiAction('/api/object/stop_sign')">🛑 Virtual STOP Sign</button>
+      <button onclick="apiAction('/api/object/soccer_ball')">⚽ Virtual Ball</button>
     </div>
   </div>
 
@@ -990,6 +1383,7 @@ WORKBENCH_HTML = """<!DOCTYPE html>
 
   <div class="card">
     <h2>Radxa 40-Pin HAL & Gemini ER Wire Telemetry</h2>
+    <div class="kv"><span>Audio / Camera Stream:</span><span class="v" id="tCamSource">VIRTUAL (3D Arena)</span></div>
     <div class="kv"><span>User Voice Input:</span><span class="v" id="tUser">-</span></div>
     <div class="kv"><span>Piper ONNX TTS (16kHz):</span><span class="v" id="tReply">-</span></div>
     <div class="kv"><span>Active Course / Object:</span><span class="v" id="tCourse">-</span></div>
@@ -1006,34 +1400,432 @@ WORKBENCH_HTML = """<!DOCTYPE html>
 <script>
 let lastPlayedTurn = 0;
 let isSendingTurn = false;
+let queuedVoiceText = null;
+let webcamStream = null;
+let webcamTimer = null;
+let isUploadingFrame = false;
 
-async function sendVoiceInput() {
-  if (isSendingTurn) return;
+// Continuous WebAudio 16kHz PCM16 Mic Stream + Continuous SpeechRecognition state
+let micStream = null;
+let audioCtx = null;
+let micProcessor = null;
+let micUploadTimer = null;
+let pcm16RingChunks = [];
+let pcm16TotalBytes = 0;
+let liveMicRms = 0.0;
+let continuousMicActive = false;
+let speechRec = null;
+let interimDebounceTimer = null;
+let lastCommittedTranscript = '';
+let lastCommittedAt = 0;
+let serverSpeakerPlaying = false;
+
+function uint8ToBase64(u8) {
+  let binary = '';
+  const chunkSize = 8192;
+  for (let i = 0; i < u8.length; i += chunkSize) {
+    binary += String.fromCharCode.apply(null, u8.subarray(i, i + chunkSize));
+  }
+  return btoa(binary);
+}
+
+function captureRecentMicPcm16B64() {
+  if (!pcm16RingChunks.length) return null;
+  const out = new Uint8Array(pcm16TotalBytes);
+  let offset = 0;
+  for (const c of pcm16RingChunks) {
+    out.set(c, offset);
+    offset += c.length;
+  }
+  return uint8ToBase64(out);
+}
+
+async function pushMicChunkOnce() {
+  if (!micStream || !pcm16RingChunks.length) return;
+  const lastChunk = pcm16RingChunks[pcm16RingChunks.length - 1];
+  try {
+    await fetch('/api/mic/chunk', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({pcm16_b64: uint8ToBase64(lastChunk), rms: liveMicRms})
+    });
+  } catch (e) {}
+}
+
+async function startLaptopMicStream() {
+  if (micStream) return true;
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return false;
+  try {
+    micStream = await navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+      video: false
+    });
+    const AC = window.AudioContext || window.webkitAudioContext;
+    audioCtx = new AC({ sampleRate: 16000 });
+    const src = audioCtx.createMediaStreamSource(micStream);
+    micProcessor = audioCtx.createScriptProcessor(4096, 1, 1);
+    micProcessor.onaudioprocess = (ev) => {
+      const f32 = ev.inputBuffer.getChannelData(0);
+      const i16 = new Int16Array(f32.length);
+      let sumSq = 0.0;
+      for (let i = 0; i < f32.length; i++) {
+        const s = Math.max(-1, Math.min(1, f32[i]));
+        sumSq += s * s;
+        i16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+      }
+      liveMicRms = Math.sqrt(sumSq / Math.max(1, f32.length));
+      const u8 = new Uint8Array(i16.buffer);
+      pcm16RingChunks.push(u8);
+      pcm16TotalBytes += u8.length;
+      while (pcm16TotalBytes > 48000 && pcm16RingChunks.length > 1) {
+        const removed = pcm16RingChunks.shift();
+        pcm16TotalBytes -= removed.length;
+      }
+    };
+    src.connect(micProcessor);
+    micProcessor.connect(audioCtx.destination);
+    if (micUploadTimer) clearInterval(micUploadTimer);
+    micUploadTimer = setInterval(pushMicChunkOnce, 450);
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+function stopLaptopMicStream() {
+  if (micUploadTimer) {
+    clearInterval(micUploadTimer);
+    micUploadTimer = null;
+  }
+  if (micProcessor) {
+    try { micProcessor.disconnect(); } catch (e) {}
+    micProcessor = null;
+  }
+  if (audioCtx) {
+    try { audioCtx.close(); } catch (e) {}
+    audioCtx = null;
+  }
+  if (micStream) {
+    micStream.getTracks().forEach(t => t.stop());
+    micStream = null;
+  }
+  liveMicRms = 0.0;
+}
+
+function commitRecognizedPhrase(phrase) {
+  const clean = (phrase || '').trim();
+  if (!clean) return;
+  const now = Date.now();
+  if (clean === lastCommittedTranscript && (now - lastCommittedAt) < 1800) return;
+  lastCommittedTranscript = clean;
+  lastCommittedAt = now;
+  document.getElementById('voiceInput').value = clean;
+  sendVoiceInput(clean);
+}
+
+function startContinuousSpeechRecognition() {
+  const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRec) return false;
+  if (speechRec) {
+    try { speechRec.stop(); } catch (e) {}
+  }
+  speechRec = new SpeechRec();
+  speechRec.lang = 'en-US';
+  speechRec.continuous = true;
+  speechRec.interimResults = true;
+  speechRec.onresult = (ev) => {
+    if (serverSpeakerPlaying && liveMicRms < 0.45) {
+      // Half-duplex echo guard: ignore Mac speaker output unless user shouts (barge-in)
+      return;
+    }
+    let finalTxt = '';
+    let interimTxt = '';
+    for (let i = ev.resultIndex; i < ev.results.length; i++) {
+      const t = ev.results[i][0].transcript;
+      if (ev.results[i].isFinal) {
+        finalTxt += t + ' ';
+      } else {
+        interimTxt += t;
+      }
+    }
+    if (interimDebounceTimer) {
+      clearTimeout(interimDebounceTimer);
+      interimDebounceTimer = null;
+    }
+    if (finalTxt.trim()) {
+      commitRecognizedPhrase(finalTxt.trim());
+    } else if (interimTxt.trim()) {
+      document.getElementById('voiceInput').value = interimTxt.trim();
+      // Auto-commit if browser pauses >900ms without emitting isFinal
+      const snap = interimTxt.trim();
+      interimDebounceTimer = setTimeout(() => {
+        commitRecognizedPhrase(snap);
+      }, 900);
+    }
+  };
+  speechRec.onend = () => {
+    if (continuousMicActive) {
+      setTimeout(() => {
+        if (continuousMicActive && speechRec) {
+          try { speechRec.start(); } catch (e) {}
+        }
+      }, 200);
+    }
+  };
+  try {
+    speechRec.start();
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+async function toggleContinuousMic() {
+  if (continuousMicActive) {
+    continuousMicActive = false;
+    if (speechRec) {
+      try { speechRec.stop(); } catch (e) {}
+      speechRec = null;
+    }
+    stopLaptopMicStream();
+    updateMicButtons();
+  } else {
+    continuousMicActive = true;
+    await startLaptopMicStream();
+    startContinuousSpeechRecognition();
+    updateMicButtons();
+  }
+}
+
+async function toggleContinuousAVStream() {
+  if (continuousMicActive && webcamStream) {
+    continuousMicActive = false;
+    if (speechRec) {
+      try { speechRec.stop(); } catch (e) {}
+      speechRec = null;
+    }
+    stopLaptopMicStream();
+    await stopLaptopWebcam();
+    updateMicButtons();
+  } else {
+    await startLaptopWebcam();
+    continuousMicActive = true;
+    await startLaptopMicStream();
+    startContinuousSpeechRecognition();
+    updateMicButtons();
+  }
+}
+
+function updateMicButtons() {
+  const micBtn = document.getElementById('micBtn');
+  const avBtn = document.getElementById('avStreamBtn');
+  if (continuousMicActive) {
+    micBtn.textContent = '🔴 Continuous Mic ON (Keep Speaking!)';
+    micBtn.className = 'webcam-active';
+  } else {
+    micBtn.textContent = '🎙️ Continuous Mic (Hands-Free)';
+    micBtn.className = 'primary';
+  }
+  if (continuousMicActive && webcamStream) {
+    avBtn.textContent = '🟢 Live Audio + Video Stream ON (Hands-Free)';
+    avBtn.className = 'webcam-active';
+  } else {
+    avBtn.textContent = '🎙️📷 Continuous Live Mic + Camera (Hands-Free)';
+    avBtn.className = 'primary';
+  }
+}
+
+function captureWebcamJpegB64() {
+  const video = document.getElementById('webcamVideo');
+  if (!webcamStream || !video || video.readyState < 2 || !video.videoWidth) {
+    return null;
+  }
+  const canvas = document.getElementById('webcamCanvas');
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+  const dataUrl = canvas.toDataURL('image/jpeg', 0.86);
+  const commaIdx = dataUrl.indexOf(',');
+  return commaIdx >= 0 ? dataUrl.slice(commaIdx + 1) : null;
+}
+
+async function pushWebcamFrameOnce() {
+  if (isUploadingFrame || !webcamStream) return;
+  const b64 = captureWebcamJpegB64();
+  if (!b64) return;
+  isUploadingFrame = true;
+  try {
+    await fetch('/api/webcam/frame', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({jpeg_b64: b64, activate: true})
+    });
+  } catch (e) {
+  } finally {
+    isUploadingFrame = false;
+  }
+}
+
+async function startLaptopWebcam() {
+  if (webcamStream) return true;
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    alert('navigator.mediaDevices.getUserMedia is not available in this browser.');
+    return false;
+  }
+  try {
+    webcamStream = await navigator.mediaDevices.getUserMedia({
+      video: { width: { ideal: 640 }, height: { ideal: 480 } },
+      audio: false
+    });
+    const video = document.getElementById('webcamVideo');
+    video.srcObject = webcamStream;
+    video.style.display = 'block';
+    await video.play();
+    for (let i = 0; i < 16; i++) {
+      if (video.videoWidth > 0 && video.readyState >= 2) break;
+      await new Promise(r => setTimeout(r, 50));
+    }
+    await pushWebcamFrameOnce();
+    if (webcamTimer) clearInterval(webcamTimer);
+    webcamTimer = setInterval(pushWebcamFrameOnce, 250);
+    updateWebcamButtons(true);
+    updateMicButtons();
+    await pollState();
+    return true;
+  } catch (err) {
+    alert('Could not access MacBook camera: ' + err.message);
+    return false;
+  }
+}
+
+async function stopLaptopWebcam() {
+  if (webcamTimer) {
+    clearInterval(webcamTimer);
+    webcamTimer = null;
+  }
+  if (webcamStream) {
+    webcamStream.getTracks().forEach(t => t.stop());
+    webcamStream = null;
+  }
+  const video = document.getElementById('webcamVideo');
+  if (video) {
+    video.srcObject = null;
+    video.style.display = 'none';
+  }
+  updateWebcamButtons(false);
+  updateMicButtons();
+  await fetch('/api/camera_source', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({source: 'virtual'})
+  });
+  await pollState();
+}
+
+function updateWebcamButtons(active) {
+  const btn = document.getElementById('webcamToggleBtn');
+  const cardBtn = document.getElementById('camCardWebcamBtn');
+  if (active) {
+    btn.textContent = '🟢 Live MacBook Camera ON (Click to Switch to Virtual 3D)';
+    btn.className = 'webcam-active';
+    cardBtn.textContent = '🟢 Stop MacBook Camera';
+    cardBtn.className = 'webcam-active';
+  } else {
+    btn.textContent = '📷 Enable Live MacBook Camera';
+    btn.className = 'primary';
+    cardBtn.textContent = '📷 Toggle MacBook Camera';
+    cardBtn.className = '';
+  }
+}
+
+async function toggleLaptopWebcam() {
+  if (webcamStream) {
+    await stopLaptopWebcam();
+  } else {
+    await startLaptopWebcam();
+  }
+}
+
+async function askWithLiveWebcam(questionText) {
+  if (!webcamStream) {
+    const ok = await startLaptopWebcam();
+    if (!ok) return;
+  }
+  document.getElementById('voiceInput').value = questionText;
+  await sendVoiceInput(questionText);
+}
+
+async function uploadPhotoFrame(ev) {
+  const file = ev.target.files && ev.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async () => {
+    const dataUrl = String(reader.result || '');
+    const commaIdx = dataUrl.indexOf(',');
+    if (commaIdx < 0) return;
+    const b64 = dataUrl.slice(commaIdx + 1);
+    await fetch('/api/webcam/frame', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({jpeg_b64: b64, activate: true})
+    });
+    await pollState();
+    const q = 'Describe the live scene and objects you see in front of the camera right now!';
+    document.getElementById('voiceInput').value = q;
+    await sendVoiceInput(q);
+  };
+  reader.readAsDataURL(file);
+}
+
+async function sendVoiceInput(overrideText) {
   const input = document.getElementById('voiceInput');
-  const text = input.value.trim();
+  const text = (typeof overrideText === 'string' ? overrideText : input.value).trim();
   if (!text) return;
+  if (isSendingTurn) {
+    // Queue the utterance so speaking/clicking while a turn is in flight never drops the user's command
+    queuedVoiceText = text;
+    return;
+  }
   isSendingTurn = true;
   try {
+    const payload = {utterance: text};
+    const liveB64 = captureWebcamJpegB64();
+    if (liveB64) {
+      payload.webcam_jpeg_b64 = liveB64;
+      payload.camera_source = 'laptop_webcam';
+    }
+    const micB64 = captureRecentMicPcm16B64();
+    if (micB64) {
+      payload.user_pcm16_b64 = micB64;
+    }
     await fetch('/api/voice', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({utterance: text})
+      body: JSON.stringify(payload)
     });
     await pollState();
   } finally {
     isSendingTurn = false;
+    if (queuedVoiceText) {
+      const nextText = queuedVoiceText;
+      queuedVoiceText = null;
+      sendVoiceInput(nextText);
+    }
   }
 }
 
 async function quickVoice(text) {
   document.getElementById('voiceInput').value = text;
-  await sendVoiceInput();
+  await sendVoiceInput(text);
 }
 
 async function placeObjectAndAsk(kind) {
+  if (webcamStream) {
+    await stopLaptopWebcam();
+  }
   await fetch('/api/object/' + kind, {method: 'POST'});
-  document.getElementById('voiceInput').value = "What's this object in front of you?";
-  await sendVoiceInput();
+  const q = "What's this object in front of you?";
+  document.getElementById('voiceInput').value = q;
+  await sendVoiceInput(q);
 }
 
 async function setEmoji(emoji) {
@@ -1046,6 +1838,9 @@ async function triggerBargeIn() {
 }
 
 async function apiAction(path) {
+  if (path.startsWith('/api/object/') && webcamStream) {
+    await stopLaptopWebcam();
+  }
   await fetch(path, {method: 'POST'});
   await pollState();
 }
@@ -1061,29 +1856,24 @@ async function replayAudio() {
   }
 }
 
-function startBrowserSpeech() {
-  const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SpeechRec) {
-    alert('Web Speech API not supported in this browser; type in the voice box instead.');
-    return;
-  }
-  const rec = new SpeechRec();
-  rec.lang = 'en-US';
-  const btn = document.getElementById('micBtn');
-  btn.textContent = '🔴 Listening...';
-  rec.onresult = (ev) => {
-    const transcript = ev.results[0][0].transcript;
-    document.getElementById('voiceInput').value = transcript;
-    sendVoiceInput();
-  };
-  rec.onend = () => { btn.textContent = '🎙️ Speak (Mac Mic)'; };
-  rec.start();
-}
-
 async function pollState() {
   try {
     const res = await fetch('/api/state');
     const st = await res.json();
+    serverSpeakerPlaying = Boolean(st.speaker_playing);
+    const isWebcam = st.camera_source === 'laptop_webcam';
+    document.getElementById('camSourceBadge').textContent =
+      isWebcam ? `CAM: LIVE LAPTOP (${st.webcam_frames_received} frames)` : 'CAM: VIRTUAL 3D';
+    document.getElementById('micSourceBadge').textContent =
+      continuousMicActive
+        ? `MIC: LIVE STREAM (RMS ${liveMicRms.toFixed(2)} | ${st.mic_chunks_received || 0} chunks)`
+        : `MIC: ${st.audio_source === 'laptop_mic' ? 'LAPTOP PCM16' : 'READY'}`;
+    document.getElementById('camTitle').textContent =
+      isWebcam
+        ? `H1-A: LIVE MACBOOK CAMERA -> OV5647 STREAM (640×480 JPEG | ${st.webcam_frames_received} frames)`
+        : 'H1-A: OV5647 160° First-Person Camera (640×480 JPEG)';
+    document.getElementById('tCamSource').textContent =
+      `${isWebcam ? 'WEBCAM' : 'VIRTUAL'} | MIC: ${st.audio_source.toUpperCase()}`;
     document.getElementById('sdkBadge').textContent = st.sdk + ' | ' + st.cloud_live_model_used;
     document.getElementById('ttsBadge').textContent = st.tts_backend_used;
     document.getElementById('modeBadge').textContent = 'MODE: ' + st.source_mode;
@@ -1096,7 +1886,9 @@ async function pollState() {
     document.getElementById('tReply').textContent =
       (st.spoken_reply_text || '-').slice(0, 30) + ` (${st.tts_latency_ms}ms)`;
     document.getElementById('tCourse').textContent =
-      st.showcase_object ? `OBJ: ${st.showcase_object.toUpperCase()}` : `${st.active_maneuver || 'IDLE'} (${st.maneuver_phase})`;
+      st.showcase_object
+        ? `OBJ: ${st.showcase_object.toUpperCase()}`
+        : `${st.active_maneuver || 'IDLE'} (${st.maneuver_phase})`;
     const tofEl = document.getElementById('tTof');
     tofEl.textContent = `${st.tof_mm} mm` + (st.tof_mm < 120 ? ' [EMERGENCY BRAKE]' : '');
     tofEl.className = st.tof_mm < 120 ? 'v alert' : 'v';
@@ -1112,7 +1904,6 @@ async function pollState() {
     if (st.history && st.history.length > 0) {
       document.getElementById('wireLog').textContent = JSON.stringify(st.history[st.history.length - 1], null, 2);
     }
-    // Only auto-play in browser if Mac host audible_speaker is disabled (prevents double-playing afplay + browser audio)
     if (!st.audible_speaker && st.audio_turn_count > lastPlayedTurn && st.has_wav_audio) {
       lastPlayedTurn = st.audio_turn_count;
       const audio = document.getElementById('ttsAudio');
@@ -1187,7 +1978,30 @@ def run_voice_e2e_session(
 
     barge_res = wb.trigger_barge_in()
 
+    # Also verify live laptop camera / real-world photo streaming (`camera_source="laptop_webcam"`) -> Gemini ER scene description
+    real_photo_path = repo_root / "origin_images" / "1967-ford-mustang-fastback (1).jpeg"
+    if not real_photo_path.exists():
+        fallback_root = Path(__file__).resolve().parents[4] / "origin_images" / "1967-ford-mustang-fastback (1).jpeg"
+        if fallback_root.exists():
+            real_photo_path = fallback_root
+    if real_photo_path.exists():
+        sample_webcam_bytes = real_photo_path.read_bytes()
+    else:
+        sample_webcam_bytes = wb.arena.render_clean_camera_jpeg()
+
+    live_webcam_turn = wb.submit_voice_utterance(
+        "Describe the live scene and objects you see in front of the laptop camera right now!",
+        webcam_jpeg_bytes=sample_webcam_bytes,
+        camera_source="laptop_webcam",
+        advance_steps=4,
+    )
+    webcam_wav_path = wav_dir / f"turn_webcam_{live_webcam_turn['hud_emoji'].lower()}.wav"
+    if wb.audio.last_wav_bytes:
+        webcam_wav_path.write_bytes(wb.audio.last_wav_bytes)
+        live_webcam_turn["saved_wav_file"] = str(webcam_wav_path.relative_to(repo_root))
+
     # Render the final cockpit showcase frame showing the Slalom course / Visual Q&A state
+    wb.set_camera_source("virtual")
     wb.arena.setup_maneuver_course("slalom", speed_scale=0.90)
     wb.autonomy.handle_tool_call("execute_maneuver", {"maneuver_name": "slalom", "speed_scale": 0.90})
     for _ in range(28):
@@ -1195,15 +2009,15 @@ def run_voice_e2e_session(
     asyncio.run(wb.orchestrator.push_telemetry_frame_and_audio())
 
     dashboard_img = render_cockpit_dashboard_frame(
-        act_title="LAPTOP-AS-RADXA E2E: VOICE + VIDEO -> GEMINI ROBOTICS ER 2.0 -> PIPER ONNX + SLALOM RADAR",
-        step_label=f"{len(turns_out)} Multimodal Turns ({wb.tts.backend_used})",
-        user_utterance=prompts[1] if len(prompts) > 1 else prompts[-1],
+        act_title="LAPTOP-AS-RADXA E2E: VOICE + LIVE CAMERA -> GEMINI ROBOTICS ER 2.0 -> PIPER ONNX + SLALOM RADAR",
+        step_label=f"{len(turns_out)} Arena Turns + 1 Live Camera Turn ({wb.tts.backend_used})",
+        user_utterance=live_webcam_turn["user_utterance"],
         arena=wb.arena,
         bus=wb.bus,
         display=wb.display,
         actuators=wb.actuators,
         session=wb.session,
-        extra_note=wb.tts.last_spoken_text,
+        extra_note=live_webcam_turn["spoken_reply_text"],
     )
     preview_path = repo_root / "docs" / "images" / "ai_laptop_voice_e2e_workbench.png"
     preview_path.parent.mkdir(parents=True, exist_ok=True)
@@ -1220,6 +2034,7 @@ def run_voice_e2e_session(
         "turns_executed": len(turns_out),
         "barge_in_verified": barge_res["barge_in_triggered"],
         "workbench_preview_png": str(preview_path.relative_to(repo_root)),
+        "live_webcam_turn": live_webcam_turn,
         "turns": turns_out,
     }
     report_path.write_text(json.dumps(summary, indent=2), encoding="utf-8")
@@ -1328,48 +2143,89 @@ def serve_live_workbench(
             self.send_error(HTTPStatus.NOT_FOUND)
 
         def do_POST(self) -> None:  # noqa: N802
-            length = int(self.headers.get("Content-Length", "0"))
-            body = self.rfile.read(length) if length > 0 else b"{}"
-            if self.path == "/api/voice":
-                data = json.loads(body.decode("utf-8") or "{}")
-                utt = str(data.get("utterance", ""))
-                res = wb.submit_voice_utterance(utt, advance_steps=1)
-                self._send_json(res)
-                return
-            if self.path == "/api/audio/replay":
-                res = wb.replay_last_audio()
-                res["audible_speaker"] = wb.audible_speaker
-                self._send_json(res)
-                return
-            if self.path.startswith("/api/object/"):
-                kind = self.path.split("/api/object/", 1)[1].strip()
-                self._send_json(wb.set_showcase_object(kind))
-                return
-            if self.path == "/api/barge_in":
-                self._send_json(wb.trigger_barge_in())
-                return
-            if self.path == "/api/obstacle/spawn":
-                self._send_json(wb.spawn_obstacle_ahead(195.0))
-                return
-            if self.path == "/api/obstacle/clear":
-                self._send_json(wb.clear_obstacles())
-                return
-            if self.path == "/api/person/left":
-                self._send_json(wb.move_person_target(650.0, -210.0))
-                return
-            if self.path == "/api/person/center":
-                self._send_json(wb.move_person_target(650.0, 0.0))
-                return
-            if self.path == "/api/person/right":
-                self._send_json(wb.move_person_target(650.0, 210.0))
-                return
-            if self.path == "/api/shutdown":
-                self._send_json({"status": "shutting_down"})
-                stop_event.set()
-                if server_ref:
-                    threading.Thread(target=server_ref[0].shutdown, daemon=True).start()
-                return
-            self.send_error(HTTPStatus.NOT_FOUND)
+            try:
+                length = int(self.headers.get("Content-Length", "0"))
+                body = self.rfile.read(length) if length > 0 else b"{}"
+                if self.path == "/api/voice":
+                    data = json.loads(body.decode("utf-8") or "{}")
+                    utt = str(data.get("utterance", ""))
+                    webcam_b64 = data.get("webcam_jpeg_b64")
+                    webcam_bytes = base64.b64decode(webcam_b64) if webcam_b64 else None
+                    pcm16_b64 = data.get("user_pcm16_b64")
+                    pcm16_bytes = base64.b64decode(pcm16_b64) if pcm16_b64 else None
+                    cam_src = data.get("camera_source")
+                    res = wb.submit_voice_utterance(
+                        utt,
+                        user_pcm16_bytes=pcm16_bytes,
+                        webcam_jpeg_bytes=webcam_bytes,
+                        camera_source=str(cam_src) if cam_src else None,
+                        advance_steps=1,
+                    )
+                    self._send_json(res)
+                    return
+                if self.path == "/api/mic/chunk":
+                    data = json.loads(body.decode("utf-8") or "{}")
+                    b64 = str(data.get("pcm16_b64", ""))
+                    rms = float(data.get("rms", 0.0))
+                    raw_pcm = base64.b64decode(b64) if b64 else b""
+                    self._send_json(wb.push_laptop_mic_pcm16(raw_pcm, rms=rms))
+                    return
+                if self.path == "/api/webcam/frame":
+                    data = json.loads(body.decode("utf-8") or "{}")
+                    b64 = str(data.get("jpeg_b64", ""))
+                    activate = bool(data.get("activate", True))
+                    if not b64:
+                        self._send_json({"error": "missing jpeg_b64"}, status=HTTPStatus.BAD_REQUEST)
+                        return
+                    raw_img = base64.b64decode(b64)
+                    self._send_json(wb.push_laptop_webcam_jpeg(raw_img, activate_webcam_mode=activate))
+                    return
+                if self.path == "/api/camera_source":
+                    data = json.loads(body.decode("utf-8") or "{}")
+                    src = str(data.get("source", "virtual"))
+                    self._send_json(wb.set_camera_source(src))
+                    return
+                if self.path == "/api/audio/replay":
+                    res = wb.replay_last_audio()
+                    res["audible_speaker"] = wb.audible_speaker
+                    self._send_json(res)
+                    return
+                if self.path.startswith("/api/object/"):
+                    kind = self.path.split("/api/object/", 1)[1].strip()
+                    self._send_json(wb.set_showcase_object(kind))
+                    return
+                if self.path == "/api/barge_in":
+                    self._send_json(wb.trigger_barge_in())
+                    return
+                if self.path == "/api/obstacle/spawn":
+                    self._send_json(wb.spawn_obstacle_ahead(195.0))
+                    return
+                if self.path == "/api/obstacle/clear":
+                    self._send_json(wb.clear_obstacles())
+                    return
+                if self.path == "/api/person/left":
+                    self._send_json(wb.move_person_target(650.0, -210.0))
+                    return
+                if self.path == "/api/person/center":
+                    self._send_json(wb.move_person_target(650.0, 0.0))
+                    return
+                if self.path == "/api/person/right":
+                    self._send_json(wb.move_person_target(650.0, 210.0))
+                    return
+                if self.path == "/api/shutdown":
+                    self._send_json({"status": "shutting_down"})
+                    stop_event.set()
+                    if server_ref:
+                        threading.Thread(target=server_ref[0].shutdown, daemon=True).start()
+                    return
+                self.send_error(HTTPStatus.NOT_FOUND)
+            except Exception as exc:
+                err_lines = str(exc).splitlines()
+                short_err = (err_lines[0] if err_lines else repr(exc))[:140]
+                self._send_json(
+                    {"error": f"{type(exc).__name__}: {short_err}"},
+                    status=HTTPStatus.INTERNAL_SERVER_ERROR,
+                )
 
     url = f"http://{host}:{port}"
     ThreadingHTTPServer.allow_reuse_address = True
@@ -1401,7 +2257,10 @@ def run_interactive_voice_repl(audible_speaker: bool = True) -> int:
         f"Emojis: {len(CORE_12_EMOJIS)} | Maneuvers: {len(MANEUVER_LIBRARY)}"
     )
     print("Type any voice command (e.g. 'weave through the slalom', 'what is this object?', 'follow me', 'stop')")
-    print("Special commands: '/object stop_sign|traffic_cone|soccer_ball', '/obstacle', '/barge', '/quit'")
+    print(
+        "Special commands: '/webcam' (capture MacBook camera), '/photo <path>' (stream local image), "
+        "'/object stop_sign|traffic_cone|soccer_ball', '/obstacle', '/barge', '/quit'"
+    )
     print("================================================================================")
     while True:
         try:
@@ -1413,6 +2272,26 @@ def run_interactive_voice_repl(audible_speaker: bool = True) -> int:
             continue
         if line.lower() in ("/quit", "/exit", "quit", "exit"):
             break
+        if line.lower().startswith("/webcam"):
+            snap = capture_mac_webcam_jpeg_once()
+            if snap:
+                info = wb.push_laptop_webcam_jpeg(snap, activate_webcam_mode=True)
+                print(f"📷 Captured live MacBook camera frame ({info['jpeg_bytes']:,d} B) -> camera_source='laptop_webcam'")
+            else:
+                print(
+                    "⚠️ Direct terminal AVFoundation capture timed out (macOS TCC camera permission). "
+                    "Use 'make live' (http://127.0.0.1:8765) for browser WebRTC camera streaming or '/photo <path>'."
+                )
+            continue
+        if line.lower().startswith("/photo"):
+            parts = line.split(maxsplit=1)
+            img_path = Path(parts[1].strip()) if len(parts) > 1 else Path("../origin_images/1967-ford-mustang-fastback (1).jpeg")
+            if img_path.exists():
+                info = wb.push_laptop_webcam_jpeg(img_path.read_bytes(), activate_webcam_mode=True)
+                print(f"🖼️ Loaded photo '{img_path}' into laptop_webcam feed: {info}")
+            else:
+                print(f"⚠️ File not found: {img_path}")
+            continue
         if line.lower().startswith("/object"):
             parts = line.split(maxsplit=1)
             kind = parts[1] if len(parts) > 1 else "stop_sign"

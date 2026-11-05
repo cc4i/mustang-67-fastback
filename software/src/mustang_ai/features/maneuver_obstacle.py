@@ -59,6 +59,66 @@ MANEUVER_LIBRARY: dict[str, tuple[ManeuverStep, ...]] = {
     ),
 }
 
+DRIVING_ACTION_LIBRARY: dict[str, tuple[ManeuverStep, ...]] = {
+    "move_forward": (
+        ManeuverStep(4.5, 0.56, 0.0, "CRUISE", "MOVE FORWARD"),
+    ),
+    "reverse_back": (
+        ManeuverStep(3.8, -0.48, 0.0, "THINKING", "REVERSE BACK"),
+    ),
+    "keep_going": (
+        ManeuverStep(8.0, 0.56, 0.0, "CRUISE", "KEEP GOING AUTO"),
+        ManeuverStep(8.0, 0.56, 0.0, "COOL_SHADES", "AVOID BLOCKERS"),
+        ManeuverStep(8.0, 0.56, 0.0, "HAPPY", "AUTO CRUISE ON"),
+    ),
+    "turn_left": (
+        ManeuverStep(2.4, 0.52, -15.0, "WINK", "TURN LEFT -15D"),
+        ManeuverStep(2.0, 0.52, 0.0, "CRUISE", "FORWARD CLEAR"),
+    ),
+    "turn_right": (
+        ManeuverStep(2.4, 0.52, 15.0, "WINK", "TURN RIGHT +15D"),
+        ManeuverStep(2.0, 0.52, 0.0, "CRUISE", "FORWARD CLEAR"),
+    ),
+}
+
+MANEUVER_ALIASES: dict[str, str] = {
+    "forward": "move_forward",
+    "forwards": "move_forward",
+    "move_forwards": "move_forward",
+    "go_forward": "move_forward",
+    "go_forwards": "move_forward",
+    "drive_forward": "move_forward",
+    "drive_straight": "move_forward",
+    "straight": "move_forward",
+    "advance": "move_forward",
+    "backward": "reverse_back",
+    "backwards": "reverse_back",
+    "move_backward": "reverse_back",
+    "move_backwards": "reverse_back",
+    "reverse": "reverse_back",
+    "back_up": "reverse_back",
+    "backup": "reverse_back",
+    "go_back": "reverse_back",
+    "keep_going": "keep_going",
+    "auto_avoid": "keep_going",
+    "avoid_blockers": "keep_going",
+    "keep_driving": "keep_going",
+    "auto_cruise": "keep_going",
+    "cruise_forward": "keep_going",
+    "left": "turn_left",
+    "steer_left": "turn_left",
+    "go_left": "turn_left",
+    "right": "turn_right",
+    "steer_right": "turn_right",
+    "go_right": "turn_right",
+}
+
+
+def normalize_maneuver_name(maneuver_name: str) -> str:
+    """Normalize a user/model maneuver or driving action name into its canonical library key."""
+    raw = (maneuver_name or "").strip().lower().replace(" ", "_").replace("-", "_")
+    return MANEUVER_ALIASES.get(raw, raw)
+
 
 class ManeuverObstacleSequencer:
     """`15 Hz` trajectory executor with 5-state Auto-Reverse + S-Curve Bypass obstacle avoidance."""
@@ -81,11 +141,12 @@ class ManeuverObstacleSequencer:
         return bool(self.active_maneuver) and self.step_index < len(self.steps)
 
     def start(self, maneuver_name: str, speed_scale: float = 1.0) -> bool:
-        name = (maneuver_name or "").strip().lower()
-        if name not in MANEUVER_LIBRARY:
+        name = normalize_maneuver_name(maneuver_name)
+        steps = MANEUVER_LIBRARY.get(name) or DRIVING_ACTION_LIBRARY.get(name)
+        if not steps:
             return False
         self.active_maneuver = name
-        self.steps = list(MANEUVER_LIBRARY[name])
+        self.steps = list(steps)
         self.step_index = 0
         self.step_elapsed_sec = 0.0
         self.speed_scale = max(0.4, min(1.0, float(speed_scale)))
@@ -136,7 +197,7 @@ class ManeuverObstacleSequencer:
                     timestamp_s=now,
                     source_mode="EVASIVE_BYPASS",
                     desired_throttle=-0.40,
-                    desired_steering_deg=-float(self.preferred_bypass_dir) * 8.0,
+                    desired_steering_deg=-float(self.preferred_bypass_dir) * 15.0,
                     active_maneuver=self.active_maneuver,
                     hud_emoji="SURPRISED",
                     hud_caption="REV ~150MM",

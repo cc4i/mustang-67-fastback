@@ -16,7 +16,8 @@ Standalone Python package (`Python >= 3.14`) for the **1:20 1967 Ford Mustang Fa
    - **Tier 1 (`15 Hz` / `66.7 ms`)**: `VoiceEmojiHUDController` (12 fun emojis + `LocalPiperTTS` ONNX + half-duplex mute + `>= 0.55` RMS barge-in), `ManeuverObstacleSequencer` (7 tricks + optical ROI clearance + `~150 mm` reverse + S-curve bypass), and `PersonFollowerController` (equidistant fisheye bearing PD steering + 4-zone `350 mm` laser standoff).
    - **Tier 2 (`AsyncIO` Cloud Live WebSocket)**: Connects to `gemini-robotics-er-2-streaming-preview` over `client.aio.live.connect`, streaming `OV5647` `640×480` JPEG frames + telemetry banner and `16 kHz` `PCM16` audio and routing `NON_BLOCKING` tool calls (`speak_with_emoji`, `execute_maneuver`, `set_follow_person_mode`, `set_drive_command`, `emergency_stop`).
 3. **Local Laptop-as-Radxa Developer Workbench (`mustang_ai.simulator.mac_live_workbench`)**:
-   - Runs the complete closed-loop flow on macOS (`Voice -> Live gemini-robotics-er-2-streaming-preview WebSocket -> Local Piper ONNX 16 kHz Speech + 240×240 GC9A01 Emoji HUD + Car Control`) using `software/.env` (`GEMINI_API_KEY`).
+   - Runs the complete closed-loop flow on macOS (`Voice + Live 16 kHz PCM16 Mic + Live 640×480 Laptop Webcam -> Live gemini-robotics-er-2-streaming-preview WebSocket -> Local Piper ONNX 16 kHz Speech + 240×240 GC9A01 Emoji HUD + Real-Time 2D Arena Physics`) using `software/.env` (`GEMINI_API_KEY`).
+   - Supports continuous hands-free speaking (`🎙️📷 Continuous Live Mic + Camera (Hands-Free)` with WebAudio `16 kHz` `PCM16` streaming, half-duplex speaker echo guard, and turn queueing) and all driving actions (`move_forward`, `reverse_back`, `keep_going` with automatic `< 20 ms` `VL53L1X` reflex brake + `~150 mm` reverse + `±15°` S-curve blocker bypass, `turn_left`, `turn_right`, and `stop`) alongside the 7 trick maneuvers and person-following.
 
 ## Quickstart Commands (`Makefile` + `uv` on Python 3.14)
 

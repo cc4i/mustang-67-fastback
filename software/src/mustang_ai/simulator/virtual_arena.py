@@ -16,7 +16,11 @@ from dataclasses import dataclass
 from PIL import Image, ImageDraw, ImageFont
 
 from mustang_ai.config import CameraConfig
-from mustang_ai.features.maneuver_obstacle import MANEUVER_LIBRARY
+from mustang_ai.features.maneuver_obstacle import (
+    DRIVING_ACTION_LIBRARY,
+    MANEUVER_LIBRARY,
+    normalize_maneuver_name,
+)
 from mustang_ai.protocol.messages import CompiledActuatorCommand
 
 SHOWCASE_OBJECT_CATALOG: dict[str, str] = {
@@ -105,8 +109,8 @@ class VirtualArena:
         return {"showcase_object": clean, "description": SHOWCASE_OBJECT_CATALOG[clean]}
 
     def setup_maneuver_course(self, maneuver_name: str, speed_scale: float = 0.90) -> None:
-        """Reset track origin, pre-compute the planned maneuver path, and place visual Slalom Cones / Pylons."""
-        name = (maneuver_name or "").strip().lower()
+        """Reset track origin, pre-compute the planned maneuver path, and place visual Slalom Cones / Pylons / Blockers."""
+        name = normalize_maneuver_name(maneuver_name)
         self.active_maneuver_name = name
         self.car_x_mm = 0.0
         self.car_y_mm = 0.0
@@ -117,7 +121,7 @@ class VirtualArena:
         self.course_markers.clear()
         self.planned_path_xy_mm = [(0.0, 0.0)]
 
-        steps = MANEUVER_LIBRARY.get(name)
+        steps = MANEUVER_LIBRARY.get(name) or DRIVING_ACTION_LIBRARY.get(name)
         if not steps:
             return
 
@@ -126,15 +130,19 @@ class VirtualArena:
         dt = 0.05
         scale = max(0.4, min(1.0, float(speed_scale)))
         phase_boundaries_xy: list[tuple[float, float]] = []
+        max_preview_ticks = 90
+        total_ticks = 0
         for st in steps:
             n_ticks = max(1, int(round(st.duration_sec / dt)))
             v = st.throttle * scale * self.MAX_SPEED_MM_S
             sr = math.radians(st.steering_deg)
             for _ in range(n_ticks):
-                sim_x += v * math.cos(sim_h) * dt
-                sim_y += v * math.sin(sim_h) * dt
-                sim_h += (v / self.WHEELBASE_MM) * math.tan(sr) * dt
-                self.planned_path_xy_mm.append((round(sim_x, 1), round(sim_y, 1)))
+                if total_ticks < max_preview_ticks:
+                    sim_x += v * math.cos(sim_h) * dt
+                    sim_y += v * math.sin(sim_h) * dt
+                    sim_h += (v / self.WHEELBASE_MM) * math.tan(sr) * dt
+                    self.planned_path_xy_mm.append((round(sim_x, 1), round(sim_y, 1)))
+                total_ticks += 1
             phase_boundaries_xy.append((sim_x, sim_y))
 
         if name == "slalom":
@@ -165,6 +173,22 @@ class VirtualArena:
         elif name == "patrol":
             self.course_markers.append(CourseMarker(x_mm=340.0, y_mm=-90.0, label="WP 1", kind="slalom_cone"))
             self.course_markers.append(CourseMarker(x_mm=620.0, y_mm=90.0, label="WP 2", kind="slalom_cone"))
+        elif name == "move_forward":
+            self.course_markers.append(CourseMarker(x_mm=320.0, y_mm=-95.0, label="FWD 320", kind="slalom_cone"))
+            self.course_markers.append(CourseMarker(x_mm=680.0, y_mm=95.0, label="FWD 680", kind="slalom_cone"))
+        elif name == "reverse_back":
+            self.course_markers.append(CourseMarker(x_mm=-220.0, y_mm=-90.0, label="REV -220", kind="slalom_cone"))
+            self.course_markers.append(CourseMarker(x_mm=-480.0, y_mm=90.0, label="REV -480", kind="slalom_cone"))
+        elif name == "turn_left":
+            self.course_markers.append(CourseMarker(x_mm=240.0, y_mm=-180.0, label="LEFT TURN", kind="pylon"))
+        elif name == "turn_right":
+            self.course_markers.append(CourseMarker(x_mm=240.0, y_mm=180.0, label="RIGHT TURN", kind="pylon"))
+        elif name == "keep_going":
+            # Place physical road blockers ahead so the car actively brakes (<120mm), reverses (~150mm), and S-curve bypasses them
+            self.add_obstacle(x_mm=310.0, y_mm=0.0, radius_mm=45.0)
+            self.add_obstacle(x_mm=780.0, y_mm=-65.0, radius_mm=45.0)
+            self.course_markers.append(CourseMarker(x_mm=310.0, y_mm=0.0, label="BLOCKER 1", kind="pylon"))
+            self.course_markers.append(CourseMarker(x_mm=780.0, y_mm=-65.0, label="BLOCKER 2", kind="pylon"))
 
     def step_kinematics(self, dt_sec: float, cmd: CompiledActuatorCommand) -> None:
         """Advance `(x_mm, y_mm, heading_rad)` using the bicycle kinematic model."""
@@ -193,13 +217,13 @@ class VirtualArena:
         sensor_y = self.car_y_mm + self.FRONT_VALANCE_OFFSET_MM * math.sin(self.car_heading_rad)
         best_mm = 1800.0
 
-        targets: list[tuple[float, float, float]] = [
-            (obs.x_mm, obs.y_mm, obs.radius_mm) for obs in self.obstacles
+        targets: list[tuple[float, float, float, float]] = [
+            (obs.x_mm, obs.y_mm, obs.radius_mm, 8.0) for obs in self.obstacles
         ]
         if self.person_xy_mm is not None:
-            targets.append((self.person_xy_mm[0], self.person_xy_mm[1], self.person_radius_mm))
+            targets.append((self.person_xy_mm[0], self.person_xy_mm[1], self.person_radius_mm, 14.0))
 
-        for tx, ty, radius in targets:
+        for tx, ty, radius, half_angle_deg in targets:
             dx = tx - sensor_x
             dy = ty - sensor_y
             cos_h = math.cos(self.car_heading_rad)
@@ -208,7 +232,7 @@ class VirtualArena:
             lat_mm = -dx * sin_h + dy * cos_h
             if fwd_mm <= 0.0:
                 continue
-            cone_half_width = radius + fwd_mm * math.tan(math.radians(14.0))
+            cone_half_width = radius + fwd_mm * math.tan(math.radians(half_angle_deg))
             if abs(lat_mm) <= cone_half_width:
                 surf_dist = max(15.0, math.hypot(fwd_mm, lat_mm) - radius)
                 if surf_dist < best_mm:

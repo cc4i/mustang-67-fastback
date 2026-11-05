@@ -5,6 +5,7 @@ Person-Follower, Voice/Emoji HUD Compositor, and `NON_BLOCKING` Tool Dispatcher 
 from __future__ import annotations
 
 import time
+from dataclasses import replace
 from typing import Any
 
 from mustang_ai.config import RadxaPinConfig
@@ -75,7 +76,7 @@ class LocalAutonomyEngine:
             ok = self.maneuver_seq.start(maneuver_name, speed_scale=speed_scale)
             result = {
                 "status": "started" if ok else "invalid_maneuver",
-                "maneuver_name": maneuver_name,
+                "maneuver_name": self.maneuver_seq.active_maneuver or maneuver_name,
                 "speed_scale": speed_scale,
             }
 
@@ -173,14 +174,24 @@ class LocalAutonomyEngine:
                 self.voice_hud.current_emoji = intent.hud_emoji
                 self.voice_hud.current_caption = intent.hud_caption
         elif self._manual_active:
-            intent = ControlIntent(
-                timestamp_s=now,
-                source_mode="MANUAL_TOOL",
-                desired_throttle=self._manual_throttle,
-                desired_steering_deg=self._manual_steering_deg,
-                hud_emoji=self.voice_hud.current_emoji,
-                hud_caption=self.voice_hud.current_caption,
-            )
+            if self._manual_throttle > 0.0 and (not tof.valid or tof.distance_mm < self.pins.emergency_stop_mm):
+                self._manual_active = False
+                self.maneuver_seq.start(
+                    "keep_going",
+                    speed_scale=min(1.0, max(0.5, abs(self._manual_throttle) / 0.56)),
+                )
+                intent = self.maneuver_seq.step(dt_sec=dt_sec, tof=tof, vision=vision)
+                self.voice_hud.current_emoji = intent.hud_emoji
+                self.voice_hud.current_caption = intent.hud_caption
+            else:
+                intent = ControlIntent(
+                    timestamp_s=now,
+                    source_mode="MANUAL_TOOL",
+                    desired_throttle=self._manual_throttle,
+                    desired_steering_deg=self._manual_steering_deg,
+                    hud_emoji=self.voice_hud.current_emoji,
+                    hud_caption=self.voice_hud.current_caption,
+                )
         else:
             intent = ControlIntent(
                 timestamp_s=now,
@@ -191,7 +202,8 @@ class LocalAutonomyEngine:
                 hud_caption=self.voice_hud.current_caption,
             )
 
-        self.bus.publish_intent(intent)
         hud_state = self.voice_hud.update_hud(tof=tof, actuator_cmd=self.bus.actuator_cmd)
         self.bus.publish_hud(hud_state)
+        intent = replace(intent, timestamp_s=time.monotonic())
+        self.bus.publish_intent(intent)
         return intent
