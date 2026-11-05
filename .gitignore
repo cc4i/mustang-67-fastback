@@ -13,7 +13,9 @@
 *.blend[0-9]*
 *.blend@
 
-# Python
+# Python & local secrets
+.env
+.env.*
 __pycache__/
 *.py[cod]
 .ruff_cache/

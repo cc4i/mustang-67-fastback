@@ -6,6 +6,65 @@ All notable changes and architectural upgrades to the procedural 1967 Ford Musta
 
 ---
 
+## [v3.2.0] - 2026-11-05 — Standalone `software/` (`mustang-ai`) Package, Protocol-Driven HAL, `100 ms` Deadman Watchdog, 2D `VirtualArena` Simulator & Minimal Early-Test Print Manifest
+
+### Added
+- **Standalone `software/` Project Folder & `mustang_ai` Package (`software/pyproject.toml`, `software/src/mustang_ai/`, `software/tests/`)**:
+  - Decoupled the onboard Radxa Zero 3W software from `mustang/` (the 3D Blender CAD directory) into a dedicated top-level [`software/`](software/) Python project (`mustang-ai` v3.2.0) with zero `bpy` dependency and zero module naming overlap against `mustang/ai_edition.py`.
+  - Implemented strict `@runtime_checkable` `typing.Protocol` HAL interfaces (`protocol/hal_contracts.py`: `RangefinderProtocol`, `CameraProtocol`, `AudioStreamProtocol`, `TTSProtocol`, `DisplayHUDProtocol`, `DriveActuatorProtocol`, `GeminiLiveSessionProtocol`) and immutable `@dataclass(frozen=True, slots=True)` inter-tier messages (`protocol/messages.py`: `ToFReading`, `VisionFrameMetrics`, `AudioChunkMetrics`, `ControlIntent`, `CompiledActuatorCommand`, `HUDFrameState`, `GeminiStreamEvent`).
+  - Implemented paired `Sim*` and `Radxa*` HAL backends (`hal/rangefinder_vl53l1x.py`, `hal/camera_ov5647.py`, `hal/audio_i2s.py`, `hal/tts_piper.py`, `hal/display_gc9a01.py`, `hal/drive_actuators.py`), feature controllers (`features/voice_emoji_hud.py`, `features/maneuver_obstacle.py`, `features/person_follower.py`), and single-process concurrency runtime (`runtime/state_bus.py`, `runtime/watchdog_reflex.py` with `< 20 ms` `VL53L1X` emergency brake and **`100 ms` Deadman Watchdog**, `runtime/local_autonomy_loop.py`, `runtime/gemini_live_stream.py`).
+- **2D `VirtualArena` Kinematic/Ray-Cast Simulator & Hardware Bring-Up CLI (`software/src/mustang_ai/simulator/`, `software/src/mustang_ai/cli/`)**:
+  - Built `VirtualArena` (`simulator/virtual_arena.py`, $L = 138\text{ mm}$ bicycle kinematics, ray-cast `VL53L1X` distance calculation, and synthetic `640×480` fisheye RGB renderer with automatic teal silhouette target extraction) and `MockGeminiLiveSession` (`simulator/mock_gemini_session.py`).
+  - Built `mustang-ai doctor --harness {H1,H2,H3,H4,H5,all} [--mode {sim,radxa}]` (`cli/doctor.py`) and `mustang-ai --self-test` (`cli/run_agent.py`) to verify all 5 cable harnesses (`H1`–`H5`) and all 3 Major Functions before connecting physical hardware.
+- **Minimal Early-Test 3D Print Manifest (`docs/ai-edition-software-architecture.md` Section 6)**:
+  - Documented the 2-Stage Minimal Print Manifest for early functional testing: **Stage 1 Open-Top Rolling Chassis & Avionics Mule** requires only **`16` STLs (`23` pieces)** (`15` STLs / `21` pieces if using a `10 mm` tall motor without Z-shims), and **Stage 2 Full Optical & HUD Geometry** adds **`+5` STLs (`+5` pieces)** (`body`, `waymo_pod`, `glass_windshield`, `glass_rear`, `gc9a01_bezel`) for **`21` STLs (`28` pieces)** total, skipping `34` cosmetic STLs (`47` pieces) out of `55` STLs (`75` pieces).
+
+### Verified
+- **26-Test `pytest` Suite, Harness Doctor `H1..H5` & Ruff Lint (`software/tests/`, `tmp/ai_edition_runtime_report.json`)**:
+  - Verified `cd software && uv run --with pytest pytest -v` (`26/26` passed across `test_protocol_contracts.py`, `test_watchdog_and_safety.py`, `test_fn1_voice_emoji_hud.py`, `test_fn2_maneuver_obstacle.py`, `test_fn3_person_follower.py`, and `test_virtual_arena_e2e.py`), `mustang-ai doctor --harness all --mode sim` (`PASS` across `H1`–`H5`), `mustang-ai --self-test` (`PASS`), and `uvx ruff check software/ mustang/` (`0` errors).
+
+---
+
+## [v3.1.0] - 2026-11-05 — 3-Tier Autonomous Software Architecture: Voice + 12 Fun Emojis, 7 Action Macros with Auto Reverse/Bypass & Coupled Visual-Laser Person-Following
+
+### Added
+- **3-Tier Software Architecture & Sensor-to-Command Specification (`docs/ai-edition-software-architecture.md`, `ai_edition/config.py`)**:
+  - Authored [`docs/ai-edition-software-architecture.md`](docs/ai-edition-software-architecture.md) defining how raw signals from the 5-Harness (`H1`–`H5`) topology (`VL53L1X` `50 Hz` I2C3 laser, `OV5647` `15 Hz` MIPI CSI-2 `160°` fisheye camera, and `INMP441` `16 kHz` I2S MEMS mic) compile into real-time actuator commands (`DRV8833` `20 kHz` PWM motor, `1.7g` `50 Hz` steering servo, `MAX98357A` I2S speaker amp, and `1.28"` Round `GC9A01` `240×240` SPI HUD) across 3 hierarchical control tiers (`50 Hz` Reflex Governor, `15 Hz` Local Autonomy Sequencer, `5 Hz / 16 kHz` Cloud `gemini-robotics-er-2-streaming` Live API).
+- **Major Function 1 — Option B Hybrid Voice Conversation (`Cloud Audio-In` + Local `Piper ONNX` TTS), Half-Duplex Barge-In Guard & 12 Expressive Fun Emojis (`ai_edition/drivers/gc9a01_display.py`, `ai_edition/drivers/sensors_audio.py`)**:
+  - Configured Option B Hybrid Voice Architecture (`GeminiERConfig.voice_architecture = "hybrid_cloud_audio_in_local_piper_tts"`, `input_modalities = ("VIDEO", "AUDIO", "TEXT")`, `output_modalities = ("TEXT",)`): `INMP441` `16 kHz` PCM audio streams directly into `gemini-robotics-er-2-streaming` (requiring **zero local STT model** on the Radxa Zero 3W), while `LocalPiperTTS` (`piper-tts` ONNX, `~25 MB` RAM, `< 45 ms` latency) synthesizes Gemini's `spoken_text` locally on the Radxa into `16 kHz` PCM for the `MAX98357A` I2S speaker.
+  - Upgraded `GC9A01Display.render_hud()` and added `render_emoji_contact_sheet()` (`docs/images/ai_gc9a01_emoji_sheet.png`, `960×720` `4×3` grid) supporting all **12 Expressive Fun Emojis** (`CRUISE`, `HAPPY`, `WINK`, `LAUGH`, `COOL_SHADES`, `HEART_EYES`, `SURPRISED`, `THINKING`, `CONFUSED`, `SLEEPY`, `ANGRY_REV`, `ALERT_STOP`) with steering-coupled pupil gaze and a 13-bar live voice waveform equalizer.
+  - Added `I2SAudioStream.read_mic_with_echo_guard()` implementing **Half-Duplex Auto-Mute** during `LocalPiperTTS` / `MAX98357A` playback (`muted_by_half_duplex = True`) and **High-Threshold Barge-In** (`barge_in_rms_threshold = 0.55`) so a loud `"Stop!"` immediately cancels speaker playback and triggers `emergency_stop`.
+- **Major Function 2 — 7 Predefined Action Macros & Auto Reverse + S-Curve Obstacle Bypass (`ai_edition/gemini_er_agent.py`, `ai_edition/drivers/sensors_audio.py`)**:
+  - Implemented `MANEUVER_LIBRARY` and `ManeuverSequencer` supporting all **7 Core Tricks** (`circle_left`, `circle_right`, `figure_eight`, `slalom`, `spin_wiggle`, `u_turn_3pt`, and `patrol`) via the non-blocking `execute_maneuver` Gemini tool.
+  - Implemented `OV5647FisheyeCamera.estimate_left_right_clearance()` and the 5-state obstacle recovery state machine (`CLEAR` $\rightarrow$ `CAUTION_SLOW` $\rightarrow$ `REFLEX_BRAKE` at `< 120 mm` $\rightarrow$ `EVASIVE_REVERSE` at `-0.40` throttle until `d >= 240 mm` $\rightarrow$ `EVASIVE_BYPASS_PASS` at `±15°` toward the clearer lane $\rightarrow$ `EVASIVE_BYPASS_REJOIN` counter-steer $\rightarrow$ `CLEAR` maneuver resume).
+- **Major Function 3 — Coupled Visual-Laser Person-Following (`ai_edition/gemini_er_agent.py`, `ai_edition/drivers/sensors_audio.py`)**:
+  - Implemented `OV5647FisheyeCamera.track_person_target()` (equidistant fisheye horizontal bearing $\theta_x = \operatorname{degrees}((u - c_x)/f_x)$ for `body_legs_torso` primary and `face_hand_fallback` bounding boxes `[ymin, xmin, ymax, xmax]`) and `FollowPersonController` (`set_follow_person_mode`) with PD steering ($K_p = 0.42, K_d = 0.08$) and 4-zone `VL53L1X` longitudinal standoff control (`> 450 mm` proportional approach, `220..450 mm` hold at `350 mm` with `HEART_EYES`, `120..220 mm` `-0.32` personal-space reverse with `WINK`, and `< 120 mm` reflex brake).
+
+### Verified
+- **Closed-Loop Self-Test Across All 3 Major Functions & Lint (`tmp/ai_edition_runtime_report.json`)**:
+  - Verified `uv run --with pillow python3 -m ai_edition.gemini_er_agent --self-test` (`all_checks_passed == true`, `12/12` emojis rendered, half-duplex mute + shout barge-in verified, `7/7` maneuvers verified, left-obstacle right-bypass state machine transitions verified, and `620 mm / 350 mm / 175 mm` person-following states verified) and `uvx ruff check ai_edition/` (`0` warnings/errors).
+
+---
+
+## [v3.0.0] - 2026-11-04 — Independent AI Edition (`Radxa Zero 3W` + `OV5647` Roof Scoop + Sub-Surface `1.28"` `GC9A01` Rear Window HUD + `gemini-robotics-er-2-streaming` Runtime)
+
+### Added
+- **Independent AI Edition CAD & Bambu Lab X2D Pipeline (`mustang/ai_edition.py`, `mustang/make_ai_project.sh`, `mustang/merge_3mf.py`)**:
+  - Created `mustang/ai_edition.py` (`build_and_export()`), preserving the baseline `1:20` RC Mustang files (`output/mustang_67_fastback.blend`, `output/stl/`, `output/mustang_67_fastback_1-24.3mf`) untouched while building the **Sleek Sub-Surface Option B** AI Edition (`69` scene parts, `55` STLs, `75` printed pieces) into `output/ai_edition/` (`output/ai_edition/mustang_67_ai_edition.blend`, `output/ai_edition/stl/`, and `output/ai_edition/mustang_67_ai_edition_x2d.3mf`).
+  - **`WaymoPod` (`waymo_pod.stl`, Burgundy `#6B0F1A`, `34.25 × 21.80 × 6.45 mm`, `2,144.5 mm³`)**: Engineered a `5.5 mm` low-profile Shelby-style teardrop roof vision scoop with a flat print-bed bottom (`Z = 63.80 mm` seated inside `Cut_WaymoSocket`), a `45°` Gothic-crowned fisheye lens bay (`WaymoPod_LensArch`), and top `INMP441` MEMS microphone vents (`WaymoPod_MicCup`), sinking `80%` of the `OV5647` wide-angle/fisheye camera (`25 × 24 mm` PCB + CSI ribbon) inside `Cut_WaymoChimney` (`floating == []`, `cantilevers == []`).
+  - **`GC9A01Bezel` (`gc9a01_bezel.stl`, Silver `#C8C8CC`, `29.60 × 29.60 × 0.85 mm`)**: Engineered a `0.0 mm`-protrusion flush sub-surface chrome bezel ring mounted inside a circular cutout (`Cut_RearGlassHUD`, `Ø 30.40 mm` on `Glass_Rear` + `Cut_RearGlassHUDWell`, `Ø 32.40 mm` on `Body`) along the `+20.5°` fastback rear window slope (`floating == []`, `cantilevers == []`), framing the `1.28"` Round `GC9A01` (`240×240` SPI IPS) display `< 12 mm` above the `Radxa Zero 3W` GPIO header.
+  - **Bridged Two-Story Rear Avionics Deck & Lower-Valance ToF Cradle (`Cut_RadxaBulkheadBridge`, `BootTub_RadxaBridge`, `BootTub_RadxaRail_L/R`, `Tub_AIRadxaSled`, `Tub_AISpeakerBay`, `Tub_AIAmpDrvBay`, `BayTub_ToFSlot`)**: Bridged the rear bulkhead (`X = 3390..4010`, `45°` self-supporting gable roof) and `InteriorTub` / `BootTub` to seat the `65.0 × 30.0 × 5.2 mm` `Radxa Zero 3W` on the upper sled (`Z = 36.4..41.4 mm`, dual USB-C facing the `-40°` opening `TrunkLid`) above the `2S 7.4V` LiPo, `5V 3A` BEC, `15×24×4 mm` Speaker, `MAX98357A` I2S amp, and `DRV8833` H-bridge, plus a lower-valance `VL53L1X` ToF laser rangefinder cradle (`BayTub_ToFSlot`), leaving the 1967 Pony Grille and Windshield 100% untouched.
+- **Radxa Zero 3W + `gemini-robotics-er-2-streaming` Python Runtime (`ai_edition/`) & 4-Act Cable Assembly / Autonomous Drive Simulation (`mustang/ai_animate.py`, `docs/ai-edition-gemini-robotics-guide.md`)**:
+  - Created `ai_edition/config.py`, `ai_edition/drivers/gc9a01_display.py` (`240×240` RGB565 SPI TFT driver + circular HUD compositor with steering-synced eyes, voice waveform equalizer, and ToF alert ring), `ai_edition/drivers/motor_servo.py` (`DRV8833` `20 kHz` PWM H-bridge + `50 Hz` `1.7g` steering servo driver), `ai_edition/drivers/sensors_audio.py` (`OV5647FisheyeCamera`, `VL53L1XRangefinder` `< 20 ms` hardware emergency-stop reflex, and `I2SAudioStream` `16 kHz` PCM audio), and `ai_edition/gemini_er_agent.py` (`MustangGeminiERAgent` bidirectional Live API streaming loop + `--self-test` suite).
+  - Created `mustang/ai_animate.py` (`render_ai_simulation()`, `144` frames @ `24 fps`, `1280×720` Cycles Metal GPU) and [`docs/ai-edition-gemini-robotics-guide.md`](docs/ai-edition-gemini-robotics-guide.md), rendering the 4-Act 3D Cable Assembly (`H1`–`H5` animated cable growth onto the 40-pin Radxa Zero 3W header) and Autonomous `gemini-robotics-er-2-streaming` Drive Simulation (`output/ai_edition/mustang_67_ai_simulation.mp4`, `docs/images/ai_simulation.mp4`, `docs/images/ai_simulation.gif`, and `docs/images/ai_simulation_storyboard.jpg`).
+
+### Verified
+- **Zero-Overlap CAD, 55-STL / 9-Plate X2D `.3mf` & Closed-Loop Runtime Verification (`tmp/ai_edition_build_report.json`, `tmp/ai_edition_runtime_report.json`)**:
+  - Verified `printcheck.run()` across all `69` scene parts (`problems == {}`, `overlaps_with_body == {}`, `mirror_mismatches == {}`, `part_overlaps == {}`, `body.shells == 1`), `verify_virtual_ai_hardware() == {}` (`0.0 mm³` overlap across all 8 virtual AI hardware envelopes), and `export.run()` across all `55` STLs (`75` pieces, `0` non-manifold edges, `floating == []` and `cantilevers == []` on all `50` support-free STLs).
+  - Verified `ai_edition.gemini_er_agent --self-test` (`all_checks_passed == true`, `< 20 ms` ToF reflex brake latency, `240×240` `GC9A01` HUD frames exported to `tmp/`).
+
+---
+
 ## [v2.9.1] - 2026-11-03 — Open-Bottom Driveshaft U-Channels, Straight-Vertical V8 Drop, Tie-Rod Assembly Notch & `1:20` Door Hinge Bores
 
 ### Fixed

@@ -86,6 +86,8 @@ OBJECT_SETTINGS = {
     "motor_coupler_1p5.stl": SMALL_PART_BRIM,
     "motor_coupler_tube.stl": SMALL_PART_BRIM,
     "motor_coupler_n25.stl": SMALL_PART_BRIM,
+    "gc9a01_bezel.stl": SMALL_PART_BRIM,
+    "waymo_pod.stl": SLENDER_BAR_BRIM,
     # small parts on 2_black and 4_red
     "taillight_lens_r_x3.stl": SMALL_PART_BRIM,
     "taillight_lens_l_x3.stl": SMALL_PART_BRIM,

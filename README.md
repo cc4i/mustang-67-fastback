@@ -105,6 +105,44 @@ mustang/make_project.sh output/mustang_67_fastback_1-24.3mf
 uv run mustang/make_step.py
 ```
 
+### 🤖 Independent AI Edition (`v3.2.0` — Radxa Zero 3W + `gemini-robotics-er-2-streaming`)
+
+An **independent AI Edition** (`mustang/ai_edition.py` for 3D CAD + standalone [`software/`](software/) `mustang-ai` Python package) builds on top of the classic 1:20 RC Mustang without modifying the baseline deliverables, outputting its Blender scene, `55` STLs (`75` printed pieces; or `16` STLs / `23` pieces for Stage 1 early rolling-chassis testing), and Bambu Lab X2D `.3mf` to `output/ai_edition/`:
+- **Low-Profile Roof Vision Scoop (`WaymoPod` $\rightarrow$ `waymo_pod.stl`, Burgundy `#6B0F1A`)**: `5.5 mm` Shelby-style teardrop roof scoop (`22 × 36 mm`) with `80%` of the wide-angle/fisheye **`OV5647` (`160°` MIPI CSI)** PCB sunk below the roof skin (`Cut_WaymoSocket` + `Cut_WaymoChimney`) and top **`INMP441` I2S MEMS microphone** vents (`WaymoPod_MicCup`).
+- **Sub-Surface Fastback Window HUD (`GC9A01Bezel` $\rightarrow$ `gc9a01_bezel.stl`, Silver `#C8C8CC`)**: `0.0 mm` exterior protrusion flush chrome bezel ring mounted sub-surface inside `Glass_Rear` (`Cut_RearGlassHUD` + `Cut_RearGlassHUDWell`, `+20.5°` slope), framing the **`1.28"` Round `GC9A01` (`240×240` SPI IPS)** display (`< 12 mm` jumper run to the Radxa GPIO header).
+- **Bridged Two-Story Rear Avionics Deck (`Cut_RadxaBulkheadBridge`, `BootTub_RadxaRail_L/R`, `Tub_AIRadxaSled`, `Tub_AISpeakerBay`, `Tub_AIAmpDrvBay`)**: Houses the **`65.0 × 30.0 × 5.2 mm` Radxa Zero 3W** on the upper sled (`Z = 36.4..41.4 mm`) and the **`2S 7.4V` LiPo + `5V 3A` BEC + `15×24×4 mm` Speaker + `MAX98357A` I2S Amp + `DRV8833` H-Bridge** below, plus a lower-valance **`VL53L1X` ToF laser rangefinder cradle (`BayTub_ToFSlot`)** (`< 20 ms` hardware auto-brake reflex, leaving the 1967 Pony Grille and Windshield 100% untouched).
+- **Standalone Protocol-Driven 3-Tier Autonomous Software Stack (`software/` `v3.2.0` — `mustang_ai`)**:
+  1. **Hybrid Voice Conversation (`Cloud Audio-In` + Local `Piper ONNX` TTS) & 12 Expressive Fun Emojis (`speak_with_emoji`)**: `gemini-robotics-er-2-streaming` accepts raw `16 kHz` `INMP441` mic audio and `OV5647` video natively (so **zero local STT model is needed on Radxa**) and outputs `TEXT` + Tool Calls; `LocalPiperTTS` (`piper-tts` ONNX, `~25 MB` RAM, `< 45 ms` latency on Radxa `RK3566`) synthesizes spoken replies locally into the `MAX98357A` speaker with Half-Duplex Auto-Mute + High-Threshold Barge-In (`RMS >= 0.55`) and 12 animated `240×240` `GC9A01` emojis (`CRUISE`, `HAPPY`, `WINK`, `LAUGH`, `COOL_SHADES`, `HEART_EYES`, `SURPRISED`, `THINKING`, `CONFUSED`, `SLEEPY`, `ANGRY_REV`, `ALERT_STOP`).
+  2. **7 Predefined Action Macros & Auto Reverse + S-Curve Bypass (`execute_maneuver`)**: Executes `circle_left`, `circle_right`, `figure_eight`, `slalom`, `spin_wiggle`, `u_turn_3pt`, and `patrol` at `15 Hz`, automatically braking at `VL53L1X < 120 mm`, scoring left/right `OV5647` optical clearance, reversing `~150 mm` (`-0.40` throttle until `d >= 240 mm`), S-curving around the obstacle (`±15°`), and resuming the maneuver.
+  3. **Coupled Visual-Laser Person-Following (`set_follow_person_mode`)**: Tracks full-body/legs/torso (or hand/face fallback) `[ymin, xmin, ymax, xmax]` boxes with equidistant fisheye PD steering and 4-zone `350 mm` `VL53L1X` standoff (`> 450 mm` approach, `220..450 mm` hold with `HEART_EYES`, `120..220 mm` `-0.32` personal-space backup, `< 120 mm` reflex brake), guarded by a `100 ms` Deadman Watchdog and tested pre-hardware in the deterministic 2D `VirtualArena` simulator.
+
+[![4-Act AI Cable Assembly & Autonomous Gemini Robotics ER 2.0 Simulation](docs/images/ai_simulation.gif)](docs/images/ai_simulation.mp4)
+
+![12 Expressive Fun Emojis on the 1.28" Round GC9A01 240x240 Rear Window HUD](docs/images/ai_gc9a01_emoji_sheet.png)
+
+```bash
+# 1. Build the Independent AI Edition Blender scene (69 parts) and export 55 STLs (75 pieces) to output/ai_edition/
+/Applications/Blender.app/Contents/MacOS/Blender -b --factory-startup --python-expr "
+import sys; sys.path.insert(0, 'mustang')
+import ai_edition; ai_edition.build_and_export(save_blend=True)
+"
+
+# 2. Generate the 9-plate Bambu Lab X2D project (output/ai_edition/mustang_67_ai_edition_x2d.3mf)
+bash mustang/make_ai_project.sh output/ai_edition/mustang_67_ai_edition_x2d.3mf
+
+# 3. Run the standalone software/ pytest suite (VirtualArena 2D physics + HAL protocol contracts + H1..H5 doctor)
+cd software && uv run pytest -v
+
+# 4. Run the Cable Harness Doctor (H1..H5) and full runtime self-test
+cd software && uv run mustang-ai doctor --harness all --mode sim
+cd software && uv run mustang-ai --self-test
+
+# 5. Render the 144-frame 4-Act AI Cable Assembly & Autonomous Drive simulation (mustang/ai_animate.py -> output/ai_edition/mustang_67_ai_simulation.mp4)
+/Applications/Blender.app/Contents/MacOS/Blender -b --factory-startup output/ai_edition/mustang_67_ai_edition.blend --python mustang/ai_animate.py
+```
+
+👉 **Full AI Edition Hardware BOM & 40-Pin Wiring:** [**`docs/ai-edition-gemini-robotics-guide.md`**](docs/ai-edition-gemini-robotics-guide.md) · **3-Tier Software, Pre-Hardware Verification & Minimal Early-Test Print Manifest (`v3.2.0`):** [**`docs/ai-edition-software-architecture.md`**](docs/ai-edition-software-architecture.md)
+
 ---
 
 ## 📚 Deep-Dive Documentation (`docs/`)
@@ -113,10 +151,12 @@ To keep this README fast and approachable, detailed engineering reports, wiring 
 
 | Guide | What You'll Find Inside |
 | :--- | :--- |
+| 🧠 [**AI Edition Software Architecture, Protocol HAL & Early-Test Print Manifest (`v3.2.0`)**](docs/ai-edition-software-architecture.md) | Decoupled `software/` (`mustang_ai`) package design, `@runtime_checkable` HAL protocols, `100 ms` Deadman Watchdog, 2D `VirtualArena` simulator, 12-Emoji `GC9A01` vocabulary, 7 predefined action macros with Auto Reverse + S-Curve obstacle bypass, `350 mm` person-following control law, and **Stage 1 (`16` STLs / `23` pieces) & Stage 2 (`21` STLs / `28` pieces) Minimal Early-Test Print Manifest**. |
+| 🤖 [**Gemini Robotics ER 2.0 + Radxa Zero 3W AI Edition Guide & BOM**](docs/ai-edition-gemini-robotics-guide.md) | Complete **Sleek Sub-Surface Option B** architecture (`5.5 mm` `waymo_pod.stl` roof scoop, `0.0 mm` flush `gc9a01_bezel.stl` rear window HUD, 3-zone stepped L-rail `Radxa Zero 3W` cradle, `Cut_WaymoChimney` cable routing, `Tub_AISpeakerBay`), 40-pin GPIO wiring table, and the **complete Hardware Shopping List / Bill of Materials (BOM)**. |
 | 🧠 [**Design Thinking & Build Verification**](docs/design-thinking-and-verification.md) | How the 1:20 scale upgrade (`K = 1.2`), `Approach A` partitioned wire conduit, contoured `45°` zero-cantilever door interlocks, modular multi-fit `7T:9T` flat-printed bevel drivetrain, and 4-Act kinematics were engineered and proven (`0.0 mm³` overlap across all 67 parts and `0` Bambu Studio warnings across all 9 plates). |
 | 🛠️ [**Printing, Assembly & RC Wiring Guide**](docs/printing-and-rc-guide.md) | Complete 53-STL / 73-piece manifest across 9 plates, multi-fit motor coupler & Z-shim guide, Bambu X2D outer-only brim & speed settings, **Option A (2.4GHz Hobby RC)** & **Option B (433MHz RF Keyfob)** wiring diagrams, and how to import named STEP solids into **Shapr3D**. |
 | 🎥 [**Vanguard Stock #2229 Reference Media Index**](docs/reference-media.md) | Complete index of all 83 dealer reference photos, 2 walkaround videos in [`origin_images/`](origin_images/), and `Cam_P*` camera-matching calibration. |
-| 📜 [**Changelog (`v1.0.0` $\rightarrow$ `v2.9.1`)**](CHANGELOG.md) | Chronological release history from the initial 1:24 static model to the 1:20 RC dynamic control system, authentic 1967 twin-cowl cabin, heavy-duty `3.24 mm` axle / `12`-spline wheel assembly, 9-plate small-part reliability overhaul, `v2.9.0` multi-fit coupler + flat-printed `7T:9T` bevel gear upgrade, and `v2.9.1` open-bottom U-channel + straight-line `3D` physical assembly clearance upgrade. |
+| 📜 [**Changelog (`v1.0.0` $\rightarrow$ `v3.2.0`)**](CHANGELOG.md) | Chronological release history from the initial 1:24 static model to the 1:20 RC dynamic control system, authentic 1967 twin-cowl cabin, heavy-duty `3.24 mm` axle / `12`-spline wheel assembly, 9-plate small-part reliability overhaul, `v2.9.0` multi-fit coupler + flat-printed `7T:9T` bevel gear upgrade, `v2.9.1` open-bottom U-channel + straight-line `3D` physical assembly clearance upgrade, `v3.0.0` Independent AI Edition hardware packaging, `v3.1.0` 3-Tier Autonomous Software Architecture, and **`v3.2.0` Standalone `software/` Package, Protocol HAL, `VirtualArena` Simulator & Minimal Early-Test Print Manifest**. |
 | 🤖 [**Architecture & Developer Rules (`AGENTS.md`)**](AGENTS.md) | Coordinate conventions (`+X` rear, `+Y` right), boolean modifier pipeline, `export.HINGED` axes, verification gates, and lockstep documentation rules. |
 
 ---
@@ -125,8 +165,9 @@ To keep this README fast and approachable, detailed engineering reports, wiring 
 
 | Path | Contents |
 | :--- | :--- |
-| [`mustang/`](mustang/) | Procedural Blender Python modules (`build`, `body`, `features`, `details`, `bumpers`, `doors`, `engine_bay`, `interior`, `wheels`, `materials`, `printcheck`, `export`, `studio`, `animate`), Bambu CLI scripts (`make_project.sh`, `merge_3mf.py`), STEP exporter (`make_step.py`), `readme_images.sh` |
-| [`docs/`](docs/) | Deep-dive engineering guides (`design-thinking-and-verification.md`, `printing-and-rc-guide.md`, `reference-media.md`) and tracked showcase media (`docs/images/`) |
+| [`mustang/`](mustang/) | Procedural Blender Python modules (`build`, `body`, `features`, `details`, `bumpers`, `doors`, `engine_bay`, `interior`, `wheels`, `materials`, `printcheck`, `export`, `studio`, `animate`, `ai_edition`, `ai_animate`), Bambu CLI scripts (`make_project.sh`, `make_ai_project.sh`, `merge_3mf.py`), STEP exporter (`make_step.py`), `readme_images.sh` |
+| [`software/`](software/) | Standalone `mustang-ai` (`v3.2.0`) Python package (`pyproject.toml`, `src/mustang_ai/` with `protocol/`, `hal/`, `features/`, `runtime/`, `simulator/`, `cli/`, and `tests/` pytest suite) |
+| [`docs/`](docs/) | Deep-dive engineering guides (`ai-edition-software-architecture.md`, `ai-edition-gemini-robotics-guide.md`, `design-thinking-and-verification.md`, `printing-and-rc-guide.md`, `reference-media.md`) and tracked showcase media (`docs/images/`) |
 | [`origin_images/`](origin_images/) | 83 reference photos, 2 walkaround videos, and `vanguard_2229_manifest.json` (`Stock #2229`) |
-| `output/` | Generated deliverables (git-ignored): `mustang_67_fastback.blend`, `mustang_67_fastback_1-24.3mf`, `mustang_67_fastback.mp4`, `stl/` (`53` STLs), `stl_assembled/`, `step/` (`67` part STEPs), and `mustang_67_fastback.step` |
+| `output/` | Generated deliverables (git-ignored): baseline `mustang_67_fastback.blend`, `mustang_67_fastback_1-24.3mf`, `mustang_67_fastback.mp4`, `stl/` (`53` STLs), `stl_assembled/`, `step/` (`67` part STEPs), `mustang_67_fastback.step`, plus Independent AI Edition deliverables in `output/ai_edition/` (`mustang_67_ai_edition.blend`, `stl/` with `55` STLs / `75` pieces, and `mustang_67_ai_edition_x2d.3mf`) |
 | `tmp/` | Scratch renders, animation/simulation frame sequences, and JSON verification reports |
