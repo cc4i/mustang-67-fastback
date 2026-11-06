@@ -58,6 +58,11 @@ from mustang_ai.simulator.mac_interaction_sim import (
 )
 from mustang_ai.simulator.mock_gemini_session import MockGeminiLiveSession
 from mustang_ai.simulator.virtual_arena import SHOWCASE_OBJECT_CATALOG, VirtualArena
+from mustang_ai.voice.conversation import (
+    ConversationStateMachine,
+    run_s1_s7_verification_suite,
+)
+
 
 
 def coalesce_turn_tool_calls(
@@ -793,6 +798,11 @@ class MacLiveWorkbench:
             bus=self.bus,
         )
         self.brain = LocalGeminiERBrain(config=self.config, api_key=api_key, use_cloud_live=use_cloud_live)
+        self.voice_pipeline = ConversationStateMachine(
+            autonomy=self.autonomy,
+            governor=self.governor,
+            bus=self.bus,
+        )
         self._lock = threading.RLock()
         self.conversation_history: list[dict[str, Any]] = []
         self.last_user_utterance: str = "Ready for voice command..."
@@ -874,6 +884,45 @@ class MacLiveWorkbench:
             self.autonomy.step_once(dt_sec=dt_sec)
             cmd = self.governor.step_once(now_s=time.monotonic())
             self.arena.step_kinematics(dt_sec=dt_sec, cmd=cmd)
+            self.voice_pipeline.tick_timers(now_s=time.monotonic())
+
+    def set_wake_word_config(self, new_phrase: str) -> dict[str, Any]:
+        """Update the active wake word (`keywords.txt`) and return `< 3` syllable risk telemetry (`D1`, `D9`, `R1`)."""
+        with self._lock:
+            upd = self.voice_pipeline.keywords.set_wake_word(new_phrase)
+            return {
+                "old_wake_phrase": upd.old_wake_phrase,
+                "new_wake_phrase": upd.new_wake_phrase,
+                "syllable_count": upd.syllable_count,
+                "short_phrase_warning": upd.short_phrase_warning,
+                "warning_message": upd.warning_message,
+                "keywords_file": upd.keywords_file,
+                "voice_pipeline": self.voice_pipeline.snapshot_status(),
+            }
+
+    def set_cloud_online_mode(self, online: bool) -> dict[str, Any]:
+        """Toggle cloud online / offline mode (`D10`) for testing local command survival in the workbench."""
+        with self._lock:
+            self.voice_pipeline.live_session.cloud_online = bool(online)
+            self.brain.use_cloud_live = bool(online)
+            return {
+                "cloud_online": self.voice_pipeline.live_session.cloud_online,
+                "voice_pipeline": self.voice_pipeline.snapshot_status(),
+            }
+
+    def adjust_speaker_volume(self, direction: str) -> dict[str, Any]:
+        """Adjust speaker volume `"louder"` or `"quieter"` within the safe `70%` default cap (`D15`)."""
+        with self._lock:
+            vol = self.voice_pipeline.audio_engine.adjust_volume(direction)
+            return {
+                "speaker_volume": vol,
+                "voice_pipeline": self.voice_pipeline.snapshot_status(),
+            }
+
+    def run_voice_pipeline_benchmark(self) -> dict[str, Any]:
+        """Execute the full `S1`–`S7` + `D1`–`D15` verification suite and return its report."""
+        with self._lock:
+            return run_s1_s7_verification_suite(use_real_piper=False)
 
     def set_showcase_object(self, kind: str | None) -> dict[str, Any]:
         """Place a recognizable visual object (`stop_sign`, `traffic_cone`, `soccer_ball`, etc.) in front of `OV5647`."""
@@ -1196,6 +1245,7 @@ class MacLiveWorkbench:
                 "hud_png_b64": hud_b64,
                 "cam_jpeg_b64": cam_b64,
                 "arena_png_b64": arena_b64,
+                "voice_pipeline": self.voice_pipeline.snapshot_status(),
                 "history": self.conversation_history[-6:],
             }
 
@@ -1285,6 +1335,19 @@ WORKBENCH_HTML = """<!DOCTYPE html>
   <button onclick="replayAudio()">🔊 Replay Piper ONNX Audio</button>
   <button class="danger" onclick="triggerBargeIn()">⚡ Shout Barge-In (RMS 0.76)</button>
   <audio id="ttsAudio" style="display:none"></audio>
+</div>
+
+<div class="chips">
+  <span class="lbl">🗣️ MILESTONE A RADXA VOICE STACK (AEC3 + WAKE WORD + BARGE-IN):</span>
+  <span class="badge" id="vpStateBadge">VOICE: IDLE</span>
+  <span class="badge" id="vpWakeBadge">WAKE: Hey Mustang (3 syl)</span>
+  <span class="badge" id="vpErleBadge">AEC3 ERLE: 0.0 dB | Vol: 70%</span>
+  <button class="primary" onclick="setWakePhrase('Hey Mustang')">🎙️ Wake: "Hey Mustang" (3 syl)</button>
+  <button onclick="setWakePhrase('Hey Nerd')">🤓 Wake: "Hey Nerd" (2 syl warn)</button>
+  <button onclick="adjustVolume('quieter')">🔉 Quieter (-15%)</button>
+  <button onclick="adjustVolume('louder')">🔊 Louder (+15%)</button>
+  <button id="cloudModeBtn" onclick="toggleCloudMode()">☁️ Cloud: ONLINE</button>
+  <button class="vision" onclick="runS1S7Benchmark()">✅ Run S1–S7 Voice Benchmark</button>
 </div>
 
 <div class="chips">
@@ -1668,7 +1731,7 @@ async function pushWebcamFrameOnce() {
 async function startLaptopWebcam() {
   if (webcamStream) return true;
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-    alert('navigator.mediaDevices.getUserMedia is not available in this browser.');
+    document.getElementById('wireLog').textContent = 'navigator.mediaDevices.getUserMedia is not available in this browser.';
     return false;
   }
   try {
@@ -1692,7 +1755,7 @@ async function startLaptopWebcam() {
     await pollState();
     return true;
   } catch (err) {
-    alert('Could not access MacBook camera: ' + err.message);
+    document.getElementById('wireLog').textContent = 'Could not access MacBook camera: ' + err.message;
     return false;
   }
 }
@@ -1845,6 +1908,49 @@ async function apiAction(path) {
   await pollState();
 }
 
+let cloudOnlineState = true;
+
+async function setWakePhrase(phrase) {
+  const res = await fetch('/api/voice_pipeline/wake_word', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({wake_phrase: phrase})
+  });
+  const info = await res.json();
+  document.getElementById('wireLog').textContent = JSON.stringify(info, null, 2);
+  await pollState();
+}
+
+async function adjustVolume(direction) {
+  const res = await fetch('/api/voice_pipeline/volume', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({direction: direction})
+  });
+  const info = await res.json();
+  document.getElementById('wireLog').textContent = JSON.stringify(info, null, 2);
+  await pollState();
+}
+
+async function toggleCloudMode() {
+  cloudOnlineState = !cloudOnlineState;
+  const res = await fetch('/api/voice_pipeline/cloud_mode', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({cloud_online: cloudOnlineState})
+  });
+  const info = await res.json();
+  document.getElementById('wireLog').textContent = JSON.stringify(info, null, 2);
+  await pollState();
+}
+
+async function runS1S7Benchmark() {
+  const res = await fetch('/api/voice_pipeline/benchmark', {method: 'POST'});
+  const info = await res.json();
+  document.getElementById('wireLog').textContent = JSON.stringify(info, null, 2);
+  await pollState();
+}
+
 async function replayAudio() {
   const res = await fetch('/api/audio/replay', {method: 'POST'});
   const info = await res.json();
@@ -1900,6 +2006,20 @@ async function pollState() {
       `Throttle=${st.applied_throttle.toFixed(2)} | Brake=${st.emergency_brake}`;
     document.getElementById('tPose').textContent =
       `X=${st.car_pose_mm[0]} Y=${st.car_pose_mm[1]} (${st.car_heading_deg}°)`;
+
+    if (st.voice_pipeline) {
+      const vp = st.voice_pipeline;
+      document.getElementById('vpStateBadge').textContent = `VOICE: ${vp.state}`;
+      const warnTag = vp.short_phrase_warning ? ' ⚠️<3syl' : '';
+      document.getElementById('vpWakeBadge').textContent =
+        `WAKE: ${vp.wake_phrase} (${vp.syllable_count} syl${warnTag})`;
+      document.getElementById('vpErleBadge').textContent =
+        `AEC3 ERLE: ${vp.cumulative_erle_db} dB | Vol: ${Math.round(vp.speaker_volume * 100)}%`;
+      const cBtn = document.getElementById('cloudModeBtn');
+      cloudOnlineState = Boolean(vp.cloud_online);
+      cBtn.textContent = cloudOnlineState ? '☁️ Cloud: ONLINE' : '📴 Cloud: OFFLINE (D10 Local Mode)';
+      cBtn.className = cloudOnlineState ? '' : 'danger';
+    }
 
     if (st.history && st.history.length > 0) {
       document.getElementById('wireLog').textContent = JSON.stringify(st.history[st.history.length - 1], null, 2);
@@ -2116,6 +2236,9 @@ def serve_live_workbench(
             raw = json.dumps(payload).encode("utf-8")
             self.send_response(status)
             self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("X-Content-Type-Options", "nosniff")
+            self.send_header("X-Frame-Options", "SAMEORIGIN")
+            self.send_header("Cache-Control", "no-store")
             self.send_header("Content-Length", str(len(raw)))
             self.end_headers()
             self.wfile.write(raw)
@@ -2125,9 +2248,15 @@ def serve_live_workbench(
                 raw = WORKBENCH_HTML.encode("utf-8")
                 self.send_response(HTTPStatus.OK)
                 self.send_header("Content-Type", "text/html; charset=utf-8")
+                self.send_header("X-Content-Type-Options", "nosniff")
+                self.send_header("X-Frame-Options", "SAMEORIGIN")
+                self.send_header("Cache-Control", "no-store")
                 self.send_header("Content-Length", str(len(raw)))
                 self.end_headers()
                 self.wfile.write(raw)
+                return
+            if self.path.startswith("/api/voice_pipeline/state"):
+                self._send_json(wb.voice_pipeline.snapshot_status())
                 return
             if self.path.startswith("/api/state"):
                 self._send_json(wb.snapshot_telemetry())
@@ -2193,6 +2322,24 @@ def serve_live_workbench(
                 if self.path.startswith("/api/object/"):
                     kind = self.path.split("/api/object/", 1)[1].strip()
                     self._send_json(wb.set_showcase_object(kind))
+                    return
+                if self.path == "/api/voice_pipeline/wake_word":
+                    data = json.loads(body.decode("utf-8") or "{}")
+                    phrase = str(data.get("wake_phrase", "Hey Mustang"))
+                    self._send_json(wb.set_wake_word_config(phrase))
+                    return
+                if self.path == "/api/voice_pipeline/volume":
+                    data = json.loads(body.decode("utf-8") or "{}")
+                    direction = str(data.get("direction", "louder"))
+                    self._send_json(wb.adjust_speaker_volume(direction))
+                    return
+                if self.path == "/api/voice_pipeline/cloud_mode":
+                    data = json.loads(body.decode("utf-8") or "{}")
+                    online = bool(data.get("cloud_online", True))
+                    self._send_json(wb.set_cloud_online_mode(online))
+                    return
+                if self.path == "/api/voice_pipeline/benchmark":
+                    self._send_json(wb.run_voice_pipeline_benchmark())
                     return
                 if self.path == "/api/barge_in":
                     self._send_json(wb.trigger_barge_in())

@@ -11,7 +11,7 @@ import time
 from pathlib import Path
 from typing import Sequence
 
-from mustang_ai.cli import doctor
+from mustang_ai.cli import doctor, voice_live
 from mustang_ai.config import CORE_12_EMOJIS, GeminiERConfig
 from mustang_ai.features.maneuver_obstacle import MANEUVER_LIBRARY
 from mustang_ai.features.voice_emoji_hud import VoiceEmojiHUDController
@@ -191,6 +191,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     args_list = list(sys.argv[1:] if argv is None else argv)
     if args_list and args_list[0] == "doctor":
         return doctor.main(args_list[1:])
+    if args_list and args_list[0] == "voice-live":
+        return voice_live.main(args_list[1:])
     if args_list and args_list[0] == "simulate":
         speak_mac = "--speak-mac" in args_list[1:]
         sim_report = run_mac_gemini_er_simulation(speak_mac_audio=speak_mac)

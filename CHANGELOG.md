@@ -6,6 +6,23 @@ All notable changes and architectural upgrades to the procedural 1967 Ford Musta
 
 ---
 
+## [v3.3.0] - 2026-11-06 — Milestone A Laptop-First Radxa Voice Stack: WebRTC `AEC3 + NS`, Wake-Word Spotter (`keywords.txt`), Real Barge-In, Conversation State Machine & Persistent Multi-Turn Live Session
+
+### Added
+- **Milestone A Radxa Voice Stack Package (`software/src/mustang_ai/voice/`, `software/src/mustang_ai/cli/voice_live.py`)**:
+  - **`FullDuplexAudioEngine` (`voice/audio_engine.py`)**: Full-duplex `16 kHz` (`10 ms` / `160`-sample / `320`-byte frame) audio engine with exact speaker reference stream tap, `< 1 ms` playback flush (`flush_playback()`) for barge-in (`S5 <= 200 ms`), safe speaker volume cap (`default = 0.70`, adjustable within `[0.25, 0.85]` via `"louder"` / `"quieter"`, `D15`), and synthetic `N25` brushed motor + `7:9` bevel gear-mesh noise generator scaled by `applied_throttle` (`0%..100%`).
+  - **`AudioFrontEnd` (`voice/frontend.py`)**: Wraps C++ WebRTC `AEC3 + NS + HPF + AGC` (`livekit.rtc.AudioProcessingModule`) alongside a 4-tap Normalized LMS (NLMS) adaptive reference canceller with Geigel double-talk protection, a `120 Hz` high-pass filter, throttle-coupled motor harmonic notch filters, and throttle-scaled wake/VAD thresholds (`get_adaptive_thresholds()`, `D4`), achieving **`59.52 dB` mean ERLE** (`S1` target `>= 15 dB`) and **`0` self-triggers**.
+  - **`KeywordSpotterEngine` (`voice/keywords.py`)**: Open-vocabulary keyword spotter managing `keywords.txt` (`sherpa-onnx` token format) with hot-reload (`maybe_hot_reload()`), configurable wake phrase (default `"Hey Mustang"`, user-changeable to e.g. `"Hey Nerd"` via config or voice `"change your name to <phrase>"` with confirmation, `D1`, `D9`), syllable estimator with `< 3`-syllable false-wake risk warning and automatic threshold boost (`R1`), and 16-band log-Mel acoustic template matching over `16 kHz` `PCM16` streams (`S1`, `S2`, `S3`).
+  - **`SileroVADTracker` (`voice/vad.py`) & `SentenceStreamTTS` (`voice/tts_stream.py`)**: Streaming `10 ms`-frame VAD with `150 ms` pre-roll, `550 ms` silence hangover, `8.0 s` max utterance cap, and RIFF `WAV` packaging; sentence-streamed local Piper ONNX synthesis enforcing the `1-2` sentence / `<= 25`-word default reply cap (`D13`, expandable via `"tell me more"`) and enqueuing Sentence 1 immediately (`S4`).
+  - **`PersistentConversationLiveSession` (`voice/live_session.py`) & `ConversationStateMachine` (`voice/conversation.py`)**: Implements `IDLE`, `LISTENING`, `THINKING`, `SPEAKING`, `FOLLOW_UP`, and `STOP` across all locked rules (`D1`–`D15` & `S1`–`S7`), including wake-word/`"stop"`-only barge-in (`D3`, `S5`), `< 5 ms` local move start with duplicate cloud `execute_maneuver` filtering (`D5`, `D7`, `D8`), `<= 100 ms` local `"stop"` (`S6`), `8.0 s` `FOLLOW_UP` window without repeating the wake word and full memory reset on `-> IDLE` (`D14`, `S7`), and automatic offline fallback (`CONFUSED` emoji + local Piper notice while keeping local driving commands active, `D10`).
+  - **Workbench & CLI Integration (`simulator/mac_live_workbench.py`, `cli/voice_live.py`, `cli/run_agent.py`, `software/Makefile`)**: Added `make voice-live` (`mustang-ai voice-live`), `make voice-verify` (`mustang-ai voice-live --verify-only`), and the interactive Milestone A Radxa Voice Stack control bar (`/api/voice_pipeline/{state,wake_word,volume,cloud_mode,benchmark}`) in the browser workbench (`http://127.0.0.1:8765`).
+
+### Verified
+- **`40/40` `pytest` Suite, `S1`–`S7` Benchmark & Ruff Lint (`software/tests/test_milestone_a_voice_pipeline.py`, `tmp/milestone_a_voice_report.json`)**:
+  - Verified `cd software && uv run pytest -v` (**`40/40` passed** in `13.94 s`), `uv run mustang-ai voice-live --verify-only` (`status == "PASS"`, `all_s1_s7_passed == true`, `mean_erle_db == 59.52 dB`, `self_triggers == 0`, `false_wake_triggers == 0`, `wake_hit_rate == 1.0`, `max_barge_in_latency_ms == 0.01 ms <= 200 ms`, `max_stop_latency_ms == 15.58 ms <= 100 ms`), and `uv run ruff check . ../mustang` (`0` errors).
+
+---
+
 ## [v3.2.0] - 2026-11-05 — Standalone `software/` (`mustang-ai`) Package, Protocol-Driven HAL, `100 ms` Deadman Watchdog, 2D `VirtualArena` Simulator & Minimal Early-Test Print Manifest
 
 ### Added

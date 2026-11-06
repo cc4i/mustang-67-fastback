@@ -72,18 +72,31 @@ mustang-67-fastback/
     │       │   ├── virtual_arena.py        # 1:20 Mustang Bicycle Kinematics (L=138 mm) + Ray-Cast ToF + Synthetic Fisheye Frame Generator
     │       │   └── mock_gemini_session.py  # Deterministic scripted tool-call & audio/video stream harness for offline E2E tests
     │       │
+    │       ├── voice/                      # Milestone A (v3.3.0): Laptop & Radxa Full-Duplex Voice Stack
+    │       │   ├── __init__.py
+    │       │   ├── audio_engine.py         # 16 kHz 10 ms full-duplex stream, 70% volume cap, instant flush & motor noise injector
+    │       │   ├── frontend.py             # WebRTC AEC3 + NS + HPF + AGC (livekit APM) + 4-tap NLMS & throttle thresholds
+    │       │   ├── keywords.py             # Open-vocab KWS over keywords.txt, hot-reload & <3-syllable risk warning
+    │       │   ├── vad.py                  # Streaming 10 ms VAD with 550 ms hangover -> 16 kHz WAV utterance segments
+    │       │   ├── tts_stream.py           # Sentence-streamed Piper ONNX TTS with <=25-word cap (D13)
+    │       │   ├── live_session.py         # Persistent per-conversation Gemini Live session + set_wake_word tool & D10 offline mode
+    │       │   ├── conversation.py         # IDLE / LISTENING / THINKING / SPEAKING / FOLLOW_UP / STOP state machine (D1..D15)
+    │       │   └── metrics.py              # S1..S7 telemetry ledger (ERLE dB, TTFA, barge-in latency, stop latency)
+    │       │
     │       └── cli/                        # Command-Line Entry Points
     │           ├── __init__.py
-    │           ├── run_agent.py            # `mustang-ai run [--mode sim|radxa]`
+    │           ├── run_agent.py            # `mustang-ai [live|voice-live|repl|simulate|voice-e2e|--self-test]`
+    │           ├── voice_live.py           # `mustang-ai voice-live [--verify-only]` Milestone A voice stack runner
     │           └── doctor.py               # `mustang-ai doctor [--harness H1|H2|H3|H4|H5|all]` hardware bring-up diagnostics
     │
-    └── tests/                              # Offline Pytest Verification Suite (Runs in <3s with Zero Hardware)
+    └── tests/                              # Offline Pytest Verification Suite (40 tests, runs with Zero Hardware)
         ├── conftest.py                     # Shared fixtures: VirtualArena, StateBus, MockHALRig
         ├── test_protocol_contracts.py      # Verifies isinstance(backend, Protocol) across all Sim* and Radxa* classes
         ├── test_watchdog_and_safety.py     # Verifies <20 ms ToF short-brake (<120 mm) & 100 ms Deadman Watchdog timeout
         ├── test_fn1_voice_emoji_hud.py     # Verifies all 12 emojis, LocalPiperTTS synthesis, half-duplex mute & >=0.55 RMS barge-in
         ├── test_fn2_maneuver_obstacle.py   # Verifies all 7 tricks, optical ROI clearance, ~150 mm reverse & S-curve obstacle bypass
         ├── test_fn3_person_follower.py     # Verifies fisheye bearing math, PD steering clamp & 4-zone 350 mm standoff transitions
+        ├── test_milestone_a_voice_pipeline.py # Verifies S1..S7, D1..D15 & R1 (AEC3 ERLE, motor noise, wake/stop barge-in, 8s follow-up)
         └── test_virtual_arena_e2e.py       # Closed-loop 2D kinematics + scripted Gemini Live tool-call multi-turn scenarios
 ```
 

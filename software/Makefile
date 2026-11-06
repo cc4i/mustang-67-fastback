@@ -1,4 +1,4 @@
-.PHONY: help setup sync live repl voice-e2e voice-e2e-speak sim simulate sim-speak open-sim self-test doctor test lint fix check clean
+.PHONY: help setup sync live voice-live voice-verify repl voice-e2e voice-e2e-speak sim simulate sim-speak open-sim self-test doctor test lint fix check clean
 
 PYTHON_VERSION ?= 3.14
 
@@ -14,6 +14,12 @@ sync: ## Sync Python 3.14 virtualenv and dependencies ('google-genai>=2.34.0', '
 
 live: ## Launch interactive browser workbench at http://127.0.0.1:8765 (Voice -> Live Cloud Gemini -> Piper ONNX Audio + HUD + Car Control)
 	uv run mustang-ai live
+
+voice-live: ## Launch Milestone A Radxa Voice Stack Workbench (AEC3 + Wake Word + Barge-In + S1..S7 pre-flight)
+	uv run mustang-ai voice-live
+
+voice-verify: ## Run Milestone A S1..S7 + D1..D15 voice stack verification suite and write tmp/milestone_a_voice_report.json
+	uv run mustang-ai voice-live --verify-only
 
 repl: ## Launch interactive terminal Voice REPL with audible local Piper ONNX speech synthesis
 	uv run mustang-ai repl
