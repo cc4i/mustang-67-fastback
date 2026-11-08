@@ -14,7 +14,7 @@ from mustang_ai.hal.tts_piper import SimPiperTTS
 from mustang_ai.runtime.local_autonomy_loop import LocalAutonomyEngine
 from mustang_ai.runtime.state_bus import StateBus
 from mustang_ai.runtime.watchdog_reflex import WatchdogReflexGovernor
-from mustang_ai.simulator.mac_live_workbench import MacLiveWorkbench
+from mustang_ai.simulator.mac_live_workbench import WORKBENCH_HTML, MacLiveWorkbench
 from mustang_ai.voice import (
     DEFAULT_SPEAKER_VOLUME,
     MAX_SPEAKER_VOLUME,
@@ -335,3 +335,36 @@ def test_s1_s7_suite_and_workbench_integration() -> None:
 
     mode_res = wb.set_cloud_online_mode(False)
     assert mode_res["cloud_online"] is False
+
+    # Verify conversation history & clean command input isolation in WORKBENCH_HTML
+    assert 'id="chatHistoryBox"' in WORKBENCH_HTML
+    assert "renderConversationHistory" in WORKBENCH_HTML
+    assert "isEchoOfLastReply" in WORKBENCH_HTML
+    assert '<input type="text" id="voiceInput"' in WORKBENCH_HTML
+    assert 'value=""' in WORKBENCH_HTML
+    assert "getElementById('voiceInput').value =" not in WORKBENCH_HTML
+
+    wb.submit_voice_utterance("Weave through the slalom!", advance_steps=2)
+    snap2 = wb.snapshot_telemetry()
+    assert len(snap2["history"]) == 1
+    assert snap2["history"][0]["user_utterance"] == "Weave through the slalom!"
+    assert snap2["history"][0]["spoken_reply_text"]
+
+    cleared = wb.clear_conversation_history()
+    assert cleared["history_count"] == 0
+    assert wb.snapshot_telemetry()["history"] == []
+
+    # Verify "Keep moving" triggers continuous driving and animates both 1st-person camera & 2D radar past 800 mm
+    km_turn = wb.submit_voice_utterance("Keep moving", advance_steps=4)
+    assert km_turn["active_maneuver"] == "keep_going"
+    assert km_turn["applied_throttle"] >= 0.35
+    for _ in range(110):
+        wb.step_physics_and_sensors(dt_sec=0.05)
+    assert wb.autonomy.maneuver_seq.is_active is True
+    assert wb.arena.car_x_mm > 800.0
+    frame_a = wb.snapshot_telemetry()
+    for _ in range(4):
+        wb.step_physics_and_sensors(dt_sec=0.05)
+    frame_b = wb.snapshot_telemetry()
+    assert frame_a["cam_jpeg_b64"] != frame_b["cam_jpeg_b64"]
+    assert frame_a["arena_png_b64"] != frame_b["arena_png_b64"]

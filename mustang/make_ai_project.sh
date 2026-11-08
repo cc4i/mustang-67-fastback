@@ -9,6 +9,7 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$HERE/.." && pwd)"
 STL="$ROOT/output/ai_edition/stl"
 OUT="${1:-$ROOT/output/ai_edition/mustang_67_ai_edition_x2d.3mf}"
+PROTO_OUT="${2:-$ROOT/output/ai_edition/mustang_67_ai_edition_prototype_x2d.3mf}"
 WORK="$(mktemp -d /tmp/mustang_ai_project.XXXXXX)"
 trap 'echo "make_ai_project: failed (work dir $WORK)" >&2' ERR
 trap 'rm -rf "$WORK"' EXIT
@@ -117,4 +118,45 @@ PY
 python3 "$HERE/check_plates.py" "$WORK/final.3mf" > "$WORK/check_plates.txt"
 mkdir -p "$(dirname "$OUT")"
 cp "$WORK/final.3mf" "$OUT"
-echo "AI Edition project: $OUT  (work dir $WORK)"
+echo "AI Edition full project (55 STLs / 75 pieces, 9 plates): $OUT"
+
+# Build the Minimal Hardware Test Prototype .3mf (21 STLs / 28 pieces across 3 single-color zero-support plates)
+USED="$WORK/used_proto.txt"
+build_group 1_proto_black 2 chassis.stl:1 bay_tub.stl:1 interior_tub.stl:1 boot_tub.stl:1 \
+  axle.stl:1 diff_cover.stl:1 motor_shim_x2.stl:2 knuckle_l.stl:1 knuckle_r.stl:1 steering_link.stl:1 tire_x4.stl:4
+build_group 2_proto_silver 3 rim_x4.stl:4 driveshaft.stl:1 pinion_gear.stl:1 axle_gear.stl:1 \
+  motor_coupler_n25.stl:1 motor_coupler_1p0.stl:1 motor_coupler_1p5.stl:1 motor_coupler_tube.stl:1 gc9a01_bezel.stl:1
+build_group 3_proto_pod 1 waymo_pod.stl:1
+
+python3 "$HERE/merge_3mf.py" "$WORK/proto_merged.3mf" \
+  "$WORK/1_proto_black.3mf" "$WORK/2_proto_silver.3mf" "$WORK/3_proto_pod.3mf"
+
+if ! "$BAMBU" --debug 2 --arrange 0 --outputdir "$WORK" --export-3mf proto_final.3mf "$WORK/proto_merged.3mf" > "$WORK/proto_final.log" 2>&1; then
+  echo "make_ai_project: Bambu Studio failed re-saving the prototype project:" >&2
+  tail -n 20 "$WORK/proto_final.log" >&2
+  exit 1
+fi
+
+python3 - "$WORK/used_proto.txt" "$WORK/proto_final.3mf" <<'PY'
+import sys, zipfile
+import xml.etree.ElementTree as ET
+want = {}
+for line in open(sys.argv[1]):
+    f, n, _fil, _g = line.split()
+    want[f] = int(n)
+cfg = ET.fromstring(zipfile.ZipFile(sys.argv[2]).read("Metadata/model_settings.config"))
+meta = lambda el: {m.get("key"): m.get("value") for m in el.findall("metadata")}
+parts = {o.get("id"): [meta(p).get("name") for p in o.findall("part")] or [meta(o).get("name")] for o in cfg.findall("object")}
+placed = {}
+for plate in cfg.findall("plate"):
+    for mi in plate.findall("model_instance"):
+        for name in parts[meta(mi)["object_id"]]:
+            placed[name] = placed.get(name, 0) + 1
+if placed != want or len(want) != 21 or sum(placed.values()) != 28:
+    sys.exit(f"prototype plates disagree with 21-STL / 28-piece manifest: placed={placed} want={want}")
+PY
+
+python3 "$HERE/check_plates.py" "$WORK/proto_final.3mf" > "$WORK/check_proto_plates.txt"
+mkdir -p "$(dirname "$PROTO_OUT")"
+cp "$WORK/proto_final.3mf" "$PROTO_OUT"
+echo "AI Edition prototype project (21 STLs / 28 pieces, 3 plates): $PROTO_OUT"

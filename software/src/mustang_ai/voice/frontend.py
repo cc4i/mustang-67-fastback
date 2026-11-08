@@ -257,7 +257,7 @@ class AudioFrontEnd:
             else:
                 apm_arr = np.frombuffer(apm_pcm, dtype=np.int16).astype(np.float64)
                 # Use the lower-energy residual during single-talk speaker playback for maximum echo suppression
-                if np.mean(apm_arr * apm_arr) < np.mean(after_motor * after_motor):
+                if compute_pcm16_rms(ref_pad) > 0.01 and np.mean(apm_arr * apm_arr) < np.mean(after_motor * after_motor):
                     clean_pcm = apm_pcm
                 else:
                     clean_pcm = stage2_pcm

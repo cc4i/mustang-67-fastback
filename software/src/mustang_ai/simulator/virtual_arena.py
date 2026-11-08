@@ -72,6 +72,8 @@ class VirtualArena:
         self.car_y_mm: float = car_y_mm
         self.car_heading_rad: float = car_heading_rad
         self.last_steer_deg: float = 0.0
+        self.last_speed_mm_s: float = 0.0
+        self.odometer_mm: float = 0.0
         self.obstacles: list[ArenaObstacle] = []
         self.course_markers: list[CourseMarker] = []
         self.planned_path_xy_mm: list[tuple[float, float]] = []
@@ -116,6 +118,8 @@ class VirtualArena:
         self.car_y_mm = 0.0
         self.car_heading_rad = 0.0
         self.last_steer_deg = 0.0
+        self.last_speed_mm_s = 0.0
+        self.odometer_mm = 0.0
         self.trajectory_xy_mm = [(0.0, 0.0)]
         self.obstacles.clear()
         self.course_markers.clear()
@@ -197,14 +201,67 @@ class VirtualArena:
         else:
             v_mm_s = float(cmd.applied_throttle) * self.MAX_SPEED_MM_S
 
+        self.last_speed_mm_s = round(v_mm_s, 1)
+        self.odometer_mm += v_mm_s * dt_sec
         self.last_steer_deg = float(cmd.applied_steering_deg)
         steer_rad = math.radians(self.last_steer_deg)
-        self.car_x_mm += v_mm_s * math.cos(self.car_heading_rad) * dt_sec
-        self.car_y_mm += v_mm_s * math.sin(self.car_heading_rad) * dt_sec
+        cos_h = math.cos(self.car_heading_rad)
+        sin_h = math.sin(self.car_heading_rad)
+        self.car_x_mm += v_mm_s * cos_h * dt_sec
+        self.car_y_mm += v_mm_s * sin_h * dt_sec
         self.car_heading_rad += (v_mm_s / self.WHEELBASE_MM) * math.tan(steer_rad) * dt_sec
         self.trajectory_xy_mm.append((round(self.car_x_mm, 2), round(self.car_y_mm, 2)))
         if len(self.trajectory_xy_mm) > 360:
             self.trajectory_xy_mm = self.trajectory_xy_mm[-360:]
+
+        # Continuously recycle passed road markers / blockers ahead of the car during endless driving modes
+        if self.active_maneuver_name == "keep_going" and v_mm_s > 10.0 and self.obstacles:
+            max_fwd_obs = max(
+                (o.x_mm - self.car_x_mm) * cos_h + (o.y_mm - self.car_y_mm) * sin_h for o in self.obstacles
+            )
+            for idx, obs in enumerate(self.obstacles):
+                fwd = (obs.x_mm - self.car_x_mm) * cos_h + (obs.y_mm - self.car_y_mm) * sin_h
+                if fwd < -160.0:
+                    spawn_fwd = max(460.0, max_fwd_obs + 460.0)
+                    lat_off = -55.0 if idx % 2 == 1 else 25.0
+                    obs.x_mm = round(self.car_x_mm + spawn_fwd * cos_h - lat_off * sin_h, 1)
+                    obs.y_mm = round(self.car_y_mm + spawn_fwd * sin_h + lat_off * cos_h, 1)
+                    if idx < len(self.course_markers):
+                        self.course_markers[idx].x_mm = obs.x_mm
+                        self.course_markers[idx].y_mm = obs.y_mm
+                    self.planned_path_xy_mm.append(
+                        (round(self.car_x_mm + (spawn_fwd + 180.0) * cos_h, 1), round(self.car_y_mm + (spawn_fwd + 180.0) * sin_h, 1))
+                    )
+        elif self.active_maneuver_name == "move_forward" and v_mm_s > 10.0 and self.course_markers:
+            max_fwd_mk = max(
+                (m.x_mm - self.car_x_mm) * cos_h + (m.y_mm - self.car_y_mm) * sin_h for m in self.course_markers
+            )
+            for idx, mk in enumerate(self.course_markers):
+                fwd = (mk.x_mm - self.car_x_mm) * cos_h + (mk.y_mm - self.car_y_mm) * sin_h
+                if fwd < -90.0:
+                    spawn_fwd = max(380.0, max_fwd_mk + 360.0)
+                    lat_off = -95.0 if idx % 2 == 0 else 95.0
+                    mk.x_mm = round(self.car_x_mm + spawn_fwd * cos_h - lat_off * sin_h, 1)
+                    mk.y_mm = round(self.car_y_mm + spawn_fwd * sin_h + lat_off * cos_h, 1)
+                    mk.label = f"FWD {int(round(abs(self.odometer_mm) + spawn_fwd))}"
+                    self.planned_path_xy_mm.append(
+                        (round(self.car_x_mm + (spawn_fwd + 120.0) * cos_h, 1), round(self.car_y_mm + (spawn_fwd + 120.0) * sin_h, 1))
+                    )
+        elif self.active_maneuver_name == "reverse_back" and v_mm_s < -10.0 and self.course_markers:
+            min_fwd_mk = min(
+                (m.x_mm - self.car_x_mm) * cos_h + (m.y_mm - self.car_y_mm) * sin_h for m in self.course_markers
+            )
+            for idx, mk in enumerate(self.course_markers):
+                fwd = (mk.x_mm - self.car_x_mm) * cos_h + (mk.y_mm - self.car_y_mm) * sin_h
+                if fwd > 90.0:
+                    spawn_rev = min(-320.0, min_fwd_mk - 300.0)
+                    lat_off = -90.0 if idx % 2 == 0 else 90.0
+                    mk.x_mm = round(self.car_x_mm + spawn_rev * cos_h - lat_off * sin_h, 1)
+                    mk.y_mm = round(self.car_y_mm + spawn_rev * sin_h + lat_off * cos_h, 1)
+                    mk.label = f"REV {int(round(spawn_rev))}"
+                    self.planned_path_xy_mm.append(
+                        (round(self.car_x_mm + (spawn_rev - 100.0) * cos_h, 1), round(self.car_y_mm + (spawn_rev - 100.0) * sin_h, 1))
+                    )
 
         for obs in self.obstacles:
             center_dist = math.hypot(obs.x_mm - self.car_x_mm, obs.y_mm - self.car_y_mm) - obs.radius_mm
@@ -396,7 +453,7 @@ class VirtualArena:
         cos_h = math.cos(self.car_heading_rad)
         sin_h = math.sin(self.car_heading_rad)
 
-        # Perspective road lane edges & dashed yellow centerline shifting with heading/lateral offset
+        # Perspective road lane edges, scrolling tarmac joints & dashed yellow centerline shifting with odometer_mm
         vanish_x = int(cfg.cx - cfg.fx * math.atan2(sin_h, max(0.25, cos_h)) * 0.55)
         vanish_x = max(120, min(w - 120, vanish_x))
         draw.polygon(
@@ -405,14 +462,25 @@ class VirtualArena:
         )
         draw.line((vanish_x - 55, horizon_y, 18, h), fill=(230, 238, 250), width=4)
         draw.line((vanish_x + 55, horizon_y, w - 18, h), fill=(230, 238, 250), width=4)
-        for seg in range(5):
-            t0 = (seg + 0.1) / 5.0
-            t1 = (seg + 0.65) / 5.0
-            y0 = int(horizon_y + (h - horizon_y) * (t0**1.35))
-            y1 = int(horizon_y + (h - horizon_y) * (t1**1.35))
-            x0 = int(vanish_x + (w // 2 - vanish_x) * t0)
-            x1 = int(vanish_x + (w // 2 - vanish_x) * t1)
-            draw.line((x0, y0, x1, y1), fill=(255, 205, 55), width=3)
+
+        road_phase = (self.odometer_mm / 150.0) % 1.0
+        for seg in range(6):
+            u0 = (seg + road_phase) / 5.4
+            u1 = min(1.0, u0 + 0.105)
+            if u0 < 0.02 or u0 >= 0.98:
+                continue
+            y0 = int(horizon_y + (h - horizon_y) * (u0**1.4))
+            y1 = int(horizon_y + (h - horizon_y) * (u1**1.4))
+            x0 = int(vanish_x + (w // 2 - vanish_x) * u0)
+            x1 = int(vanish_x + (w // 2 - vanish_x) * u1)
+            dash_w = max(2, int(2 + 4 * u0))
+            draw.line((x0, y0, x1, y1), fill=(255, 205, 55), width=dash_w)
+            # Symmetric roadside reflector ticks scrolling along left/right lane edges (warm amber so teal person ROI is unaffected)
+            lx_edge = int((vanish_x - 55) + (18 - (vanish_x - 55)) * u0)
+            rx_edge = int((vanish_x + 55) + ((w - 18) - (vanish_x + 55)) * u0)
+            tick_h = max(3, int(10 * u0))
+            draw.rectangle((lx_edge - 6, y0 - tick_h, lx_edge - 2, y0), fill=(235, 185, 65))
+            draw.rectangle((rx_edge + 2, y0 - tick_h, rx_edge + 6, y0), fill=(235, 185, 65))
 
         # Project course markers (Slalom Cones CONE 1..4 / Pylons) back-to-front by distance
         visible_markers: list[tuple[float, float, CourseMarker]] = []
@@ -527,30 +595,38 @@ class VirtualArena:
 
         # Header banner inside map
         m_label = (active_maneuver or self.active_maneuver_name or "FREE DRIVE").upper()
-        header = f"2D TRACK RADAR | COURSE: {m_label} | {phase_caption or 'READY'} | STEER: {steer_deg:+.1f} DEG"
+        header = (
+            f"2D RADAR | {m_label} | {phase_caption or 'READY'} | "
+            f"SPD: {self.last_speed_mm_s:+.0f} MM/S | STEER: {steer_deg:+.1f} DEG"
+        )
         draw.rectangle((0, 0, width, 24), fill=(18, 28, 44))
-        draw.text((8, 6), header[:76], fill=(0, 225, 255), font=font)
+        draw.text((8, 6), header[:86], fill=(0, 225, 255), font=font)
 
         pad_x, pad_y0, pad_y1 = 16, 32, height - 24
         map_w = width - 2 * pad_x
         map_h = pad_y1 - pad_y0
         draw.rectangle((pad_x, pad_y0, pad_x + map_w, pad_y1), fill=(16, 23, 34), outline=(38, 58, 86))
 
-        # Compute bounding box across planned path, trajectory, course markers, and current car pose
-        all_pts: list[tuple[float, float]] = (
-            [(0.0, 0.0), (self.car_x_mm, self.car_y_mm), (850.0, 0.0)]
-            + self.planned_path_xy_mm
-            + self.trajectory_xy_mm[-120:]
-            + [(m.x_mm, m.y_mm) for m in self.course_markers]
-            + [(o.x_mm, o.y_mm) for o in self.obstacles]
-        )
-        if self.person_xy_mm is not None:
-            all_pts.append(self.person_xy_mm)
-
-        min_x = min(p[0] for p in all_pts) - 180.0
-        max_x = max(p[0] for p in all_pts) + 220.0
-        min_y = min(min(p[1] for p in all_pts) - 180.0, -320.0)
-        max_y = max(max(p[1] for p in all_pts) + 180.0, 320.0)
+        # Use a car-centered sliding radar window when cruising beyond the initial 0..780 mm course box
+        if abs(self.car_x_mm) > 780.0 or abs(self.car_y_mm) > 320.0:
+            min_x = self.car_x_mm - 500.0
+            max_x = self.car_x_mm + 660.0
+            min_y = self.car_y_mm - 320.0
+            max_y = self.car_y_mm + 320.0
+        else:
+            all_pts: list[tuple[float, float]] = (
+                [(0.0, 0.0), (self.car_x_mm, self.car_y_mm), (850.0, 0.0)]
+                + self.planned_path_xy_mm
+                + self.trajectory_xy_mm[-120:]
+                + [(m.x_mm, m.y_mm) for m in self.course_markers]
+                + [(o.x_mm, o.y_mm) for o in self.obstacles]
+            )
+            if self.person_xy_mm is not None:
+                all_pts.append(self.person_xy_mm)
+            min_x = min(p[0] for p in all_pts) - 180.0
+            max_x = max(p[0] for p in all_pts) + 220.0
+            min_y = min(min(p[1] for p in all_pts) - 180.0, -320.0)
+            max_y = max(max(p[1] for p in all_pts) + 180.0, 320.0)
         span_x = max(600.0, max_x - min_x)
         span_y = max(450.0, max_y - min_y)
 
@@ -560,13 +636,19 @@ class VirtualArena:
             v = int(pad_y0 + ((wy - min_y) / span_y) * map_h)
             return max(pad_x + 3, min(pad_x + map_w - 3, u)), max(pad_y0 + 3, min(pad_y1 - 3, v))
 
-        # Grid lines every 200 mm
+        # World-coordinate grid lines every 200 mm (with distance tick labels so scrolling is visually obvious)
         start_gx = int(min_x // 200) * 200
         for gx in range(start_gx, int(max_x) + 200, 200):
             ux, _ = world_to_px(float(gx), 0.0)
-            draw.line((ux, pad_y0, ux, pad_y1), fill=(24, 35, 50))
+            draw.line((ux, pad_y0, ux, pad_y1), fill=(26, 39, 56))
+            if pad_x + 18 <= ux <= pad_x + map_w - 28 and gx % 400 == 0:
+                draw.text((ux - 14, pad_y1 - 12), f"{gx:+d}", fill=(68, 98, 136), font=font)
+        start_gy = int(min_y // 200) * 200
+        for gy in range(start_gy, int(max_y) + 200, 200):
+            _, vy = world_to_px(0.0, float(gy))
+            draw.line((pad_x, vy, pad_x + map_w, vy), fill=(22, 33, 48))
         _, uy0 = world_to_px(0.0, 0.0)
-        draw.line((pad_x, uy0, pad_x + map_w, uy0), fill=(34, 50, 72), width=1)
+        draw.line((pad_x, uy0, pad_x + map_w, uy0), fill=(38, 56, 82), width=1)
 
         # Planned target path (dashed gold/amber curve)
         if len(self.planned_path_xy_mm) >= 2:
@@ -625,6 +707,14 @@ class VirtualArena:
 
         body_poly = [car_corner(14, -7), car_corner(14, 7), car_corner(-12, 7), car_corner(-12, -7)]
         draw.polygon(body_poly, fill=(165, 24, 42), outline=(255, 225, 230))
+        # Animated wake chevrons behind rear/front bumper when actively moving
+        if abs(self.last_speed_mm_s) > 15.0:
+            wake_phase = int((abs(self.odometer_mm) / 35.0) % 3)
+            wake_sign = -1.0 if self.last_speed_mm_s > 0 else 1.0
+            for w_idx in range(2):
+                off_x = wake_sign * (18.0 + w_idx * 7.0 + wake_phase * 2.0)
+                wake_pts = [car_corner(off_x, -6), car_corner(off_x + wake_sign * 4.0, 0), car_corner(off_x, 6)]
+                draw.line(wake_pts, fill=(52, 245, 165), width=2)
         # Center racing stripe pointing forward
         draw.line([car_corner(-10, 0), car_corner(14, 0)], fill=(255, 255, 255), width=2)
         # Steered front wheels

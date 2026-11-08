@@ -297,19 +297,20 @@ def _apply_ai_upgrades():
         build.add_union(boot_ob, build.link(rstop, "Cutters"))
 
     # 3c. InteriorTub (`X = 2990..3411` = `149.5..170.55 mm`):
-    #     - Union front L-bracket cradle pillars (`Tub_RadxaFrontPillar_L/R`, `X = 2990..3100, |Y| = 250..345, Z = 350..830`)
-    #       rising from the flat cabin floor so the front of the Radxa Zero 3W (`X = 151.0 mm`) sits on a `Z = 36.0 mm`
-    #       shelf (`|Y| = 12.5..15.25 mm`) and is locked by front stops (`X = 149.5..150.75 mm`) and side walls (`|Y| = 15.25..17.25 mm`).
+    #     - Union front L-bracket cradle pillars (`Tub_RadxaFrontPillar_L/R`, `X = 2990..3100, |Y| = 250..345, Z = 310..830`)
+    #       anchored inside the solid cabin floor (`FLOOR_Z0..FLOOR_Z1 = 290..330`) so the front of the Radxa Zero 3W
+    #       (`X = 151.0 mm`) sits on a `Z = 36.0 mm` shelf (`|Y| = 12.5..15.25 mm`) with zero bottom cantilever.
     #     - Union level rear deck extensions (`Tub_AISpeakerDeck` at `Y = -65..+510` and `Tub_AIAmpDeck` at `Y = -510..-160`,
     #       `X = 3085..3408, Z = 520..720`) on top of `Tub_RearSeat + Tub_CargoShelf` (staying clear of `Tub_ShaftTunnel`
     #       `Z <= 501` and `Tub_WireTunnel` `Y = -154..-74`).
     #     - Cut `Tub_AIRadxaSled` (`X = 3015..3425, Y = -305..+305, Z = 720..920`) so the Radxa board slides flat at `Z = 36.0 mm`.
-    #     - Cut the full-size `15.25 x 24.50 x 7.75 mm` speaker pocket (`Tub_AISpeakerBay`, `X = 3095..3400, Y = -45..+445, Z = 565..730`)
-    #       for the real physical `15.0 x 24.0 x 4.0 mm` speaker, and `Tub_AIAmpDrvBay` (`X = 3100..3395, Y = -490..-175, Z = 565..730`)
-    #       for the `MAX98357A + DRV8833` boards.
+    #     - Cut the full-size `15.25 x 24.50 x 7.75 mm` speaker pocket (`Tub_AISpeakerBay`, `X = 3095..3400, Y = -45..+445, Z = 565..920`)
+    #       for the real physical `15.0 x 24.0 x 4.0 mm` speaker, and `Tub_AIAmpDrvBay` (`X = 3100..3395, Y = -490..-175, Z = 565..920`)
+    #       for the `MAX98357A + DRV8833` boards all the way through the top of `Tub_RearSeatBack` (`Z <= 870`) so no upper
+    #       seatback remnant cantilevers over the pockets.
     for tag, (py0, py1) in (("L", (-345.0, -250.0)), ("R", (250.0, 345.0))):
         pillar = F.prism_cutter(f"Tub_RadxaFrontPillar_{tag}", "+Z", _rect(2990.0, py0, 3100.0, py1, 4.0),
-                                350.0 * SCALE, 830.0 * SCALE)
+                                310.0 * SCALE, 830.0 * SCALE)
         build.add_union(tub_ob, build.link(pillar, "Cutters"))
 
     u_spk_deck = F.prism_cutter("Tub_AISpeakerDeck", "+Z", _rect(3085.0, -65.0, 3408.0, 510.0, 10.0),
@@ -322,9 +323,9 @@ def _apply_ai_upgrades():
     c_tub_radxa = F.prism_cutter("Tub_AIRadxaSled", "+Z", _rect(3015.0, -305.0, 3425.0, 305.0, 6.0),
                                  720.0 * SCALE, 920.0 * SCALE)
     c_spk_bay = F.prism_cutter("Tub_AISpeakerBay", "+Z", _rect(3095.0, -45.0, 3400.0, 445.0, 10.0),
-                               565.0 * SCALE, 730.0 * SCALE)
+                               565.0 * SCALE, 920.0 * SCALE)
     c_amp_bay = F.prism_cutter("Tub_AIAmpDrvBay", "+Z", _rect(3100.0, -490.0, 3395.0, -175.0, 10.0),
-                               565.0 * SCALE, 730.0 * SCALE)
+                               565.0 * SCALE, 920.0 * SCALE)
     build.add_boolean(tub_ob, build.link(c_tub_radxa, "Cutters"))
     build.add_boolean(tub_ob, build.link(c_spk_bay, "Cutters"))
     build.add_boolean(tub_ob, build.link(c_amp_bay, "Cutters"))

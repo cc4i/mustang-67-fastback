@@ -81,6 +81,14 @@ DRIVING_ACTION_LIBRARY: dict[str, tuple[ManeuverStep, ...]] = {
     ),
 }
 
+CONTINUOUS_DRIVING_ACTIONS: frozenset[str] = frozenset(
+    {
+        "keep_going",
+        "move_forward",
+        "reverse_back",
+    }
+)
+
 MANEUVER_ALIASES: dict[str, str] = {
     "forward": "move_forward",
     "forwards": "move_forward",
@@ -91,6 +99,12 @@ MANEUVER_ALIASES: dict[str, str] = {
     "drive_straight": "move_forward",
     "straight": "move_forward",
     "advance": "move_forward",
+    "start_moving": "move_forward",
+    "move_ahead": "move_forward",
+    "go": "move_forward",
+    "drive": "move_forward",
+    "move": "move_forward",
+    "moving": "move_forward",
     "backward": "reverse_back",
     "backwards": "reverse_back",
     "move_backward": "reverse_back",
@@ -100,11 +114,18 @@ MANEUVER_ALIASES: dict[str, str] = {
     "backup": "reverse_back",
     "go_back": "reverse_back",
     "keep_going": "keep_going",
+    "keep_moving": "keep_going",
+    "keep_rolling": "keep_going",
+    "continue": "keep_going",
+    "continue_moving": "keep_going",
+    "continue_driving": "keep_going",
     "auto_avoid": "keep_going",
     "avoid_blockers": "keep_going",
     "keep_driving": "keep_going",
     "auto_cruise": "keep_going",
     "cruise_forward": "keep_going",
+    "cruising": "keep_going",
+    "cruise": "keep_going",
     "left": "turn_left",
     "steer_left": "turn_left",
     "go_left": "turn_left",
@@ -287,6 +308,8 @@ class ManeuverObstacleSequencer:
         self.step_elapsed_sec += dt_sec
         if self.step_elapsed_sec >= cur.duration_sec:
             self.step_index += 1
+            if self.step_index >= len(self.steps) and self.active_maneuver in CONTINUOUS_DRIVING_ACTIONS:
+                self.step_index = 0
             self.step_elapsed_sec = 0.0
 
         return ControlIntent(

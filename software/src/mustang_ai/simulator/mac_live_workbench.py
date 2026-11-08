@@ -535,11 +535,18 @@ class LocalGeminiERBrain:
             (
                 (
                     "keep going",
+                    "keep moving",
+                    "keep rolling",
+                    "keep driving",
+                    "keep cruising",
+                    "keep forward",
+                    "continue moving",
+                    "continue driving",
+                    "keep on",
                     "auto avoid",
                     "avoid the blocker",
                     "avoid blocker",
                     "avoid obstacle",
-                    "keep driving",
                     "auto cruise",
                 ),
                 "keep_going",
@@ -582,10 +589,18 @@ class LocalGeminiERBrain:
                     "drive straight",
                     "go straight",
                     "go ahead",
+                    "move ahead",
+                    "start moving",
+                    "start driving",
+                    "let's move",
+                    "lets move",
+                    "let's go",
+                    "lets go",
                     "advance",
                     "forwards",
                     "forward",
                     "cruise",
+                    "moving",
                 ),
                 "move_forward",
                 "CRUISE",
@@ -743,6 +758,28 @@ class LocalGeminiERBrain:
         for det_name, det_args, det_id in det_calls:
             if det_name not in cloud_names:
                 merged.append((det_name, det_args, det_id))
+                cloud_names.add(det_name)
+
+        # If cloud verbally confirms cruising/moving in speak_with_emoji without emitting a motion tool, attach execute_maneuver
+        if not cloud_names.intersection({"execute_maneuver", "set_follow_person_mode", "emergency_stop"}):
+            for c_name, c_args, _ in merged:
+                if c_name == "speak_with_emoji":
+                    c_emo = str(c_args.get("emoji", "")).upper()
+                    c_hud = str(c_args.get("hud_message", "")).lower()
+                    c_txt = str(c_args.get("spoken_text", "")).lower()
+                    if c_emo == "CRUISE" or any(
+                        p in f"{c_hud} {c_txt}"
+                        for p in ("keep moving", "moving forward", "cruising", "rolling down", "keep going")
+                    ):
+                        merged.append(
+                            (
+                                "execute_maneuver",
+                                {"maneuver_name": str(det_maneuver or "keep_going"), "speed_scale": 0.90},
+                                self._next_call_id("cloud_inferred_motion"),
+                            )
+                        )
+                        break
+
         return coalesce_turn_tool_calls(merged, self._next_call_id("merged_coalesced"))
 
 
@@ -958,6 +995,13 @@ class MacLiveWorkbench:
                 "wav_bytes": len(self.audio.last_wav_bytes),
             }
 
+    def clear_conversation_history(self) -> dict[str, Any]:
+        """Clear recorded conversation history turns in the workbench."""
+        with self._lock:
+            self.conversation_history.clear()
+            self.last_user_utterance = "Ready for voice command..."
+            return {"cleared": True, "history_count": 0}
+
     def submit_voice_utterance(
         self,
         utterance: str,
@@ -1069,6 +1113,8 @@ class MacLiveWorkbench:
                 ]
 
             # Set up 2D track markers & planned trajectory curve if a new maneuver was emitted by the cloud turn
+            seq = self.autonomy.maneuver_seq
+            saved_seq_state: tuple[int, float, str, float] | None = None
             for tool_name, tool_args, _ in planned_calls:
                 if tool_name == "execute_maneuver":
                     m_name = normalize_maneuver_name(str(tool_args.get("maneuver_name", "slalom")))
@@ -1076,6 +1122,8 @@ class MacLiveWorkbench:
                     self.arena.showcase_object = None
                     if m_name != pre_started_maneuver:
                         self.arena.setup_maneuver_course(m_name, speed_scale=s_scale)
+                    elif seq.is_active and seq.active_maneuver == m_name:
+                        saved_seq_state = (seq.step_index, seq.step_elapsed_sec, seq.obstacle_state, seq.evasive_elapsed_sec)
                 elif tool_name == "emergency_stop":
                     self.arena.active_maneuver_name = "STOPPED"
 
@@ -1085,6 +1133,8 @@ class MacLiveWorkbench:
                 emitted_calls.append({"id": fc.id, "name": fc.name, "args": fc.args})
 
             asyncio.run(self.orchestrator.process_incoming_events())
+            if saved_seq_state is not None and seq.active_maneuver == pre_started_maneuver:
+                seq.step_index, seq.step_elapsed_sec, seq.obstacle_state, seq.evasive_elapsed_sec = saved_seq_state
 
             for _ in range(max(1, advance_steps)):
                 self.step_physics_and_sensors(dt_sec=0.05)
@@ -1274,7 +1324,7 @@ class MacLiveWorkbench:
                 "cam_jpeg_b64": cam_b64,
                 "arena_png_b64": arena_b64,
                 "voice_pipeline": self.voice_pipeline.snapshot_status(),
-                "history": self.conversation_history[-6:],
+                "history": self.conversation_history[-20:],
             }
 
 
@@ -1282,66 +1332,97 @@ WORKBENCH_HTML = """<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8"/>
-<title>1967 Mustang AI Edition — Laptop-as-Radxa Live Developer Workbench</title>
+<title>1967 Mustang AI Edition (v3.3.0) — Live Developer Workbench</title>
 <style>
   :root {
-    --bg: #0a0e16; --panel: #111826; --border: #283c5a;
+    --bg: #0a0e16; --panel: #111826; --border: #263854;
     --cyan: #00e1ff; --green: #34f5a5; --red: #ff4b42; --amber: #ffcf48; --text: #e6f0ff;
   }
   * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "SF Mono", Menlo, monospace; }
-  body { margin: 0; background: var(--bg); color: var(--text); padding: 12px; }
+  body { margin: 0; background: var(--bg); color: var(--text); padding: 10px 12px; }
   header {
-    display: flex; justify-content: space-between; align-items: center;
-    background: #141e30; border: 1px solid var(--border); border-radius: 10px; padding: 10px 16px; margin-bottom: 10px;
+    display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;
+    background: #141e30; border: 1px solid var(--border); border-radius: 10px; padding: 8px 14px; margin-bottom: 8px;
   }
-  header h1 { font-size: 14px; margin: 0; color: var(--cyan); }
-  .badge { background: #1c2c44; padding: 4px 10px; border-radius: 6px; font-size: 11px; color: var(--green); margin-left: 6px; }
+  header h1 { font-size: 13.5px; margin: 0; color: var(--cyan); }
+  .badge-row { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
+  .badge { background: #1c2c44; padding: 3px 8px; border-radius: 5px; font-size: 10.5px; color: var(--green); }
   .voice-bar {
-    display: flex; gap: 8px; align-items: center; background: var(--panel);
-    border: 1px solid var(--border); border-radius: 10px; padding: 8px 12px; margin-bottom: 8px; flex-wrap: wrap;
+    display: flex; gap: 7px; align-items: center; background: var(--panel);
+    border: 1px solid var(--border); border-radius: 10px; padding: 7px 10px; margin-bottom: 7px; flex-wrap: wrap;
   }
   .voice-bar input[type="text"] {
-    flex: 1; min-width: 260px; background: #0b111c; color: #fff; border: 1px solid #355078;
-    border-radius: 6px; padding: 8px 12px; font-size: 13px;
+    flex: 1; min-width: 240px; background: #0b111c; color: #fff; border: 1px solid #355078;
+    border-radius: 6px; padding: 7px 11px; font-size: 12.5px; outline: none;
   }
-  button {
+  .voice-bar input[type="text"]:focus { border-color: var(--cyan); }
+  .toolbar-row {
+    display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap;
+    background: #0e1522; border: 1px solid var(--border); border-radius: 9px; padding: 6px 10px; margin-bottom: 9px;
+  }
+  .tool-group { display: flex; gap: 5px; align-items: center; flex-wrap: wrap; }
+  .tool-group span.lbl {
+    font-size: 10.5px; color: var(--amber); font-weight: 700; margin-right: 3px; text-transform: uppercase;
+  }
+  button, select.compact-select {
     background: #1b2c46; color: var(--text); border: 1px solid #385886; border-radius: 6px;
-    padding: 6px 11px; font-size: 11.5px; cursor: pointer; transition: 0.15s;
+    padding: 5px 9px; font-size: 11px; cursor: pointer; transition: 0.15s;
   }
-  button:hover { background: #264066; border-color: var(--cyan); }
+  button:hover, select.compact-select:hover { background: #264066; border-color: var(--cyan); }
   button.primary { background: #006688; border-color: var(--cyan); color: #fff; font-weight: 600; }
   button.vision { background: #3b2860; border-color: #b48cff; color: #f3eaff; font-weight: 600; }
   button.webcam-active { background: #0d5c3a; border-color: var(--green); color: #fff; font-weight: 700; }
   button.danger { background: #681818; border-color: var(--red); color: #fff; font-weight: 600; }
-  .chips { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; align-items: center; }
-  .chips span.lbl { font-size: 11px; color: var(--amber); font-weight: 600; margin-right: 4px; }
-  .grid { display: grid; grid-template-columns: 280px 1fr 1fr 370px; gap: 10px; }
+  .grid { display: grid; grid-template-columns: 255px 1fr 1fr 410px; gap: 10px; align-items: start; }
   .card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 10px; }
-  .card h2 { font-size: 12px; margin: 0 0 8px 0; color: var(--cyan); text-transform: uppercase; letter-spacing: 0.4px; }
-  .hud-wrap { display: flex; flex-direction: column; align-items: center; }
-  .hud-wrap img { width: 220px; height: 220px; border-radius: 50%; border: 2px solid #2b4468; }
-  .cam-wrap img, .arena-wrap img { width: 100%; max-height: 310px; object-fit: contain; border-radius: 8px; border: 1px solid #2b4468; }
-  .webcam-pip-wrap {
-    position: relative; width: 100%;
+  .card h2 {
+    font-size: 11.5px; margin: 0 0 8px 0; color: var(--cyan); text-transform: uppercase;
+    letter-spacing: 0.4px; display: flex; justify-content: space-between; align-items: center;
   }
+  .hud-wrap { display: flex; flex-direction: column; align-items: center; }
+  .hud-wrap img { width: 210px; height: 210px; border-radius: 50%; border: 2px solid #2b4468; }
+  .cam-wrap img, .arena-wrap img {
+    width: 100%; max-height: 300px; object-fit: contain; border-radius: 8px; border: 1px solid #2b4468;
+  }
+  .webcam-pip-wrap { position: relative; width: 100%; }
   .webcam-pip {
-    position: absolute; bottom: 10px; right: 10px; width: 145px; height: 108px;
+    position: absolute; bottom: 10px; right: 10px; width: 140px; height: 105px;
     border-radius: 6px; border: 2px solid var(--green); background: #000; object-fit: cover; display: none;
   }
-  .kv { display: flex; justify-content: space-between; font-size: 11.5px; padding: 4px 0; border-bottom: 1px solid #1b2638; }
+  .emoji-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 5px; margin-top: 8px; width: 100%; }
+  .chat-box {
+    background: #080c14; border: 1px solid #22324a; border-radius: 8px; padding: 8px;
+    height: 255px; overflow-y: auto; display: flex; flex-direction: column; gap: 7px; margin-bottom: 8px;
+  }
+  .chat-empty { color: #6e88a8; font-size: 11.5px; text-align: center; margin: auto 0; }
+  .chat-turn {
+    background: #101928; border: 1px solid #1f314d; border-radius: 7px; padding: 6px 8px; font-size: 11.5px;
+  }
+  .chat-user { color: #9ad8ff; font-weight: 600; margin-bottom: 4px; display: flex; justify-content: space-between; gap: 6px; }
+  .chat-bot { color: #e8f4ff; line-height: 1.35; }
+  .chat-meta { font-size: 10px; color: #7fa3c8; margin-top: 3px; display: flex; gap: 6px; flex-wrap: wrap; }
+  .chat-tag { background: #1c2e48; color: var(--green); border-radius: 4px; padding: 1px 5px; font-size: 9.5px; }
+  .live-hint { font-size: 10.5px; color: var(--amber); font-weight: 500; text-transform: none; }
+  .kv { display: flex; justify-content: space-between; font-size: 11px; padding: 3.5px 0; border-bottom: 1px solid #1b2638; }
   .kv span.v { color: var(--green); font-weight: 600; }
   .kv span.v.alert { color: var(--red); }
-  .emoji-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; margin-top: 8px; width: 100%; }
+  details.raw-drawer { margin-top: 7px; }
+  details.raw-drawer summary {
+    cursor: pointer; font-size: 11px; color: #9ec2e6; user-select: none; padding: 3px 0; font-weight: 600;
+  }
   .log-box {
-    background: #080c14; border: 1px solid #22324a; border-radius: 6px; padding: 8px;
-    font-size: 10.5px; height: 195px; overflow-y: auto; white-space: pre-wrap; color: #b8d0ec;
+    background: #080c14; border: 1px solid #22324a; border-radius: 6px; padding: 7px;
+    font-size: 10px; max-height: 145px; overflow-y: auto; white-space: pre-wrap; color: #b8d0ec; margin-top: 4px;
   }
 </style>
 </head>
 <body>
 <header>
-  <h1>1967 Ford Mustang Fastback AI Edition (v3.2.0) — Local MacBook <-> Radxa Zero 3W Live Workbench</h1>
-  <div>
+  <h1>1967 Ford Mustang Fastback AI Edition (v3.3.0) — Local MacBook ↔ Radxa Zero 3W Live Workbench</h1>
+  <div class="badge-row">
+    <span class="badge" id="vpStateBadge">VOICE: IDLE</span>
+    <span class="badge" id="vpWakeBadge">WAKE: Hey Mustang (3 syl)</span>
+    <span class="badge" id="vpErleBadge">AEC3 ERLE: 0.0 dB | Vol: 70%</span>
     <span class="badge" id="camSourceBadge">CAM: VIRTUAL 3D</span>
     <span class="badge" id="micSourceBadge">MIC: READY</span>
     <span class="badge" id="sdkBadge">google-genai</span>
@@ -1351,81 +1432,49 @@ WORKBENCH_HTML = """<!DOCTYPE html>
 </header>
 
 <div class="voice-bar">
-  <button class="primary" id="avStreamBtn" onclick="toggleContinuousAVStream()">
-    🎙️📷 Continuous Live Mic + Camera (Hands-Free)
-  </button>
-  <button class="primary" id="micBtn" onclick="toggleContinuousMic()">🎙️ Continuous Mic (Hands-Free)</button>
+  <button class="primary" id="micBtn" onclick="toggleContinuousMic()">🎙️ Hands-Free Mic</button>
+  <button class="primary" id="webcamToggleBtn" onclick="toggleLaptopWebcam()">📷 MacBook Camera</button>
   <input type="text" id="voiceInput"
-    placeholder="Speak continuously or type any command (e.g. move forward, reverse, keep going, slalom, stop)..."
-    value="Keep going and auto avoid the blockers!"
-    onkeydown="if(event.key==='Enter') sendVoiceInput()"/>
-  <button class="primary" onclick="sendVoiceInput()">Send Voice Turn ➔</button>
-  <button onclick="replayAudio()">🔊 Replay Piper ONNX Audio</button>
-  <button class="danger" onclick="triggerBargeIn()">⚡ Shout Barge-In (RMS 0.76)</button>
+    placeholder="Type a command or question and press Enter (e.g. Hey Mustang, weave through the slalom)..."
+    value=""
+    onkeydown="if(event.key==='Enter') sendTypedInput()"/>
+  <button class="primary" onclick="sendTypedInput()">Send ➔</button>
+  <button onclick="replayAudio()" title="Replay last Piper ONNX spoken response">🔊 Replay TTS</button>
+  <button class="danger" onclick="quickVoice('Stop right now!')">🛑 STOP</button>
   <audio id="ttsAudio" style="display:none"></audio>
 </div>
 
-<div class="chips">
-  <span class="lbl">🗣️ MILESTONE A RADXA VOICE STACK (AEC3 + WAKE WORD + BARGE-IN):</span>
-  <span class="badge" id="vpStateBadge">VOICE: IDLE</span>
-  <span class="badge" id="vpWakeBadge">WAKE: Hey Mustang (3 syl)</span>
-  <span class="badge" id="vpErleBadge">AEC3 ERLE: 0.0 dB | Vol: 70%</span>
-  <button class="primary" onclick="setWakePhrase('Hey Mustang')">🎙️ Wake: "Hey Mustang" (3 syl)</button>
-  <button onclick="setWakePhrase('Hey Nerd')">🤓 Wake: "Hey Nerd" (2 syl warn)</button>
-  <button onclick="adjustVolume('quieter')">🔉 Quieter (-15%)</button>
-  <button onclick="adjustVolume('louder')">🔊 Louder (+15%)</button>
-  <button id="cloudModeBtn" onclick="toggleCloudMode()">☁️ Cloud: ONLINE</button>
-  <button class="vision" onclick="runS1S7Benchmark()">✅ Run S1–S7 Voice Benchmark</button>
-</div>
+<div class="toolbar-row">
+  <div class="tool-group">
+    <span class="lbl">🏎️ Drive:</span>
+    <button class="primary" onclick="quickVoice('Move forwards!')">⬆️ Forward</button>
+    <button class="primary" onclick="quickVoice('Move backwards in reverse!')">⬇️ Reverse</button>
+    <button class="webcam-active" onclick="quickVoice('Keep going and auto avoid the blockers!')">🧭 Keep Going (Auto-Avoid)</button>
+    <button onclick="quickVoice('Weave through the slalom!')">🐍 Slalom</button>
+    <button onclick="quickVoice('Carve a left circle and avoid obstacles!')">🔄 Circle</button>
+    <button onclick="quickVoice('Follow me at 350 millimeters!')">🚶 Follow Me</button>
+  </div>
 
-<div class="chips">
-  <span class="lbl">🏎️ DRIVING ACTIONS & AUTO-AVOID BLOCKERS:</span>
-  <button class="primary" onclick="quickVoice('Move forwards!')">⬆️ Move Forward</button>
-  <button class="primary" onclick="quickVoice('Move backwards in reverse!')">⬇️ Move Backwards / Reverse</button>
-  <button class="webcam-active" onclick="quickVoice('Keep going and auto avoid the blockers!')">
-    🧭 Keep Going (Auto-Avoid Blockers)
-  </button>
-  <button onclick="quickVoice('Turn left!')">⬅️ Turn Left (-15°)</button>
-  <button onclick="quickVoice('Turn right!')">➡️ Turn Right (+15°)</button>
-  <button class="danger" onclick="quickVoice('Stop right now!')">🛑 Stop Now</button>
-</div>
+  <div class="tool-group">
+    <span class="lbl">👁️ Vision:</span>
+    <button class="vision" onclick="askWithLiveWebcam('Describe the live scene and objects you see right now!')">🔍 Describe Camera</button>
+    <button class="vision" onclick="placeObjectAndAsk('stop_sign')">🛑 STOP Sign Q&A</button>
+    <button class="vision" onclick="placeObjectAndAsk('soccer_ball')">⚽ Ball Q&A</button>
+    <button onclick="document.getElementById('photoUploadInput').click()">📁 Upload Photo</button>
+    <input type="file" id="photoUploadInput" accept="image/*" style="display:none" onchange="uploadPhotoFrame(event)"/>
+  </div>
 
-<div class="chips">
-  <span class="lbl">📷 LIVE LAPTOP CAMERA + MIC -> GEMINI ER:</span>
-  <button class="primary" id="webcamToggleBtn" onclick="toggleLaptopWebcam()">📷 Enable Live MacBook Camera</button>
-  <button class="vision"
-    onclick="askWithLiveWebcam('Describe the live scene and objects you see in front of the camera right now!')">
-    🔍 Describe Live Scene & Objects
-  </button>
-  <button class="vision" onclick="askWithLiveWebcam('What object am I holding up to the camera?')">
-    ✋ What Object Am I Holding?
-  </button>
-  <button class="vision" onclick="askWithLiveWebcam('Describe the person and background in front of you!')">
-    🧑 Describe Person & Background
-  </button>
-  <button onclick="document.getElementById('photoUploadInput').click()">📁 Upload Real Photo -> Camera</button>
-  <input type="file" id="photoUploadInput" accept="image/*" style="display:none" onchange="uploadPhotoFrame(event)"/>
-</div>
-
-<div class="chips">
-  <span class="lbl">VOICE & TRICK MANEUVERS:</span>
-  <button onclick="quickVoice('Hey Mustang, how do you feel today?')">💬 How do you feel?</button>
-  <button onclick="quickVoice('Weave through the slalom!')">🐍 Slalom Weave (4 Cones)</button>
-  <button onclick="quickVoice('Carve a left circle and avoid obstacles!')">🔄 Circle Left</button>
-  <button onclick="quickVoice('Do a figure eight!')">♾️ Figure Eight</button>
-  <button onclick="quickVoice('Follow me at 350 millimeters!')">🚶 Follow Person</button>
-  <button onclick="quickVoice('Tell me a Mustang joke!')">😂 Tell a Joke</button>
-  <button class="danger" onclick="quickVoice('Emergency stop right now!')">🛑 Voice Stop</button>
-</div>
-
-<div class="chips">
-  <span class="lbl">VIRTUAL 3D OBJECT Q&A (OV5647 -> Gemini ER):</span>
-  <button class="vision" onclick="placeObjectAndAsk('stop_sign')">🛑 Show STOP Sign & Ask "What's this object?"</button>
-  <button class="vision" onclick="placeObjectAndAsk('traffic_cone')">🚧 Show Traffic Cone & Ask</button>
-  <button class="vision" onclick="placeObjectAndAsk('soccer_ball')">⚽ Show Soccer Ball & Ask</button>
-  <button class="vision" onclick="placeObjectAndAsk('coffee_mug')">☕ Show Coffee Mug & Ask</button>
-  <button class="vision" onclick="placeObjectAndAsk('checkered_flag')">🏁 Show Racing Flag & Ask</button>
-  <button onclick="apiAction('/api/object/clear')">🧹 Switch to Virtual 3D / Clear Object</button>
+  <div class="tool-group">
+    <span class="lbl">🗣️ Voice:</span>
+    <select class="compact-select" id="wakeSelect" onchange="setWakePhrase(this.value)">
+      <option value="Hey Mustang">Wake: "Hey Mustang" (3 syl)</option>
+      <option value="Hey Nerd">Wake: "Hey Nerd" (2 syl warn)</option>
+    </select>
+    <button onclick="adjustVolume('quieter')" title="Volume -15%">🔉-</button>
+    <button onclick="adjustVolume('louder')" title="Volume +15%">🔊+</button>
+    <button id="cloudModeBtn" onclick="toggleCloudMode()">☁️ Cloud: ONLINE</button>
+    <button class="vision" onclick="runS1S7Benchmark()">✅ S1–S7 Check</button>
+  </div>
 </div>
 
 <div class="grid">
@@ -1437,9 +1486,7 @@ WORKBENCH_HTML = """<!DOCTYPE html>
       <button onclick="setEmoji('COOL_SHADES')">😎 SHADES</button>
       <button onclick="setEmoji('WINK')">😉 WINK</button>
       <button onclick="setEmoji('LAUGH')">😆 LAUGH</button>
-      <button onclick="setEmoji('HEART_EYES')">😍 HEARTS</button>
       <button onclick="setEmoji('ANGRY_REV')">😤 V8 REV</button>
-      <button onclick="setEmoji('ALERT_STOP')">🚨 ALERT</button>
     </div>
   </div>
 
@@ -1450,47 +1497,53 @@ WORKBENCH_HTML = """<!DOCTYPE html>
       <video id="webcamVideo" class="webcam-pip" autoplay playsinline muted></video>
       <canvas id="webcamCanvas" width="640" height="480" style="display:none"></canvas>
     </div>
-    <div style="display:flex; gap:6px; margin-top:8px; flex-wrap:wrap;">
-      <button onclick="toggleLaptopWebcam()" id="camCardWebcamBtn">📷 Toggle MacBook Camera</button>
-      <button class="vision" onclick="askWithLiveWebcam('Describe what you see in front of the camera!')">
-        🔍 Ask Gemini ER to Describe Live Feed
-      </button>
-      <button onclick="apiAction('/api/object/stop_sign')">🛑 Virtual STOP Sign</button>
-      <button onclick="apiAction('/api/object/soccer_ball')">⚽ Virtual Ball</button>
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:7px; font-size:11px; color:#9ec2e6;">
+      <span>Stream: <strong id="tCamSource" style="color:var(--green)">VIRTUAL | MIC: READY</strong></span>
+      <button onclick="apiAction('/api/object/clear')" style="padding:3px 8px; font-size:10.5px;">🧹 Reset 3D View</button>
     </div>
   </div>
 
   <div class="card arena-wrap">
-    <h2>Live 2D Top-Down Track & Slalom Course Radar (15 Hz)</h2>
+    <h2>Live 2D Top-Down Track & Slalom Radar (15 Hz)</h2>
     <img id="arenaImg" src="" alt="2D Top-Down Track & Slalom Radar"/>
-    <div style="display:flex; gap:6px; margin-top:8px; flex-wrap:wrap;">
-      <button class="danger" onclick="apiAction('/api/obstacle/spawn')">🚧 Drop Emergency Obstacle (<120mm)</button>
+    <div style="display:flex; gap:6px; margin-top:7px; flex-wrap:wrap;">
+      <button class="danger" onclick="apiAction('/api/obstacle/spawn')">🚧 Drop Obstacle (<120mm)</button>
       <button onclick="apiAction('/api/obstacle/clear')">✅ Clear Obstacle</button>
       <button onclick="apiAction('/api/person/left')">🚶 Person Left</button>
-      <button onclick="apiAction('/api/person/center')">🚶 Person Center</button>
-      <button onclick="apiAction('/api/person/right')">🚶 Person Right</button>
+      <button onclick="apiAction('/api/person/center')">🚶 Center</button>
+      <button onclick="apiAction('/api/person/right')">🚶 Right</button>
     </div>
   </div>
 
   <div class="card">
-    <h2>Radxa 40-Pin HAL & Gemini ER Wire Telemetry</h2>
-    <div class="kv"><span>Audio / Camera Stream:</span><span class="v" id="tCamSource">VIRTUAL (3D Arena)</span></div>
-    <div class="kv"><span>User Voice Input:</span><span class="v" id="tUser">-</span></div>
-    <div class="kv"><span>Piper ONNX TTS (16kHz):</span><span class="v" id="tReply">-</span></div>
+    <h2>
+      <span>💬 Conversation History</span>
+      <span class="live-hint" id="liveTranscriptHint"></span>
+      <button onclick="clearHistory()" style="padding:2px 7px; font-size:10px;">🧹 Clear</button>
+    </h2>
+    <div class="chat-box" id="chatHistoryBox">
+      <div class="chat-empty">No conversation turns yet. Type a command above, click a quick action, or enable Hands-Free Mic.</div>
+    </div>
+
+    <h2>Radxa 40-Pin HAL Telemetry</h2>
     <div class="kv"><span>Active Course / Object:</span><span class="v" id="tCourse">-</span></div>
     <div class="kv"><span>H1 VL53L1X Front Laser:</span><span class="v" id="tTof">-</span></div>
     <div class="kv"><span>H3/H4 I2S Echo Guard:</span><span class="v" id="tEcho">-</span></div>
     <div class="kv"><span>H5 Servo (PWM14_M0 Pin 7):</span><span class="v" id="tServo">-</span></div>
     <div class="kv"><span>H5 DRV8833 Motor (PWM8/9):</span><span class="v" id="tMotor">-</span></div>
     <div class="kv"><span>2D Arena Pose (X, Y, Hdg):</span><span class="v" id="tPose">-</span></div>
-    <h2 style="margin-top:8px;">google.genai.types FunctionCall Log</h2>
-    <div class="log-box" id="wireLog">Waiting for voice turn...</div>
+
+    <details class="raw-drawer" id="rawLogDrawer">
+      <summary>Raw FunctionCall & Benchmark JSON Log</summary>
+      <div class="log-box" id="wireLog">Waiting for voice turn...</div>
+    </details>
   </div>
 </div>
 
 <script>
 let lastPlayedTurn = 0;
 let isSendingTurn = false;
+let pendingUserText = '';
 let queuedVoiceText = null;
 let webcamStream = null;
 let webcamTimer = null;
@@ -1510,6 +1563,32 @@ let interimDebounceTimer = null;
 let lastCommittedTranscript = '';
 let lastCommittedAt = 0;
 let serverSpeakerPlaying = false;
+let lastSpeakerActiveAt = 0;
+let lastSpokenReplyText = '';
+let lastRenderedHistoryKey = '';
+
+function escapeHtml(str) {
+  return String(str || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function isEchoOfLastReply(candidateText) {
+  const cand = String(candidateText || '').toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').trim();
+  const reply = String(lastSpokenReplyText || '').toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').trim();
+  if (!cand || !reply) return false;
+  if (reply.includes(cand) && cand.length >= 8) return true;
+  const candWords = cand.split(/\\s+/).filter(w => w.length > 2);
+  if (candWords.length < 2) return false;
+  const replySet = new Set(reply.split(/\\s+/));
+  let hits = 0;
+  for (const w of candWords) {
+    if (replySet.has(w)) hits++;
+  }
+  return (hits / candWords.length) >= 0.55;
+}
 
 function uint8ToBase64(u8) {
   let binary = '';
@@ -1605,12 +1684,16 @@ function stopLaptopMicStream() {
 
 function commitRecognizedPhrase(phrase) {
   const clean = (phrase || '').trim();
+  document.getElementById('liveTranscriptHint').textContent = '';
   if (!clean) return;
   const now = Date.now();
+  // Drop delayed browser SpeechRecognition echo from Mac speaker TTS playback
+  if (serverSpeakerPlaying || (now - lastSpeakerActiveAt) < 1400 || isEchoOfLastReply(clean)) {
+    return;
+  }
   if (clean === lastCommittedTranscript && (now - lastCommittedAt) < 1800) return;
   lastCommittedTranscript = clean;
   lastCommittedAt = now;
-  document.getElementById('voiceInput').value = clean;
   sendVoiceInput(clean);
 }
 
@@ -1625,8 +1708,10 @@ function startContinuousSpeechRecognition() {
   speechRec.continuous = true;
   speechRec.interimResults = true;
   speechRec.onresult = (ev) => {
-    if (serverSpeakerPlaying && liveMicRms < 0.45) {
-      // Half-duplex echo guard: ignore Mac speaker output unless user shouts (barge-in)
+    const now = Date.now();
+    if ((isSendingTurn || serverSpeakerPlaying || (now - lastSpeakerActiveAt) < 1400) && liveMicRms < 0.50) {
+      // Echo guard: ignore Mac speaker TTS output and 1.4s room acoustic tail
+      document.getElementById('liveTranscriptHint').textContent = '';
       return;
     }
     let finalTxt = '';
@@ -1646,12 +1731,13 @@ function startContinuousSpeechRecognition() {
     if (finalTxt.trim()) {
       commitRecognizedPhrase(finalTxt.trim());
     } else if (interimTxt.trim()) {
-      document.getElementById('voiceInput').value = interimTxt.trim();
-      // Auto-commit if browser pauses >900ms without emitting isFinal
       const snap = interimTxt.trim();
-      interimDebounceTimer = setTimeout(() => {
-        commitRecognizedPhrase(snap);
-      }, 900);
+      if (!isEchoOfLastReply(snap)) {
+        document.getElementById('liveTranscriptHint').textContent = '🎙️ "' + snap.slice(0, 32) + '"';
+        interimDebounceTimer = setTimeout(() => {
+          commitRecognizedPhrase(snap);
+        }, 900);
+      }
     }
   };
   speechRec.onend = () => {
@@ -1679,27 +1765,9 @@ async function toggleContinuousMic() {
       speechRec = null;
     }
     stopLaptopMicStream();
+    document.getElementById('liveTranscriptHint').textContent = '';
     updateMicButtons();
   } else {
-    continuousMicActive = true;
-    await startLaptopMicStream();
-    startContinuousSpeechRecognition();
-    updateMicButtons();
-  }
-}
-
-async function toggleContinuousAVStream() {
-  if (continuousMicActive && webcamStream) {
-    continuousMicActive = false;
-    if (speechRec) {
-      try { speechRec.stop(); } catch (e) {}
-      speechRec = null;
-    }
-    stopLaptopMicStream();
-    await stopLaptopWebcam();
-    updateMicButtons();
-  } else {
-    await startLaptopWebcam();
     continuousMicActive = true;
     await startLaptopMicStream();
     startContinuousSpeechRecognition();
@@ -1709,20 +1777,12 @@ async function toggleContinuousAVStream() {
 
 function updateMicButtons() {
   const micBtn = document.getElementById('micBtn');
-  const avBtn = document.getElementById('avStreamBtn');
   if (continuousMicActive) {
-    micBtn.textContent = '🔴 Continuous Mic ON (Keep Speaking!)';
+    micBtn.textContent = '🔴 Hands-Free Mic ON';
     micBtn.className = 'webcam-active';
   } else {
-    micBtn.textContent = '🎙️ Continuous Mic (Hands-Free)';
+    micBtn.textContent = '🎙️ Hands-Free Mic';
     micBtn.className = 'primary';
-  }
-  if (continuousMicActive && webcamStream) {
-    avBtn.textContent = '🟢 Live Audio + Video Stream ON (Hands-Free)';
-    avBtn.className = 'webcam-active';
-  } else {
-    avBtn.textContent = '🎙️📷 Continuous Live Mic + Camera (Hands-Free)';
-    avBtn.className = 'primary';
   }
 }
 
@@ -1814,17 +1874,12 @@ async function stopLaptopWebcam() {
 
 function updateWebcamButtons(active) {
   const btn = document.getElementById('webcamToggleBtn');
-  const cardBtn = document.getElementById('camCardWebcamBtn');
   if (active) {
-    btn.textContent = '🟢 Live MacBook Camera ON (Click to Switch to Virtual 3D)';
+    btn.textContent = '🟢 MacBook Camera ON';
     btn.className = 'webcam-active';
-    cardBtn.textContent = '🟢 Stop MacBook Camera';
-    cardBtn.className = 'webcam-active';
   } else {
-    btn.textContent = '📷 Enable Live MacBook Camera';
+    btn.textContent = '📷 MacBook Camera';
     btn.className = 'primary';
-    cardBtn.textContent = '📷 Toggle MacBook Camera';
-    cardBtn.className = '';
   }
 }
 
@@ -1841,7 +1896,6 @@ async function askWithLiveWebcam(questionText) {
     const ok = await startLaptopWebcam();
     if (!ok) return;
   }
-  document.getElementById('voiceInput').value = questionText;
   await sendVoiceInput(questionText);
 }
 
@@ -1860,23 +1914,36 @@ async function uploadPhotoFrame(ev) {
       body: JSON.stringify({jpeg_b64: b64, activate: true})
     });
     await pollState();
-    const q = 'Describe the live scene and objects you see in front of the camera right now!';
-    document.getElementById('voiceInput').value = q;
-    await sendVoiceInput(q);
+    await sendVoiceInput('Describe the live scene and objects you see in front of the camera right now!');
   };
   reader.readAsDataURL(file);
 }
 
+async function sendTypedInput() {
+  const input = document.getElementById('voiceInput');
+  const text = (input.value || '').trim();
+  if (!text) return;
+  input.value = '';
+  await sendVoiceInput(text);
+}
+
 async function sendVoiceInput(overrideText) {
   const input = document.getElementById('voiceInput');
-  const text = (typeof overrideText === 'string' ? overrideText : input.value).trim();
+  let text = '';
+  if (typeof overrideText === 'string') {
+    text = overrideText.trim();
+  } else {
+    text = (input.value || '').trim();
+    input.value = '';
+  }
   if (!text) return;
   if (isSendingTurn) {
-    // Queue the utterance so speaking/clicking while a turn is in flight never drops the user's command
     queuedVoiceText = text;
     return;
   }
   isSendingTurn = true;
+  pendingUserText = text;
+  lastRenderedHistoryKey = '';
   try {
     const payload = {utterance: text};
     const liveB64 = captureWebcamJpegB64();
@@ -1893,9 +1960,12 @@ async function sendVoiceInput(overrideText) {
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify(payload)
     });
+    lastSpeakerActiveAt = Date.now();
     await pollState();
   } finally {
     isSendingTurn = false;
+    pendingUserText = '';
+    lastRenderedHistoryKey = '';
     if (queuedVoiceText) {
       const nextText = queuedVoiceText;
       queuedVoiceText = null;
@@ -1905,7 +1975,6 @@ async function sendVoiceInput(overrideText) {
 }
 
 async function quickVoice(text) {
-  document.getElementById('voiceInput').value = text;
   await sendVoiceInput(text);
 }
 
@@ -1914,17 +1983,16 @@ async function placeObjectAndAsk(kind) {
     await stopLaptopWebcam();
   }
   await fetch('/api/object/' + kind, {method: 'POST'});
-  const q = "What's this object in front of you?";
-  document.getElementById('voiceInput').value = q;
-  await sendVoiceInput(q);
+  await sendVoiceInput("What's this object in front of you?");
 }
 
 async function setEmoji(emoji) {
   await quickVoice('Show ' + emoji + ' emoji on the HUD!');
 }
 
-async function triggerBargeIn() {
-  await fetch('/api/barge_in', {method: 'POST'});
+async function clearHistory() {
+  await fetch('/api/history/clear', {method: 'POST'});
+  lastRenderedHistoryKey = '';
   await pollState();
 }
 
@@ -1976,10 +2044,12 @@ async function runS1S7Benchmark() {
   const res = await fetch('/api/voice_pipeline/benchmark', {method: 'POST'});
   const info = await res.json();
   document.getElementById('wireLog').textContent = JSON.stringify(info, null, 2);
+  document.getElementById('rawLogDrawer').open = true;
   await pollState();
 }
 
 async function replayAudio() {
+  lastSpeakerActiveAt = Date.now();
   const res = await fetch('/api/audio/replay', {method: 'POST'});
   const info = await res.json();
   if (!info.audible_speaker) {
@@ -1990,21 +2060,73 @@ async function replayAudio() {
   }
 }
 
+function renderConversationHistory(historyList) {
+  const box = document.getElementById('chatHistoryBox');
+  const items = Array.isArray(historyList) ? historyList : [];
+  const lastTs = items.length ? items[items.length - 1].timestamp : 0;
+  const key = `${items.length}:${lastTs}:${isSendingTurn ? pendingUserText : ''}`;
+  if (key === lastRenderedHistoryKey) return;
+  lastRenderedHistoryKey = key;
+
+  if (!items.length && !isSendingTurn) {
+    box.innerHTML =
+      '<div class="chat-empty">No conversation turns yet. Type a command above, ' +
+      'click a quick action, or enable Hands-Free Mic.</div>';
+    return;
+  }
+
+  let html = '';
+  for (const item of items) {
+    const srcBadge = item.camera_source === 'laptop_webcam' ? '📷 WEBCAM' : (item.audio_source === 'laptop_mic' ? '🎙️ MIC' : '⌨️ CMD');
+    const actionBadge = item.active_maneuver ? `🏎️ ${escapeHtml(item.active_maneuver)}` : '💬 CHAT';
+    const emojiBadge = escapeHtml(item.hud_emoji || 'COOL_SHADES');
+    const latency = item.tts_synthesis_latency_ms ? `${Math.round(item.tts_synthesis_latency_ms)} ms` : '';
+    html += `
+      <div class="chat-turn">
+        <div class="chat-user">
+          <span>🧑 ${escapeHtml(item.user_utterance)}</span>
+          <span class="chat-tag">${srcBadge}</span>
+        </div>
+        <div class="chat-bot">🤖 ${escapeHtml(item.spoken_reply_text || '...')}</div>
+        <div class="chat-meta">
+          <span class="chat-tag">${emojiBadge}</span>
+          <span class="chat-tag">${actionBadge}</span>
+          ${latency ? `<span>TTS: ${latency}</span>` : ''}
+        </div>
+      </div>`;
+  }
+  if (isSendingTurn && pendingUserText) {
+    html += `
+      <div class="chat-turn" style="border-color:var(--cyan);">
+        <div class="chat-user"><span>🧑 ${escapeHtml(pendingUserText)}</span><span class="chat-tag">⏳ SENDING</span></div>
+        <div class="chat-bot" style="color:var(--amber);">⏳ Mustang AI is thinking...</div>
+      </div>`;
+  }
+  box.innerHTML = html;
+  box.scrollTop = box.scrollHeight;
+}
+
 async function pollState() {
   try {
     const res = await fetch('/api/state');
     const st = await res.json();
     serverSpeakerPlaying = Boolean(st.speaker_playing);
+    if (serverSpeakerPlaying) {
+      lastSpeakerActiveAt = Date.now();
+    }
+    if (st.spoken_reply_text) {
+      lastSpokenReplyText = st.spoken_reply_text;
+    }
     const isWebcam = st.camera_source === 'laptop_webcam';
     document.getElementById('camSourceBadge').textContent =
       isWebcam ? `CAM: LIVE LAPTOP (${st.webcam_frames_received} frames)` : 'CAM: VIRTUAL 3D';
     document.getElementById('micSourceBadge').textContent =
       continuousMicActive
-        ? `MIC: LIVE STREAM (RMS ${liveMicRms.toFixed(2)} | ${st.mic_chunks_received || 0} chunks)`
+        ? `MIC: LIVE (RMS ${liveMicRms.toFixed(2)})`
         : `MIC: ${st.audio_source === 'laptop_mic' ? 'LAPTOP PCM16' : 'READY'}`;
     document.getElementById('camTitle').textContent =
       isWebcam
-        ? `H1-A: LIVE MACBOOK CAMERA -> OV5647 STREAM (640×480 JPEG | ${st.webcam_frames_received} frames)`
+        ? `H1-A: LIVE MACBOOK CAMERA -> OV5647 (${st.webcam_frames_received} frames)`
         : 'H1-A: OV5647 160° First-Person Camera (640×480 JPEG)';
     document.getElementById('tCamSource').textContent =
       `${isWebcam ? 'WEBCAM' : 'VIRTUAL'} | MIC: ${st.audio_source.toUpperCase()}`;
@@ -2016,9 +2138,6 @@ async function pollState() {
     document.getElementById('arenaImg').src = 'data:image/png;base64,' + st.arena_png_b64;
     document.getElementById('hudMeta').textContent =
       `Emoji: ${st.hud_emoji} | '${st.hud_caption}' | ${st.hud_rgb565_bytes.toLocaleString()} B`;
-    document.getElementById('tUser').textContent = st.last_user_utterance.slice(0, 34);
-    document.getElementById('tReply').textContent =
-      (st.spoken_reply_text || '-').slice(0, 30) + ` (${st.tts_latency_ms}ms)`;
     document.getElementById('tCourse').textContent =
       st.showcase_object
         ? `OBJ: ${st.showcase_object.toUpperCase()}`
@@ -2045,15 +2164,17 @@ async function pollState() {
         `AEC3 ERLE: ${vp.cumulative_erle_db} dB | Vol: ${Math.round(vp.speaker_volume * 100)}%`;
       const cBtn = document.getElementById('cloudModeBtn');
       cloudOnlineState = Boolean(vp.cloud_online);
-      cBtn.textContent = cloudOnlineState ? '☁️ Cloud: ONLINE' : '📴 Cloud: OFFLINE (D10 Local Mode)';
+      cBtn.textContent = cloudOnlineState ? '☁️ Cloud: ONLINE' : '📴 Cloud: OFFLINE';
       cBtn.className = cloudOnlineState ? '' : 'danger';
     }
 
+    renderConversationHistory(st.history || []);
     if (st.history && st.history.length > 0) {
       document.getElementById('wireLog').textContent = JSON.stringify(st.history[st.history.length - 1], null, 2);
     }
     if (!st.audible_speaker && st.audio_turn_count > lastPlayedTurn && st.has_wav_audio) {
       lastPlayedTurn = st.audio_turn_count;
+      lastSpeakerActiveAt = Date.now();
       const audio = document.getElementById('ttsAudio');
       audio.pause();
       audio.src = '/api/audio.wav?t=' + Date.now();
@@ -2355,6 +2476,9 @@ def serve_live_workbench(
                     res["audible_speaker"] = wb.audible_speaker
                     self._send_json(res)
                     return
+                if self.path == "/api/history/clear":
+                    self._send_json(wb.clear_conversation_history())
+                    return
                 if self.path.startswith("/api/object/"):
                     kind = self.path.split("/api/object/", 1)[1].strip()
                     self._send_json(wb.set_showcase_object(kind))
@@ -2434,7 +2558,7 @@ def run_interactive_voice_repl(audible_speaker: bool = True) -> int:
     """Interactive terminal REPL on macOS: type or speak commands, hear Piper ONNX TTS out loud, inspect HUD & car state."""
     wb = MacLiveWorkbench(audible_speaker=audible_speaker, use_cloud_live=True)
     print("================================================================================")
-    print("Mustang 67 AI Edition (v3.2.0) — Interactive Laptop-as-Radxa Voice REPL")
+    print("Mustang 67 AI Edition (v3.3.0) — Interactive Laptop-as-Radxa Voice REPL")
     print(
         f"SDK: google-genai=={genai.__version__} | TTS: {wb.tts.backend_used} | "
         f"Emojis: {len(CORE_12_EMOJIS)} | Maneuvers: {len(MANEUVER_LIBRARY)}"

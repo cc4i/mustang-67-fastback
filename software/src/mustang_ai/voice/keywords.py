@@ -394,7 +394,7 @@ class KeywordSpotterEngine:
         # Cooldown of 35 frames (350 ms) after a hit and evaluate every 5 frames (50 ms)
         if frame_index - self._last_hit_frame < 35 or frame_index % 5 != 0:
             return None
-        if len(self._rolling_pcm) < int(SAMPLE_RATE_HZ * 0.30) * 2:
+        if len(self._rolling_pcm) < int(SAMPLE_RATE_HZ * 0.15) * 2:
             return None
 
         rms = compute_pcm16_rms(bytes(self._rolling_pcm[-6400:]))

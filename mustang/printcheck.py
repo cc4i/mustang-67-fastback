@@ -221,7 +221,7 @@ def _overhang_hazards(bm, layer=0.12, bed_tol=0.20):
             edge_tris.setdefault(e, []).append(i)
     down = {
         i for i, (p0, p1, p2, nz, _) in enumerate(tris)
-        if nz < -0.90 and (p0[2] + p1[2] + p2[2]) / 3.0 > zmin + bed_tol
+        if nz < -0.95 and (p0[2] + p1[2] + p2[2]) / 3.0 > zmin + bed_tol
     }
     seen = set()
     thin_necks, cantilevers = [], []
@@ -249,7 +249,7 @@ def _overhang_hazards(bm, layer=0.12, bed_tol=0.20):
         pset = set(patch)
         exit_pts = set()
 
-        def edge_reaches_below(e0, z_ref):
+        def edge_reaches_below(e0, z_ref, climb_walls=True):
             st = [j for j in edge_tris[e0] if j not in pset]
             seen_f = set(st)
             reached = False
@@ -258,11 +258,13 @@ def _overhang_hazards(bm, layer=0.12, bed_tol=0.20):
                 q0, q1, q2, _, _ = tris[f_idx]
                 if min(q0[2], q1[2], q2[2]) < z_ref - 0.04:
                     reached = True
-                    for q in (q0, q1, q2):
-                        if q[2] <= z_ref + 1e-3:
-                            exit_pts.add((q[0], q[1]))
+                    if climb_walls:
+                        for q in (q0, q1, q2):
+                            if q[2] <= z_ref + 1e-3:
+                                exit_pts.add((q[0], q[1]))
                     continue
-                if min(q0[2], q1[2], q2[2]) <= z_ref + layer:
+                z_bound = min(q0[2], q1[2], q2[2]) if climb_walls else max(q0[2], q1[2], q2[2])
+                if z_bound <= z_ref + layer:
                     for a, b in ((q0, q1), (q1, q2), (q2, q0)):
                         ek = (a, b) if a < b else (b, a)
                         for g_idx in edge_tris[ek]:
@@ -271,6 +273,7 @@ def _overhang_hazards(bm, layer=0.12, bed_tol=0.20):
                                 st.append(g_idx)
             return reached
 
+        any_below = False
         anchors, frees = [], []
         for i in patch:
             p0, p1, p2, _, _ = tris[i]
@@ -278,7 +281,9 @@ def _overhang_hazards(bm, layer=0.12, bed_tol=0.20):
                 e = (a, b) if a < b else (b, a)
                 if all(j in pset for j in edge_tris[e]):
                     continue
-                if edge_reaches_below(e, min(a[2], b[2])):
+                if edge_reaches_below(e, min(a[2], b[2]), climb_walls=True):
+                    any_below = True
+                if edge_reaches_below(e, min(a[2], b[2]), climb_walls=False):
                     anchors.append((a, b))
                 else:
                     frees.append((a, b))
@@ -286,7 +291,7 @@ def _overhang_hazards(bm, layer=0.12, bed_tol=0.20):
         cy = sum((tris[i][0][1] + tris[i][1][1] + tris[i][2][1]) / 3.0 * tris[i][4] for i in patch) / area
         cz = sum((tris[i][0][2] + tris[i][1][2] + tris[i][2][2]) / 3.0 * tris[i][4] for i in patch) / area
         pt = [round(cx, 2), round(cy, 2), round(cz, 2)]
-        if not anchors:
+        if not any_below:
             thin_necks.append(pt)
             continue
         if exit_pts:
@@ -304,15 +309,18 @@ def _overhang_hazards(bm, layer=0.12, bed_tol=0.20):
                 thin_necks.append(pt)
                 continue
         if frees:
-            unanchored_area = 0.0
-            for i in patch:
-                p0, p1, p2, _, fa = tris[i]
-                m = ((p0[0] + p1[0] + p2[0]) / 3.0, (p0[1] + p1[1] + p2[1]) / 3.0)
-                da = min(_seg_dist_2d(m, s0, s1) for s0, s1 in anchors)
-                df = min(_seg_dist_2d(m, s0, s1) for s0, s1 in frees)
-                if da > 1.5 and df < da:
-                    unanchored_area += fa
-            if unanchored_area >= 30.0:
+            if not anchors:
+                unanchored_area = area
+            else:
+                unanchored_area = 0.0
+                for i in patch:
+                    p0, p1, p2, _, fa = tris[i]
+                    m = ((p0[0] + p1[0] + p2[0]) / 3.0, (p0[1] + p1[1] + p2[1]) / 3.0)
+                    da = min(_seg_dist_2d(m, s0, s1) for s0, s1 in anchors)
+                    df = min(_seg_dist_2d(m, s0, s1) for s0, s1 in frees)
+                    if da > 1.5 and df < da:
+                        unanchored_area += fa
+            if unanchored_area >= 15.0:
                 cantilevers.append(pt)
     return thin_necks, cantilevers
 

@@ -127,8 +127,8 @@ import sys; sys.path.insert(0, 'mustang')
 import ai_edition; ai_edition.build_and_export(save_blend=True)
 "
 
-# 2. Generate the 9-plate Bambu Lab X2D project (output/ai_edition/mustang_67_ai_edition_x2d.3mf)
-bash mustang/make_ai_project.sh output/ai_edition/mustang_67_ai_edition_x2d.3mf
+# 2. Generate both the 9-plate Full AI Edition .3mf and 3-plate Minimal Prototype .3mf
+bash mustang/make_ai_project.sh output/ai_edition/mustang_67_ai_edition_x2d.3mf output/ai_edition/mustang_67_ai_edition_prototype_x2d.3mf
 
 # 3. Run the standalone software/ pytest suite (VirtualArena 2D physics + HAL protocol contracts + H1..H5 doctor)
 cd software && uv run pytest -v
@@ -169,5 +169,5 @@ To keep this README fast and approachable, detailed engineering reports, wiring 
 | [`software/`](software/) | Standalone `mustang-ai` (`v3.3.0`) Python package (`pyproject.toml`, `src/mustang_ai/` with `protocol/`, `hal/`, `features/`, `voice/`, `runtime/`, `simulator/`, `cli/`, and `tests/` pytest suite) |
 | [`docs/`](docs/) | Deep-dive engineering guides (`ai-edition-software-architecture.md`, `ai-edition-gemini-robotics-guide.md`, `design-thinking-and-verification.md`, `printing-and-rc-guide.md`, `reference-media.md`) and tracked showcase media (`docs/images/`) |
 | [`origin_images/`](origin_images/) | 83 reference photos, 2 walkaround videos, and `vanguard_2229_manifest.json` (`Stock #2229`) |
-| `output/` | Generated deliverables (git-ignored): baseline `mustang_67_fastback.blend`, `mustang_67_fastback_1-24.3mf`, `mustang_67_fastback.mp4`, `stl/` (`53` STLs), `stl_assembled/`, `step/` (`67` part STEPs), `mustang_67_fastback.step`, plus Independent AI Edition deliverables in `output/ai_edition/` (`mustang_67_ai_edition.blend`, `stl/` with `55` STLs / `75` pieces, and `mustang_67_ai_edition_x2d.3mf`) |
+| `output/` | Generated deliverables (git-ignored): baseline `mustang_67_fastback.blend`, `mustang_67_fastback_1-24.3mf`, `mustang_67_fastback.mp4`, `stl/` (`53` STLs), `stl_assembled/`, `step/` (`67` part STEPs), `mustang_67_fastback.step`, plus Independent AI Edition deliverables in `output/ai_edition/` (`mustang_67_ai_edition.blend`, `stl/` with `55` STLs / `75` pieces, `mustang_67_ai_edition_x2d.3mf`, and `mustang_67_ai_edition_prototype_x2d.3mf`) |
 | `tmp/` | Scratch renders, animation/simulation frame sequences, and JSON verification reports |
