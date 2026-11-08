@@ -6,13 +6,14 @@
 # body carries its black window glass as extra parts of the same object.
 set -euo pipefail
 
-BAMBU=/Applications/BambuStudio.app/Contents/MacOS/BambuStudio
+BAMBU="${BAMBU_BIN:-/Applications/BambuStudio.app/Contents/MacOS/BambuStudio}"
 HERE="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$HERE/.." && pwd)"
 STL="$ROOT/output/stl"
 OUT="${1:-$ROOT/output/mustang_67_fastback_1-24.3mf}"
 WORK="$(mktemp -d /tmp/mustang_project.XXXXXX)"
 trap 'echo "make_project: failed (work dir $WORK)" >&2' ERR
+trap 'rm -rf "$WORK"' EXIT
 
 # The CLI ignores preset inheritance, so feed it flattened copies of the system presets,
 # plus one filament copy per colour: 1 burgundy body, 2 black, 3 silver/chrome, 4 red lenses, 5 engine blue.

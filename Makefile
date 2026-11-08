@@ -1,17 +1,23 @@
-.PHONY: help setup sync live repl voice-e2e voice-e2e-speak sim simulate sim-speak open-sim self-test doctor test lint fix check step clean
+.PHONY: help setup sync live voice-live voice-verify repl voice-e2e voice-e2e-speak sim simulate sim-speak open-sim self-test doctor test lint fix check step clean
 
 help: ## Show available root-level commands for software/ (AI Runtime) and mustang/ (3D CAD)
 	@echo "1967 Ford Mustang Fastback (1:20) — Root Makefile (3D CAD 'mustang/' + AI Runtime 'software/')"
 	@echo "=============================================================================================="
 	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-16s\033[0m %s\n", $$1, $$2}'
 
-setup: sync ## Set up Python 3.14 virtualenv in 'software/' via 'uv sync'
+setup: sync ## Set up virtualenv in 'software/' via 'uv sync'
 
-sync: ## Sync 'software/' Python 3.14 dependencies ('google-genai>=2.34.0', 'piper-tts', 'onnxruntime', 'pillow')
+sync: ## Sync 'software/' dependencies ('google-genai>=2.34.0', 'piper-tts', 'onnxruntime', 'pillow')
 	$(MAKE) -C software sync
 
 live: ## Launch interactive browser workbench at http://127.0.0.1:8765 (Voice -> Live Cloud Gemini -> Piper ONNX Audio + HUD + Car Control)
 	$(MAKE) -C software live
+
+voice-live: ## Launch Milestone A Radxa Voice Stack Workbench (AEC3 + Wake Word + Barge-In + S1..S7 pre-flight)
+	$(MAKE) -C software voice-live
+
+voice-verify: ## Run Milestone A S1..S7 + D1..D15 voice stack verification suite and write tmp/milestone_a_voice_report.json
+	$(MAKE) -C software voice-verify
 
 repl: ## Launch interactive terminal Voice REPL with audible local Piper ONNX speech synthesis
 	$(MAKE) -C software repl

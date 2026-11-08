@@ -6,9 +6,17 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
+from typing import Any
 
 import numpy as np
-from livekit import rtc
+
+try:
+    from livekit import rtc
+
+    HAS_LIVEKIT_RTC = True
+except ImportError:
+    rtc = None  # type: ignore[assignment]
+    HAS_LIVEKIT_RTC = False
 
 from mustang_ai.voice.audio_engine import (
     FRAME_BYTES,
@@ -73,8 +81,8 @@ class AudioFrontEnd:
     ) -> None:
         self.stream_delay_ms: int = max(0, int(stream_delay_ms))
         self.enable_webrtc_apm: bool = enable_webrtc_apm
-        self._apm: rtc.AudioProcessingModule | None = None
-        if self.enable_webrtc_apm:
+        self._apm: Any = None
+        if self.enable_webrtc_apm and HAS_LIVEKIT_RTC and rtc is not None:
             self._apm = rtc.AudioProcessingModule(
                 echo_cancellation=True,
                 noise_suppression=True,

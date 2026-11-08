@@ -1,4 +1,4 @@
-"""Interactive Local Laptop End-to-End Workbench (`mac_live_workbench.py`) for `mustang-ai` (`v3.2.0`).
+"""Interactive Local Laptop End-to-End Workbench (`mac_live_workbench.py`) for `mustang-ai` (`v3.3.0`).
 
 Allows a developer on a local MacBook to run the full end-to-end pipeline before deploying to Radxa Zero 3W:
   Voice / Mic Input (`16 kHz` `PCM16`) + `OV5647` `640×480` Fisheye Camera + `VL53L1X` Front Laser
@@ -28,11 +28,14 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
 
-import google.genai as genai
-from google.genai import types
 from PIL import Image
 
-from mustang_ai.config import CORE_12_EMOJIS, GeminiERConfig, load_gemini_api_key
+from mustang_ai.config import (
+    CORE_12_EMOJIS,
+    GeminiERConfig,
+    load_gemini_api_key,
+    resolve_repo_root,
+)
 from mustang_ai.features.maneuver_obstacle import (
     DRIVING_ACTION_LIBRARY,
     MANEUVER_LIBRARY,
@@ -48,6 +51,8 @@ from mustang_ai.protocol.messages import VisionFrameMetrics
 from mustang_ai.runtime.gemini_live_stream import (
     GeminiLiveOrchestrator,
     build_gemini_live_connect_config,
+    genai,
+    types,
 )
 from mustang_ai.runtime.local_autonomy_loop import LocalAutonomyEngine
 from mustang_ai.runtime.state_bus import StateBus
@@ -169,7 +174,7 @@ def capture_mac_webcam_jpeg_once(device_index: str = "0", timeout_s: float = 2.2
 
 class LocalGeminiERBrain:
     """Real Cloud Live WebSocket Client (`client.aio.live.connect`) targeting `gemini-robotics-er-2-streaming-preview`
-    (with automatic Vertex AI ADC fallback to `gemini-3.8-live` only if `GEMINI_API_KEY` is absent).
+    (with automatic Vertex AI ADC fallback only if `GEMINI_API_KEY` is absent and `GOOGLE_CLOUD_PROJECT` is configured).
     """
 
     def __init__(
@@ -232,7 +237,7 @@ class LocalGeminiERBrain:
             "If the user asks to stop/halt/brake, ALSO call `emergency_stop`."
         )
 
-        candidates: list[tuple[str, genai.Client, str, types.Modality]] = []
+        candidates: list[tuple[str, Any, str, Any]] = []
         if self.api_key:
             ai_studio_client = genai.Client(api_key=self.api_key, vertexai=False)
             candidates.append(
@@ -245,20 +250,21 @@ class LocalGeminiERBrain:
             )
 
         if not candidates:
-            proj = os.environ.get("GOOGLE_CLOUD_PROJECT", "multi-gke-ops")
-            loc = os.environ.get("GOOGLE_CLOUD_LOCATION", "us-central1")
-            try:
-                vertex_client = genai.Client(vertexai=True, project=proj, location=loc)
-                candidates.append(
-                    (
-                        f"vertex-adc:{self.config.fallback_live_model}",
-                        vertex_client,
-                        self.config.fallback_live_model,
-                        types.Modality.AUDIO,
+            proj = os.environ.get("GOOGLE_CLOUD_PROJECT", "").strip()
+            loc = os.environ.get("GOOGLE_CLOUD_LOCATION", "us-central1").strip()
+            if proj:
+                try:
+                    vertex_client = genai.Client(vertexai=True, project=proj, location=loc)
+                    candidates.append(
+                        (
+                            f"vertex-adc:{self.config.fallback_live_model}",
+                            vertex_client,
+                            self.config.fallback_live_model,
+                            types.Modality.AUDIO,
+                        )
                     )
-                )
-            except Exception as exc:
-                self.last_cloud_probe_log.append(f"vertex-init-err:{type(exc).__name__}")
+                except Exception as exc:
+                    self.last_cloud_probe_log.append(f"vertex-init-err:{type(exc).__name__}")
 
         for label, client, model_name, modality in candidates:
             live_cfg = build_gemini_live_connect_config(self.config, modality=modality)
@@ -804,6 +810,8 @@ class MacLiveWorkbench:
             bus=self.bus,
         )
         self._lock = threading.RLock()
+        self._voice_turn_seq: int = 0
+        self._interrupt_seq: int = 0
         self.conversation_history: list[dict[str, Any]] = []
         self.last_user_utterance: str = "Ready for voice command..."
         self.step_physics_and_sensors(dt_sec=0.05)
@@ -865,6 +873,11 @@ class MacLiveWorkbench:
                 self.live_mic_updated_at = round(time.time(), 3)
                 self.live_mic_chunks_received += 1
                 self.audio_source = "laptop_mic"
+                # Feed up to 4 frames (80 ms) per chunk through Milestone A WebRTC AEC3/NS/VAD pipeline
+                for offset in range(0, min(len(pcm16_bytes), 2560), 640):
+                    frame20 = pcm16_bytes[offset : offset + 640]
+                    if len(frame20) == 640:
+                        self.voice_pipeline.step_audio_frame(frame20)
             self.live_mic_rms = round(float(rms), 4)
             # If user shouts loudly (RMS >= 0.55) while speaker is playing, trigger hardware barge-in
             if self.live_mic_rms >= 0.55 and self.audio.is_playing():
@@ -956,6 +969,8 @@ class MacLiveWorkbench:
     ) -> dict[str, Any]:
         """Execute a complete Voice + Video -> Gemini ER -> Local Piper ONNX Speech + Emoji HUD + Car Control turn."""
         with self._lock:
+            self._voice_turn_seq += 1
+            turn_seq = self._voice_turn_seq
             # Stop any currently playing speech so back-to-back voice turns never overlap or block
             self.audio.stop_playback()
             clean_utt = (utterance or "").strip() or "Hey Mustang, how are you?"
@@ -1023,11 +1038,14 @@ class MacLiveWorkbench:
                     self.autonomy.handle_tool_call("execute_maneuver", {"maneuver_name": m_name, "speed_scale": s_scale})
                     pre_started_maneuver = m_name
                 elif d_name == "emergency_stop":
+                    self._interrupt_seq += 1
                     self.arena.active_maneuver_name = "STOPPED"
                     self.autonomy.handle_tool_call("emergency_stop", d_args)
                 elif d_name == "set_follow_person_mode":
                     self.arena.showcase_object = None
                     self.autonomy.handle_tool_call("set_follow_person_mode", d_args)
+
+            interrupt_seq = self._interrupt_seq
 
         # Query Cloud Live WebSocket OUTSIDE self._lock so 15Hz physics, /api/state, and webcam/mic streams never freeze
         planned_calls = self.brain.plan_tool_calls(
@@ -1041,6 +1059,15 @@ class MacLiveWorkbench:
         )
 
         with self._lock:
+            # Guard against stale cloud tool calls if an emergency_stop, barge_in, or newer turn arrived while awaiting cloud
+            stale_due_to_interrupt = (self._voice_turn_seq != turn_seq) or (self._interrupt_seq != interrupt_seq)
+            if stale_due_to_interrupt:
+                planned_calls = [
+                    (t_name, t_args, c_id)
+                    for (t_name, t_args, c_id) in planned_calls
+                    if t_name == "emergency_stop"
+                ]
+
             # Set up 2D track markers & planned trajectory curve if a new maneuver was emitted by the cloud turn
             for tool_name, tool_args, _ in planned_calls:
                 if tool_name == "execute_maneuver":
@@ -1100,6 +1127,7 @@ class MacLiveWorkbench:
     def trigger_barge_in(self) -> dict[str, Any]:
         """Simulate a loud user shout (`RMS >= 0.55`) interrupting active TTS playback in `<= 1` chunk."""
         with self._lock:
+            self._interrupt_seq += 1
             self.audio.set_mic_amplitude(25000.0)
             self.step_physics_and_sensors(dt_sec=0.05)
             barge_triggered = self.bus.audio.barge_in_triggered
@@ -2053,7 +2081,7 @@ def run_voice_e2e_session(
 ) -> dict[str, Any]:
     """Run an end-to-end multi-turn Voice + Video -> Gemini ER -> Piper ONNX Audio + Emoji HUD + Car Control session on Mac."""
     if repo_root is None:
-        repo_root = Path(__file__).resolve().parents[4]
+        repo_root = resolve_repo_root(Path(__file__))
 
     if not prompts:
         prompts = [
@@ -2101,7 +2129,7 @@ def run_voice_e2e_session(
     # Also verify live laptop camera / real-world photo streaming (`camera_source="laptop_webcam"`) -> Gemini ER scene description
     real_photo_path = repo_root / "origin_images" / "1967-ford-mustang-fastback (1).jpeg"
     if not real_photo_path.exists():
-        fallback_root = Path(__file__).resolve().parents[4] / "origin_images" / "1967-ford-mustang-fastback (1).jpeg"
+        fallback_root = resolve_repo_root(Path(__file__)) / "origin_images" / "1967-ford-mustang-fastback (1).jpeg"
         if fallback_root.exists():
             real_photo_path = fallback_root
     if real_photo_path.exists():
@@ -2146,7 +2174,7 @@ def run_voice_e2e_session(
     report_path = repo_root / "tmp" / "mac_voice_e2e_report.json"
     summary = {
         "status": "PASS",
-        "version": "3.2.0",
+        "version": "3.3.0",
         "sdk": f"google-genai=={genai.__version__}",
         "requested_primary_model": wb.config.primary_model,
         "cloud_live_model_used": wb.brain.last_cloud_model_used,
@@ -2179,7 +2207,7 @@ def _reclaim_workbench_port(host: str, port: int) -> int:
     if os.path.exists("/usr/sbin/lsof"):
         try:
             proc = subprocess.run(
-                ["/usr/sbin/lsof", "-ti", f"tcp:{port}"],
+                ["/usr/sbin/lsof", "-nP", f"-iTCP:{port}", "-sTCP:LISTEN", "-t"],
                 capture_output=True,
                 text=True,
                 timeout=1.5,
@@ -2228,6 +2256,8 @@ def serve_live_workbench(
     worker = threading.Thread(target=physics_worker, daemon=True)
     worker.start()
 
+    max_post_body_bytes = 10 * 1024 * 1024
+
     class Handler(BaseHTTPRequestHandler):
         def log_message(self, format: str, *args: Any) -> None:  # noqa: A002
             return
@@ -2274,6 +2304,12 @@ def serve_live_workbench(
         def do_POST(self) -> None:  # noqa: N802
             try:
                 length = int(self.headers.get("Content-Length", "0"))
+                if length < 0 or length > max_post_body_bytes:
+                    self._send_json(
+                        {"error": f"Request body exceeds limit ({max_post_body_bytes} bytes)"},
+                        status=HTTPStatus.REQUEST_ENTITY_TOO_LARGE,
+                    )
+                    return
                 body = self.rfile.read(length) if length > 0 else b"{}"
                 if self.path == "/api/voice":
                     data = json.loads(body.decode("utf-8") or "{}")

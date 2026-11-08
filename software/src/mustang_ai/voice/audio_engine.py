@@ -174,9 +174,10 @@ class FullDuplexAudioEngine:
         """Scale `pcm16_bytes` by `speaker_volume` (`D15`) and enqueue `10 ms` (`320`-byte) frames."""
         if not pcm16_bytes:
             return 0
-        scaled = scale_pcm16_bytes(pcm16_bytes, self.speaker_volume)
-        frames = slice_into_10ms_frames(scaled)
         with self._lock:
+            vol = self.speaker_volume
+            scaled = scale_pcm16_bytes(pcm16_bytes, vol)
+            frames = slice_into_10ms_frames(scaled)
             self._playback_queue.extend(frames)
             self.total_enqueued_frames += len(frames)
         return len(frames)
@@ -195,6 +196,8 @@ class FullDuplexAudioEngine:
             dropped = len(self._playback_queue)
             self._playback_queue.clear()
             self._echo_delay_line.clear()
+            pad_count = max(1, self.echo_delay_ms // FRAME_DURATION_MS)
+            self._echo_delay_line.extend([SILENCE_FRAME] * pad_count)
             self.last_speaker_ref_frame = SILENCE_FRAME
             self.total_flushed_frames += dropped
             latency_ms = round((time.perf_counter() - t0) * 1000.0, 4)

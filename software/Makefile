@@ -3,13 +3,13 @@
 PYTHON_VERSION ?= 3.14
 
 help: ## Show available local development & simulation commands
-	@echo "Mustang 67 AI Edition (v3.2.0) — Local Dev & Gemini ER 2.0 Simulator (Python $(PYTHON_VERSION))"
+	@echo "Mustang 67 AI Edition (v3.3.0) — Local Dev & Gemini ER 2.0 Simulator (Python $(PYTHON_VERSION))"
 	@echo "=========================================================================================="
 	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-16s\033[0m %s\n", $$1, $$2}'
 
-setup: sync ## Alias for 'make sync' (create/update Python 3.14 .venv via uv)
+setup: sync ## Alias for 'make sync' (create/update .venv via uv)
 
-sync: ## Sync Python 3.14 virtualenv and dependencies ('google-genai>=2.34.0', 'piper-tts', 'onnxruntime', 'pillow')
+sync: ## Sync virtualenv and dependencies ('google-genai>=2.34.0', 'piper-tts', 'onnxruntime', 'pillow')
 	uv sync --python $(PYTHON_VERSION)
 
 live: ## Launch interactive browser workbench at http://127.0.0.1:8765 (Voice -> Live Cloud Gemini -> Piper ONNX Audio + HUD + Car Control)
@@ -56,7 +56,7 @@ lint: ## Run ruff linter across 'software/' and '../mustang/'
 fix: ## Auto-fix lint issues with ruff
 	uv run ruff check --fix --select E,F,W --ignore E731 --line-length 140 . ../mustang
 
-check: sync doctor self-test sim voice-e2e test lint ## Run full local verification pipeline (sync + doctor + self-test + sim + voice-e2e + test + lint)
+check: sync doctor self-test voice-verify sim voice-e2e test lint ## Run full local verification pipeline (sync + doctor + self-test + voice-verify + sim + voice-e2e + test + lint)
 
 clean: ## Remove local test/lint caches ('__pycache__', '.pytest_cache', '.ruff_cache')
 	rm -rf .pytest_cache .ruff_cache

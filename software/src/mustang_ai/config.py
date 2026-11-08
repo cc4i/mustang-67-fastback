@@ -1,4 +1,4 @@
-"""Hardware pinout, safety thresholds, and runtime configuration for the 1:20 Mustang AI Edition (`v3.2.0`)."""
+"""Hardware pinout, safety thresholds, and runtime configuration for the 1:20 Mustang AI Edition (`v3.3.0`)."""
 
 from __future__ import annotations
 
@@ -50,6 +50,29 @@ ALLOWED_MANEUVERS: tuple[str, ...] = (
 )
 
 
+def resolve_repo_root(start: pathlib.Path | None = None) -> pathlib.Path:
+    """Resolve the repository root directory reliably across source checkouts and installed virtualenvs."""
+    env_root = os.environ.get("MUSTANG_REPO_ROOT", "").strip()
+    if env_root:
+        candidate = pathlib.Path(env_root).expanduser().resolve()
+        if candidate.is_dir():
+            return candidate
+
+    anchor = (start or pathlib.Path(__file__)).resolve()
+    search_start = anchor if anchor.is_dir() else anchor.parent
+    for parent in (search_start, *search_start.parents):
+        if (parent / "mustang").is_dir() and (parent / "software").is_dir():
+            return parent
+    for parent in (search_start, *search_start.parents):
+        if (parent / "pyproject.toml").is_file() and parent.name == "software" and parent.parent.is_dir():
+            return parent.parent
+    cwd = pathlib.Path.cwd().resolve()
+    for parent in (cwd, *cwd.parents):
+        if (parent / "mustang").is_dir() and (parent / "software").is_dir():
+            return parent
+    return search_start.parents[2] if len(search_start.parents) > 2 else cwd
+
+
 def load_gemini_api_key() -> str:
     """Resolve `GEMINI_API_KEY` from environment variables or `.env` files (`~/.env`, `<repo>/.env`, `software/.env`)."""
     for env_var in ("GEMINI_API_KEY", "GOOGLE_API_KEY"):
@@ -57,7 +80,7 @@ def load_gemini_api_key() -> str:
         if val:
             return val
 
-    repo_root = pathlib.Path(__file__).resolve().parents[3]
+    repo_root = resolve_repo_root()
     candidates = [
         pathlib.Path.home() / ".env",
         repo_root / ".env",
@@ -169,7 +192,7 @@ class GeminiERConfig:
     """Gemini Robotics ER 2.0 streaming configuration (`gemini-robotics-er-2-streaming-preview`)."""
 
     primary_model: str = "gemini-robotics-er-2-streaming-preview"
-    fallback_live_model: str = "gemini-3.8-live"
+    fallback_live_model: str = "gemini-2.5-flash-native-audio-preview-12-2025"
     thinking_budget: int = 0
     video_stream_hz: float = 5.0
     control_loop_hz: float = 15.0

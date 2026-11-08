@@ -1,4 +1,4 @@
-"""Main CLI (`mustang-ai`) for running the 3-Tier Autonomous Control Pipeline or `--self-test`."""
+"""Main CLI (`mustang-ai`) for running the 3-Tier Autonomous Control Pipeline (`v3.3.0`) or `--self-test`."""
 
 from __future__ import annotations
 
@@ -12,15 +12,15 @@ from pathlib import Path
 from typing import Sequence
 
 from mustang_ai.cli import doctor, voice_live
-from mustang_ai.config import CORE_12_EMOJIS, GeminiERConfig
+from mustang_ai.config import CORE_12_EMOJIS, GeminiERConfig, resolve_repo_root
 from mustang_ai.features.maneuver_obstacle import MANEUVER_LIBRARY
 from mustang_ai.features.voice_emoji_hud import VoiceEmojiHUDController
-from mustang_ai.hal.audio_i2s import SimAudioStream
-from mustang_ai.hal.camera_ov5647 import SimFisheyeCamera
-from mustang_ai.hal.display_gc9a01 import SimGC9A01Display
-from mustang_ai.hal.drive_actuators import SimDriveActuator
-from mustang_ai.hal.rangefinder_vl53l1x import SimRangefinder
-from mustang_ai.hal.tts_piper import SimPiperTTS
+from mustang_ai.hal.audio_i2s import RadxaI2SAudio, SimAudioStream
+from mustang_ai.hal.camera_ov5647 import RadxaOV5647, SimFisheyeCamera
+from mustang_ai.hal.display_gc9a01 import RadxaGC9A01Display, SimGC9A01Display
+from mustang_ai.hal.drive_actuators import RadxaDriveActuator, SimDriveActuator
+from mustang_ai.hal.rangefinder_vl53l1x import RadxaVL53L1X, SimRangefinder
+from mustang_ai.hal.tts_piper import LocalPiperTTS, SimPiperTTS
 from mustang_ai.runtime.gemini_live_stream import (
     GeminiLiveOrchestrator,
     build_gemini_tool_declarations,
@@ -36,12 +36,13 @@ from mustang_ai.simulator.mac_live_workbench import (
 )
 from mustang_ai.simulator.mock_gemini_session import MockGeminiLiveSession
 from mustang_ai.simulator.virtual_arena import VirtualArena
+from mustang_ai.voice.conversation import ConversationStateMachine
 
 
 def run_self_test(repo_root: Path | None = None) -> dict[str, object]:
     """Execute end-to-end verification across FN-1, FN-2, FN-3, Watchdog, and VirtualArena."""
     if repo_root is None:
-        repo_root = Path(__file__).resolve().parents[4]
+        repo_root = resolve_repo_root(Path(__file__))
 
     config = GeminiERConfig()
     emoji_sheet_path = repo_root / "docs" / "images" / "ai_gc9a01_emoji_sheet.png"
@@ -154,7 +155,7 @@ def run_self_test(repo_root: Path | None = None) -> dict[str, object]:
     )
 
     report = {
-        "version": "3.2.0",
+        "version": "3.3.0",
         "package": "mustang_ai",
         "primary_model": config.primary_model,
         "all_checks_passed": all_passed,
@@ -187,6 +188,56 @@ def run_self_test(repo_root: Path | None = None) -> dict[str, object]:
     return report
 
 
+def run_radxa_agent(max_ticks: int | None = None) -> int:
+    """Run the 3-Tier Autonomous Control Pipeline on Radxa Zero 3W hardware (`--mode radxa`)."""
+    config = GeminiERConfig()
+    bus = StateBus()
+    tof = RadxaVL53L1X(config.pins, strict_hardware=True)
+    actuators = RadxaDriveActuator(config.pins)
+    camera = RadxaOV5647(config.camera)
+    audio = RadxaI2SAudio(config.pins)
+    tts = LocalPiperTTS(config.tts)
+    display = RadxaGC9A01Display(config.pins)
+
+    governor = WatchdogReflexGovernor(rangefinder=tof, actuators=actuators, bus=bus, pins=config.pins)
+    autonomy = LocalAutonomyEngine(
+        camera=camera,
+        audio=audio,
+        tts=tts,
+        display=display,
+        bus=bus,
+        pins=config.pins,
+    )
+    voice_sm = ConversationStateMachine(autonomy=autonomy, governor=governor, bus=bus)
+
+    governor.start()
+    ticks = 0
+    dt_sec = 1.0 / max(1.0, config.autonomy_loop_hz)
+    try:
+        while max_ticks is None or ticks < max_ticks:
+            t0 = time.monotonic()
+            autonomy.step_once(dt_sec=dt_sec)
+            mic_chunk = bus.audio.pcm16_bytes
+            if len(mic_chunk) >= 640:
+                voice_sm.step_audio_frame(mic_chunk[:640], now_s=t0)
+            voice_sm.tick_timers(now_s=time.monotonic())
+            ticks += 1
+            elapsed = time.monotonic() - t0
+            if elapsed < dt_sec:
+                time.sleep(dt_sec - elapsed)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        governor.stop()
+        actuators.emergency_coast_all()
+        actuators.close()
+        tof.close()
+        display.close()
+        audio.close()
+        camera.close()
+    return 0
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     args_list = list(sys.argv[1:] if argv is None else argv)
     if args_list and args_list[0] == "doctor":
@@ -194,14 +245,24 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args_list and args_list[0] == "voice-live":
         return voice_live.main(args_list[1:])
     if args_list and args_list[0] == "simulate":
-        speak_mac = "--speak-mac" in args_list[1:]
-        sim_report = run_mac_gemini_er_simulation(speak_mac_audio=speak_mac)
+        sub_parser = argparse.ArgumentParser(
+            prog="mustang-ai simulate",
+            description="Run the 4-Act Local Mac <-> Gemini Robotics ER 2.0 closed-loop cockpit simulator.",
+        )
+        sub_parser.add_argument("--speak-mac", action="store_true", help="Speak synthesized replies out loud.")
+        sub_args = sub_parser.parse_args(args_list[1:])
+        sim_report = run_mac_gemini_er_simulation(speak_mac_audio=sub_args.speak_mac)
         print(json.dumps(sim_report, indent=2))
         return 0 if sim_report["status"] == "PASS" else 1
     if args_list and args_list[0] == "voice-e2e":
-        speak_mac = "--speak-mac" in args_list[1:]
-        use_cloud = "--offline" not in args_list[1:]
-        e2e_report = run_voice_e2e_session(audible_speaker=speak_mac, use_cloud_live=use_cloud)
+        sub_parser = argparse.ArgumentParser(
+            prog="mustang-ai voice-e2e",
+            description="Run multi-turn Voice + Video E2E verification session.",
+        )
+        sub_parser.add_argument("--speak-mac", action="store_true", help="Speak synthesized replies out loud.")
+        sub_parser.add_argument("--offline", action="store_true", help="Force offline local planner mode.")
+        sub_args = sub_parser.parse_args(args_list[1:])
+        e2e_report = run_voice_e2e_session(audible_speaker=sub_args.speak_mac, use_cloud_live=not sub_args.offline)
         print(json.dumps(e2e_report, indent=2))
         return 0 if e2e_report["status"] == "PASS" else 1
     if args_list and args_list[0] == "live":
@@ -219,12 +280,17 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
         return 0
     if args_list and args_list[0] == "repl":
-        mute = "--mute" in args_list[1:]
-        return run_interactive_voice_repl(audible_speaker=not mute)
+        sub_parser = argparse.ArgumentParser(
+            prog="mustang-ai repl",
+            description="Run interactive terminal voice REPL.",
+        )
+        sub_parser.add_argument("--mute", action="store_true", help="Mute physical speaker playback.")
+        sub_args = sub_parser.parse_args(args_list[1:])
+        return run_interactive_voice_repl(audible_speaker=not sub_args.mute)
 
     parser = argparse.ArgumentParser(
         prog="mustang-ai",
-        description="1967 Ford Mustang Fastback AI Edition (v3.2.0) Autonomous Runtime.",
+        description="1967 Ford Mustang Fastback AI Edition (v3.3.0) Autonomous Runtime.",
     )
     parser.add_argument(
         "--mode",
@@ -247,6 +313,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         action="store_true",
         help="Speak synthesized replies out loud on macOS speakers during `--simulate`.",
     )
+    parser.add_argument(
+        "--ticks",
+        type=int,
+        default=None,
+        help="Optional bounded tick count when running `--mode radxa`.",
+    )
     args = parser.parse_args(args_list)
 
     if args.simulate:
@@ -259,8 +331,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(json.dumps(report, indent=2))
         return 0 if report["status"] == "PASS" else 1
 
-    print("Radxa hardware runtime mode selected. Run `mustang-ai doctor --mode radxa` first to verify H1..H5.")
-    return 0
+    return run_radxa_agent(max_ticks=args.ticks)
 
 
 if __name__ == "__main__":

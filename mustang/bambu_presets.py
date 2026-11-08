@@ -13,7 +13,10 @@ import json
 import os
 import sys
 
-PROFILES = "/Applications/BambuStudio.app/Contents/Resources/profiles/BBL"
+PROFILES = os.environ.get(
+    "BAMBU_PRESETS_DIR",
+    "/Applications/BambuStudio.app/Contents/Resources/profiles/BBL",
+)
 PRESETS = {
     "machine": "Bambu Lab X2D 0.4 nozzle",
     "process": "0.12mm High Quality @BBL X2D",

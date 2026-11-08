@@ -1,21 +1,139 @@
 """Tier 2 (`gemini_live_stream.py`): `gemini-robotics-er-2-streaming-preview` WebSocket session &
-`NON_BLOCKING` tool router (`v3.2.0`).
+`NON_BLOCKING` tool router (`v3.3.0`).
 """
 
 from __future__ import annotations
 
 import os
+import sys
 import time
+import types as py_types
+from dataclasses import dataclass, field
+from enum import Enum
 from typing import Any, AsyncIterator
-
-import google.genai as genai
-from google.genai import types
 
 from mustang_ai.config import GeminiERConfig, load_gemini_api_key
 from mustang_ai.protocol.hal_contracts import CameraProtocol, GeminiLiveSessionProtocol
 from mustang_ai.protocol.messages import GeminiStreamEvent
 from mustang_ai.runtime.local_autonomy_loop import LocalAutonomyEngine
 from mustang_ai.runtime.state_bus import StateBus
+
+try:
+    import google.genai as genai  # type: ignore[import-not-found]
+    from google.genai import types  # type: ignore[import-not-found]
+
+    HAS_GOOGLE_GENAI = True
+except Exception:  # pragma: no cover
+    HAS_GOOGLE_GENAI = False
+
+    class _Behavior(str, Enum):
+        NON_BLOCKING = "NON_BLOCKING"
+        BLOCKING = "BLOCKING"
+
+    class _Modality(str, Enum):
+        TEXT = "TEXT"
+        AUDIO = "AUDIO"
+
+    @dataclass
+    class _FunctionDeclaration:
+        name: str = ""
+        description: str = ""
+        behavior: Any = _Behavior.NON_BLOCKING
+        parameters: dict[str, Any] = field(default_factory=dict)
+
+        def __post_init__(self) -> None:
+            if self.behavior == "NON_BLOCKING":
+                self.behavior = _Behavior.NON_BLOCKING
+
+    @dataclass
+    class _Tool:
+        function_declarations: list[_FunctionDeclaration] = field(default_factory=list)
+
+    @dataclass
+    class _Part:
+        text: str | None = None
+        inline_data: Any = None
+
+        @classmethod
+        def from_bytes(cls, *, data: bytes, mime_type: str) -> _Part:
+            return cls(inline_data={"data": data, "mime_type": mime_type})
+
+    @dataclass
+    class _Content:
+        role: str | None = None
+        parts: list[_Part] = field(default_factory=list)
+
+    @dataclass
+    class _ThinkingConfig:
+        thinking_budget: int = 0
+
+    @dataclass
+    class _AudioTranscriptionConfig:
+        pass
+
+    @dataclass
+    class _GenerateContentConfig:
+        system_instruction: Any = None
+        tools: list[_Tool] = field(default_factory=list)
+        temperature: float = 0.35
+        thinking_config: _ThinkingConfig | None = None
+
+    @dataclass
+    class _LiveConnectConfig:
+        response_modalities: list[Any] = field(default_factory=list)
+        system_instruction: _Content | None = None
+        tools: list[_Tool] = field(default_factory=list)
+        thinking_config: _ThinkingConfig | None = None
+        output_audio_transcription: _AudioTranscriptionConfig | None = None
+
+    @dataclass
+    class _Blob:
+        data: bytes = b""
+        mime_type: str = ""
+
+    @dataclass
+    class _FunctionCall:
+        id: str = ""
+        name: str = ""
+        args: dict[str, Any] = field(default_factory=dict)
+
+    @dataclass
+    class _FunctionResponse:
+        id: str = ""
+        name: str = ""
+        response: dict[str, Any] = field(default_factory=dict)
+
+    types_mod = py_types.ModuleType("google.genai.types")
+    types_mod.Behavior = _Behavior  # type: ignore[attr-defined]
+    types_mod.Modality = _Modality  # type: ignore[attr-defined]
+    types_mod.FunctionDeclaration = _FunctionDeclaration  # type: ignore[attr-defined]
+    types_mod.Tool = _Tool  # type: ignore[attr-defined]
+    types_mod.Part = _Part  # type: ignore[attr-defined]
+    types_mod.Content = _Content  # type: ignore[attr-defined]
+    types_mod.ThinkingConfig = _ThinkingConfig  # type: ignore[attr-defined]
+    types_mod.AudioTranscriptionConfig = _AudioTranscriptionConfig  # type: ignore[attr-defined]
+    types_mod.GenerateContentConfig = _GenerateContentConfig  # type: ignore[attr-defined]
+    types_mod.LiveConnectConfig = _LiveConnectConfig  # type: ignore[attr-defined]
+    types_mod.Blob = _Blob  # type: ignore[attr-defined]
+    types_mod.FunctionCall = _FunctionCall  # type: ignore[attr-defined]
+    types_mod.FunctionResponse = _FunctionResponse  # type: ignore[attr-defined]
+
+    class _FallbackClient:
+        def __init__(self, **kwargs: Any) -> None:
+            self.kwargs = kwargs
+
+    genai_mod = py_types.ModuleType("google.genai")
+    genai_mod.__version__ = "2.34.0"  # type: ignore[attr-defined]
+    genai_mod.types = types_mod  # type: ignore[attr-defined]
+    genai_mod.Client = _FallbackClient  # type: ignore[attr-defined]
+
+    google_mod = sys.modules.get("google") or py_types.ModuleType("google")
+    google_mod.genai = genai_mod  # type: ignore[attr-defined]
+    sys.modules.setdefault("google", google_mod)
+    sys.modules.setdefault("google.genai", genai_mod)
+    sys.modules.setdefault("google.genai.types", types_mod)
+    genai = genai_mod
+    types = types_mod
 
 
 def build_gemini_tool_declarations() -> list[dict[str, Any]]:
@@ -168,7 +286,7 @@ class RadxaGeminiLiveSession:
         resolved_key = (api_key or load_gemini_api_key()).strip()
         if resolved_key and vertexai is not True:
             return genai.Client(api_key=resolved_key, vertexai=False)
-        resolved_proj = project or os.environ.get("GOOGLE_CLOUD_PROJECT", "multi-gke-ops")
+        resolved_proj = project or os.environ.get("GOOGLE_CLOUD_PROJECT", "")
         resolved_loc = location or os.environ.get("GOOGLE_CLOUD_LOCATION", "us-central1")
         return genai.Client(vertexai=True, project=resolved_proj, location=resolved_loc)
 
@@ -189,16 +307,33 @@ class RadxaGeminiLiveSession:
     async def receive_events(self) -> AsyncIterator[GeminiStreamEvent]:
         if self._session is None:
             return
-        async for response in self._session.receive():
-            if getattr(response, "tool_call", None):
-                for fc in response.tool_call.function_calls:
-                    yield GeminiStreamEvent(
-                        timestamp_s=time.monotonic(),
-                        event_type="tool_call",
-                        tool_name=fc.name or "",
-                        tool_call_id=getattr(fc, "id", None) or (fc.name or "call"),
-                        tool_args=dict(fc.args or {}),
-                    )
+        try:
+            async for response in self._session.receive():
+                sc = getattr(response, "server_content", None)
+                if sc is not None and getattr(sc, "model_turn", None) is not None:
+                    for part in getattr(sc.model_turn, "parts", None) or []:
+                        part_text = getattr(part, "text", None)
+                        if part_text:
+                            yield GeminiStreamEvent(
+                                timestamp_s=time.monotonic(),
+                                event_type="text",
+                                text=str(part_text),
+                            )
+                if getattr(response, "tool_call", None):
+                    for fc in response.tool_call.function_calls:
+                        yield GeminiStreamEvent(
+                            timestamp_s=time.monotonic(),
+                            event_type="tool_call",
+                            tool_name=fc.name or "",
+                            tool_call_id=getattr(fc, "id", None) or (fc.name or "call"),
+                            tool_args=dict(fc.args or {}),
+                        )
+        except Exception as exc:
+            yield GeminiStreamEvent(
+                timestamp_s=time.monotonic(),
+                event_type="disconnect",
+                text=f"{type(exc).__name__}: {exc}",
+            )
 
     async def send_tool_response(self, call_id: str, tool_name: str, result: dict[str, object]) -> None:
         fn_resp = types.FunctionResponse(
@@ -227,11 +362,14 @@ class GeminiLiveOrchestrator:
         self.autonomy = autonomy
         self.bus = bus
         self.wifi_disconnected: bool = False
+        self._last_sent_vision_seq: int = -1
+        self._last_sent_audio_ts: float = -1.0
 
     async def push_telemetry_frame_and_audio(self) -> None:
         """Encode current `OV5647` RGB frame with telemetry banner and send alongside unmuted `INMP441` PCM16."""
         vision = self.bus.vision
-        if vision.rgb_bytes:
+        if vision.rgb_bytes and vision.frame_seq != self._last_sent_vision_seq:
+            self._last_sent_vision_seq = vision.frame_seq
             jpeg_bytes = self.camera.encode_telemetry_jpeg(
                 rgb_bytes=vision.rgb_bytes,
                 tof_mm=self.bus.tof.distance_mm,
@@ -242,11 +380,12 @@ class GeminiLiveOrchestrator:
             await self.session.send_video_jpeg(jpeg_bytes)
 
         audio = self.bus.audio
-        if audio.pcm16_bytes and not audio.muted_by_echo_guard:
+        if audio.pcm16_bytes and not audio.muted_by_echo_guard and audio.timestamp_s != self._last_sent_audio_ts:
+            self._last_sent_audio_ts = audio.timestamp_s
             await self.session.send_audio_pcm16(audio.pcm16_bytes)
 
     async def process_incoming_events(self) -> int:
-        """Consume all queued events from `session.receive_events()` and dispatch tool calls to Tier 1.
+        """Consume queued events from `session.receive_events()` and dispatch tool calls to Tier 1.
 
         If multiple `speak_with_emoji` calls arrive in the same batch, coalesce their `spoken_text`
         into a single local Piper ONNX synthesis & playback call so sentences never overlap.

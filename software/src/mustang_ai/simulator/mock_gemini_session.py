@@ -5,11 +5,9 @@ from __future__ import annotations
 import time
 from typing import Any, AsyncIterator
 
-from google.genai import types
-
 from mustang_ai.config import GeminiERConfig
 from mustang_ai.protocol.messages import GeminiStreamEvent
-from mustang_ai.runtime.gemini_live_stream import build_gemini_live_connect_config
+from mustang_ai.runtime.gemini_live_stream import build_gemini_live_connect_config, types
 
 
 class MockGeminiLiveSession:

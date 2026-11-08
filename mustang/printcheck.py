@@ -153,22 +153,35 @@ def part_overlaps(min_volume=0.05):
     return out
 
 
+HINGED = ("Hood", "TrunkLid", "Door_L", "Door_R", "Knuckle_L", "Knuckle_R")
+
+
 def run():
-    reports = {ob.name: mesh_report(ob) for ob in print_objects()}
-    problems = {k: v for k, v in reports.items()
-                if v["non_manifold_edges"] or v["boundary_edges"] or v["non_manifold_verts"]
-                or v["volume_mm3"] <= 0 or v["shells"] != 1}
-    body = bpy.data.objects["Body"]
-    overlaps = {}
-    for ob in print_objects():
-        if ob is body:
-            continue
-        overlaps[ob.name] = overlap_volume(body, ob)
-    return {"parts": len(reports), "problems": problems,
-            "overlaps_with_body": {k: v for k, v in overlaps.items() if v > 0.001},
-            "mirror_mismatches": mirror_mismatches(),
-            "part_overlaps": part_overlaps(),
-            "body": reports["Body"]}
+    poses = {n: bpy.data.objects[n].rotation_euler.copy() for n in HINGED if n in bpy.data.objects}
+    try:
+        for n in poses:
+            bpy.data.objects[n].rotation_euler = (0.0, 0.0, 0.0)
+        bpy.context.view_layer.update()
+        reports = {ob.name: mesh_report(ob) for ob in print_objects()}
+        problems = {k: v for k, v in reports.items()
+                    if v["non_manifold_edges"] or v["boundary_edges"] or v["non_manifold_verts"]
+                    or v["volume_mm3"] <= 0 or v["shells"] != 1}
+        body = bpy.data.objects["Body"]
+        overlaps = {}
+        for ob in print_objects():
+            if ob is body:
+                continue
+            overlaps[ob.name] = overlap_volume(body, ob)
+        return {"parts": len(reports), "problems": problems,
+                "overlaps_with_body": {k: v for k, v in overlaps.items() if v > 0.001},
+                "mirror_mismatches": mirror_mismatches(),
+                "part_overlaps": part_overlaps(),
+                "body": reports["Body"]}
+    finally:
+        for n, pose in poses.items():
+            if n in bpy.data.objects:
+                bpy.data.objects[n].rotation_euler = pose
+        bpy.context.view_layer.update()
 
 
 def _seg_dist_2d(p, a, b):

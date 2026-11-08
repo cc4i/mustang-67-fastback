@@ -14,6 +14,7 @@ import json
 import pathlib
 from typing import Sequence
 
+from mustang_ai.config import resolve_repo_root
 from mustang_ai.simulator.mac_live_workbench import serve_live_workbench
 from mustang_ai.voice.conversation import run_s1_s7_verification_suite
 
@@ -43,7 +44,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     bind_host = args.host if args.host in ("127.0.0.1", "localhost") else "127.0.0.1"
 
     report = run_s1_s7_verification_suite(use_real_piper=args.real_piper)
-    repo_root = pathlib.Path(__file__).resolve().parents[4]
+    repo_root = resolve_repo_root(pathlib.Path(__file__))
     report_path = repo_root / "tmp" / "milestone_a_voice_report.json"
     report_path.parent.mkdir(parents=True, exist_ok=True)
     report_path.write_text(json.dumps(report, indent=2), encoding="utf-8")

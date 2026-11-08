@@ -1,4 +1,4 @@
-"""Local Mac Closed-Loop Simulator (`mac_interaction_sim.py`) for `gemini-robotics-er-2-streaming` (`v3.2.0`).
+"""Local Mac Closed-Loop Simulator (`mac_interaction_sim.py`) for `gemini-robotics-er-2-streaming` (`v3.3.0`).
 
 Runs the exact same Python libraries and runtime stack that execute on Radxa Zero 3W:
 - `google-genai` (`>=2.34.0`): `genai.types.LiveConnectConfig`, `types.Tool`, `types.FunctionDeclaration`,
@@ -18,10 +18,10 @@ import time
 from pathlib import Path
 from typing import Any
 
-import google.genai as genai
+import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
-from mustang_ai.config import GeminiERConfig
+from mustang_ai.config import GeminiERConfig, resolve_repo_root
 from mustang_ai.hal.audio_i2s import MacLaptopAudio
 from mustang_ai.hal.camera_ov5647 import SimFisheyeCamera
 from mustang_ai.hal.display_gc9a01 import SimGC9A01Display
@@ -31,6 +31,7 @@ from mustang_ai.hal.tts_piper import LocalPiperTTS
 from mustang_ai.runtime.gemini_live_stream import (
     GeminiLiveOrchestrator,
     build_gemini_live_connect_config,
+    genai,
 )
 from mustang_ai.runtime.local_autonomy_loop import LocalAutonomyEngine
 from mustang_ai.runtime.state_bus import StateBus
@@ -44,18 +45,12 @@ def decode_rgb565_to_image(rgb565_bytes: bytes, width: int = 240, height: int = 
     expected = width * height * 2
     if len(rgb565_bytes) != expected:
         return Image.new("RGB", (width, height), (8, 12, 20))
-    rgb = bytearray(width * height * 3)
-    out_idx = 0
-    for i in range(0, expected, 2):
-        val = (rgb565_bytes[i] << 8) | rgb565_bytes[i + 1]
-        r = ((val >> 11) & 0x1F) << 3
-        g = ((val >> 5) & 0x3F) << 2
-        b = (val & 0x1F) << 3
-        rgb[out_idx] = r
-        rgb[out_idx + 1] = g
-        rgb[out_idx + 2] = b
-        out_idx += 3
-    return Image.frombytes("RGB", (width, height), bytes(rgb))
+    arr16 = np.frombuffer(rgb565_bytes, dtype=">u2").reshape((height, width))
+    r = (((arr16 >> 11) & 0x1F) << 3).astype(np.uint8)
+    g = (((arr16 >> 5) & 0x3F) << 2).astype(np.uint8)
+    b = ((arr16 & 0x1F) << 3).astype(np.uint8)
+    rgb = np.stack((r, g, b), axis=-1)
+    return Image.fromarray(rgb, mode="RGB")
 
 
 def render_cockpit_dashboard_frame(
@@ -79,7 +74,7 @@ def render_cockpit_dashboard_frame(
     draw.rectangle((0, 0, 1280, 44), fill=(18, 26, 40))
     draw.line((0, 44, 1280, 44), fill=(0, 210, 255), width=2)
     header_text = (
-        f"MUSTANG 67 AI EDITION (v3.2.0) | LOCAL MAC <-> GEMINI ROBOTICS ER 2.0 SIMULATOR | "
+        f"MUSTANG 67 AI EDITION (v3.3.0) | LOCAL MAC <-> GEMINI ROBOTICS ER 2.0 SIMULATOR | "
         f"google-genai v{genai.__version__}"
     )
     draw.text((16, 10), header_text, fill=(0, 230, 255), font=font)
@@ -144,7 +139,7 @@ def render_cockpit_dashboard_frame(
     tof = bus.tof
     aud = bus.audio
     hw_lines = [
-        ("H1 Front Laser (VL53L1X I2C3 0x29):", f"{tof.distance_mm:4d} mm  [{'EMERGENCY <180MM' if tof.distance_mm < 180 else 'CLEAR'}]"),
+        ("H1 Front Laser (VL53L1X I2C3 0x29):", f"{tof.distance_mm:4d} mm  [{'EMERGENCY <120MM' if tof.distance_mm < 120 else 'CLEAR'}]"),
         ("H2 Rear HUD (GC9A01 SPI3 40MHz):", f"Emoji={bus.hud.emoji} | '{bus.hud.caption}'"),
         ("H3/H4 Audio (I2S3_M0 + GPIO3_C1):", f"EchoMute={aud.muted_by_echo_guard} | BargeIn={aud.barge_in_triggered}"),
         ("H5 Steering Servo (PWM14_M0 Pin 7):", f"{cmd.applied_steering_deg:+5.1f} deg  ({actuators.last_command.servo_pulse_us:4d} us)"),
@@ -222,7 +217,7 @@ def run_mac_gemini_er_simulation(
 ) -> dict[str, Any]:
     """Run a 4-Act closed-loop simulation on macOS using the exact Radxa `google-genai` & HAL stack."""
     if repo_root is None:
-        repo_root = Path(__file__).resolve().parents[4]
+        repo_root = resolve_repo_root(Path(__file__))
 
     config = GeminiERConfig()
     live_cfg = build_gemini_live_connect_config(config)
@@ -359,7 +354,7 @@ def run_mac_gemini_er_simulation(
             extra_note=f"State={autonomy.maneuver_seq.obstacle_state}",
         )
 
-    # Drop an obstacle 205 mm ahead of the car center (~92 mm from front valance < 180 mm threshold)
+    # Drop an obstacle 205 mm ahead of the car center (~92 mm from front valance < 120 mm threshold)
     arena.obstacles.clear()
     arena.add_obstacle(
         x_mm=arena.car_x_mm + 205.0 * math.cos(arena.car_heading_rad),
@@ -369,7 +364,7 @@ def run_mac_gemini_er_simulation(
     f_act2_brake: Image.Image | None = None
     for i in range(8):
         f_curr = step_closed_loop(
-            act_title="ACT 2B (FN-2): VL53L1X <180MM EMERGENCY STOP -> ~150MM REVERSE",
+            act_title="ACT 2B (FN-2): VL53L1X <120MM EMERGENCY STOP -> ~150MM REVERSE",
             step_label=f"Evasive Step {i + 1}",
             user_utterance=utt_2,
             extra_note=f"State={autonomy.maneuver_seq.obstacle_state} | ToF={bus.tof.distance_mm}mm",
@@ -498,7 +493,7 @@ def run_mac_gemini_er_simulation(
 
     summary: dict[str, Any] = {
         "status": "PASS",
-        "version": "3.2.0",
+        "version": "3.3.0",
         "sdk": f"google-genai=={genai.__version__}",
         "live_connect_model": config.primary_model,
         "non_blocking_tools_count": len(live_cfg.tools[0].function_declarations) if live_cfg.tools else 0,

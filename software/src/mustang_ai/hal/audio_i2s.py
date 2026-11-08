@@ -98,14 +98,15 @@ class SimAudioStream:
             barge_in_triggered=False,
         )
 
-    def play_pcm16_async(self, pcm16_bytes: bytes) -> float:
+    def play_pcm16_async(self, pcm16_bytes: bytes, sample_rate_hz: int | None = None) -> float:
         if not pcm16_bytes:
             self.last_rms_level = 0.0
             return 0.0
         sample_count = len(pcm16_bytes) // 2
         if sample_count <= 0:
             return 0.0
-        duration_sec = sample_count / float(self.pins.audio_sample_rate_hz)
+        rate = int(sample_rate_hz or self.pins.audio_sample_rate_hz)
+        duration_sec = sample_count / float(max(1, rate))
         self._speaker_playing_until = time.monotonic() + max(0.08, duration_sec)
         self.played_chunks += 1
         self.last_rms_level = round(_compute_pcm16_rms(pcm16_bytes), 4)
@@ -117,6 +118,129 @@ class RadxaI2SAudio(SimAudioStream):
 
     def __init__(self, pins: RadxaPinConfig | None = None) -> None:
         super().__init__(pins=pins)
+        self._play_lock = threading.RLock()
+        self._aplay_proc: subprocess.Popen[bytes] | None = None
+        self.has_alsa_tools = (
+            pathlib.Path("/proc/asound").exists()
+            and shutil.which("arecord") is not None
+            and shutil.which("aplay") is not None
+        )
+        self.hardware_ready: bool = self.has_alsa_tools and pathlib.Path("/dev/snd").exists()
+
+    def is_playing(self) -> bool:
+        with self._play_lock:
+            if self._aplay_proc is not None and self._aplay_proc.poll() is None:
+                return True
+            return super().is_playing()
+
+    def stop_playback(self) -> None:
+        with self._play_lock:
+            super().stop_playback()
+            if self._aplay_proc is not None:
+                if self._aplay_proc.poll() is None:
+                    self._aplay_proc.terminate()
+                    try:
+                        self._aplay_proc.wait(timeout=0.15)
+                    except subprocess.TimeoutExpired:
+                        self._aplay_proc.kill()
+                self._aplay_proc = None
+
+    def read_mic_chunk(self) -> AudioChunkMetrics:
+        if self.hardware_ready:
+            n_bytes = self.pins.audio_chunk_samples * 2
+            try:
+                proc = subprocess.run(
+                    [
+                        "arecord",
+                        "-q",
+                        "-D",
+                        self.pins.alsa_capture_device,
+                        "-f",
+                        "S16_LE",
+                        "-r",
+                        str(self.pins.audio_sample_rate_hz),
+                        "-c",
+                        str(self.pins.audio_channels),
+                        "-t",
+                        "raw",
+                        "--samples",
+                        str(self.pins.audio_chunk_samples),
+                    ],
+                    capture_output=True,
+                    timeout=0.25,
+                    check=True,
+                )
+                if len(proc.stdout) >= n_bytes:
+                    raw_bytes = proc.stdout[:n_bytes]
+                    raw_rms = _compute_pcm16_rms(raw_bytes)
+                    self.last_rms_level = raw_rms
+                    if self.is_playing():
+                        if raw_rms >= self.pins.barge_in_rms_threshold:
+                            self.stop_playback()
+                            return AudioChunkMetrics(
+                                timestamp_s=time.monotonic(),
+                                pcm16_bytes=raw_bytes,
+                                rms_level=round(raw_rms, 4),
+                                muted_by_echo_guard=False,
+                                barge_in_triggered=True,
+                            )
+                        self.last_rms_level = 0.0
+                        return AudioChunkMetrics(
+                            timestamp_s=time.monotonic(),
+                            pcm16_bytes=bytes(len(raw_bytes)),
+                            rms_level=0.0,
+                            muted_by_echo_guard=True,
+                            barge_in_triggered=False,
+                        )
+                    return AudioChunkMetrics(
+                        timestamp_s=time.monotonic(),
+                        pcm16_bytes=raw_bytes,
+                        rms_level=round(raw_rms, 4),
+                        muted_by_echo_guard=False,
+                        barge_in_triggered=False,
+                    )
+            except Exception:
+                pass
+        return super().read_mic_chunk()
+
+    def play_pcm16_async(self, pcm16_bytes: bytes, sample_rate_hz: int | None = None) -> float:
+        with self._play_lock:
+            self.stop_playback()
+            rms = super().play_pcm16_async(pcm16_bytes, sample_rate_hz=sample_rate_hz)
+            if not pcm16_bytes:
+                return 0.0
+            if self.hardware_ready:
+                rate = int(sample_rate_hz or self.pins.audio_sample_rate_hz)
+                try:
+                    proc = subprocess.Popen(
+                        [
+                            "aplay",
+                            "-q",
+                            "-D",
+                            self.pins.alsa_playback_device,
+                            "-f",
+                            "S16_LE",
+                            "-r",
+                            str(rate),
+                            "-c",
+                            str(self.pins.audio_channels),
+                            "-t",
+                            "raw",
+                        ],
+                        stdin=subprocess.PIPE,
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.DEVNULL,
+                    )
+                    if proc.stdin is not None:
+                        proc.stdin.write(pcm16_bytes)
+                        proc.stdin.close()
+                    self._aplay_proc = proc
+                except Exception:
+                    self._aplay_proc = None
+            return rms
+
+    def close(self) -> None:
+        self.stop_playback()
 
 
 class MacLaptopAudio(SimAudioStream):
@@ -158,15 +282,17 @@ class MacLaptopAudio(SimAudioStream):
             if was_playing:
                 self.playback_interrupted_count += 1
 
-    def play_pcm16_async(self, pcm16_bytes: bytes) -> float:
+    def play_pcm16_async(self, pcm16_bytes: bytes, sample_rate_hz: int | None = None) -> float:
         with self._play_lock:
             self.stop_playback()
-            rms = super().play_pcm16_async(pcm16_bytes)
+            rate = int(sample_rate_hz or self.pins.audio_sample_rate_hz)
+            rms = super().play_pcm16_async(pcm16_bytes, sample_rate_hz=rate)
             if not pcm16_bytes:
                 return 0.0
             self.last_pcm16_bytes = pcm16_bytes
-            self.last_wav_bytes = pcm16_to_wav_bytes(pcm16_bytes, sample_rate_hz=self.pins.audio_sample_rate_hz)
+            self.last_wav_bytes = pcm16_to_wav_bytes(pcm16_bytes, sample_rate_hz=rate)
             if self.audible_speaker:
+                wav_path: pathlib.Path | None = None
                 try:
                     with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tf:
                         tf.write(self.last_wav_bytes)
@@ -179,4 +305,7 @@ class MacLaptopAudio(SimAudioStream):
                     )
                 except Exception:
                     self._afplay_proc = None
+                    if wav_path is not None:
+                        wav_path.unlink(missing_ok=True)
+                    self._active_wav_file = None
             return rms

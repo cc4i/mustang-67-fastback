@@ -6,6 +6,7 @@ import math
 import pathlib
 import time
 
+import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
 from mustang_ai.config import ALLOWED_EMOJIS, CORE_12_EMOJIS, RadxaPinConfig
@@ -28,18 +29,12 @@ class SimGC9A01Display:
     def image_to_rgb565_bytes(img: Image.Image) -> bytes:
         """Convert a `240×240` RGB PIL image into `115,200` big-endian `RGB565` bytes."""
         rgb = img.convert("RGB").resize((SimGC9A01Display.WIDTH, SimGC9A01Display.HEIGHT))
-        raw = rgb.tobytes()
-        out = bytearray(SimGC9A01Display.WIDTH * SimGC9A01Display.HEIGHT * 2)
-        idx = 0
-        for i in range(0, len(raw), 3):
-            r = raw[i]
-            g = raw[i + 1]
-            b = raw[i + 2]
-            rgb565 = ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3)
-            out[idx] = (rgb565 >> 8) & 0xFF
-            out[idx + 1] = rgb565 & 0xFF
-            idx += 2
-        return bytes(out)
+        arr = np.frombuffer(rgb.tobytes(), dtype=np.uint8).reshape(-1, 3).astype(np.uint16)
+        r = arr[:, 0]
+        g = arr[:, 1]
+        b = arr[:, 2]
+        rgb565 = ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3)
+        return rgb565.astype(">u2").tobytes()
 
     @staticmethod
     def _draw_heart(draw: ImageDraw.ImageDraw, cx: int, cy: int, size: int, color: tuple[int, int, int]) -> None:
@@ -263,9 +258,16 @@ class SimGC9A01Display:
 class RadxaGC9A01Display(SimGC9A01Display):
     """Physical `SPI3` (`/dev/spidev3.0` @ `40 MHz`) `GC9A01` display driver on Radxa Zero 3W (`Harness H2`)."""
 
-    def __init__(self, pins: RadxaPinConfig | None = None) -> None:
+    _CMD_CASET = 0x2A
+    _CMD_RASET = 0x2B
+    _CMD_RAMWR = 0x2C
+
+    def __init__(self, pins: RadxaPinConfig | None = None, *, gpio_root: pathlib.Path | None = None) -> None:
         super().__init__(pins=pins)
+        self._gpio_root = gpio_root or pathlib.Path("/sys/class/gpio")
         self._spi = None
+        self.hardware_ready: bool = False
+        self.last_error: str = ""
         try:
             import spidev  # type: ignore[import-not-found]
 
@@ -274,9 +276,59 @@ class RadxaGC9A01Display(SimGC9A01Display):
             spi.max_speed_hz = self.pins.spi_speed_hz
             spi.mode = 0
             self._spi = spi
+            self._init_gpio_pins()
             self._init_gc9a01_registers()
-        except Exception:
+            self.hardware_ready = True
+        except Exception as exc:
+            self.last_error = f"{type(exc).__name__}: {exc}"
             self._spi = None
+            self.hardware_ready = False
+
+    def _export_gpio(self, pin: int) -> None:
+        if not self._gpio_root.exists():
+            return
+        gpio_dir = self._gpio_root / f"gpio{pin}"
+        if not gpio_dir.exists():
+            export = self._gpio_root / "export"
+            if export.exists():
+                try:
+                    export.write_text(str(pin), encoding="utf-8")
+                except OSError:
+                    pass
+        direction = gpio_dir / "direction"
+        if direction.exists():
+            try:
+                direction.write_text("out", encoding="utf-8")
+            except OSError:
+                pass
+
+    def _set_gpio(self, pin: int, high: bool) -> None:
+        if not self._gpio_root.exists():
+            return
+        val_file = self._gpio_root / f"gpio{pin}" / "value"
+        if val_file.exists():
+            try:
+                val_file.write_text("1" if high else "0", encoding="utf-8")
+            except OSError:
+                pass
+
+    def _init_gpio_pins(self) -> None:
+        for pin in (self.pins.gc9a01_dc_pin, self.pins.gc9a01_rst_pin, self.pins.gc9a01_bl_pin):
+            self._export_gpio(pin)
+        # Hardware reset pulse + enable backlight
+        self._set_gpio(self.pins.gc9a01_rst_pin, True)
+        self._set_gpio(self.pins.gc9a01_rst_pin, False)
+        self._set_gpio(self.pins.gc9a01_rst_pin, True)
+        self._set_gpio(self.pins.gc9a01_bl_pin, True)
+
+    def _send_cmd(self, cmd: int, payload: bytes = b"") -> None:
+        if self._spi is None:
+            return
+        self._set_gpio(self.pins.gc9a01_dc_pin, False)
+        self._spi.xfer2([cmd & 0xFF])
+        if payload:
+            self._set_gpio(self.pins.gc9a01_dc_pin, True)
+            self._spi.xfer2(list(payload))
 
     def _init_gc9a01_registers(self) -> None:
         if self._spi is None:
@@ -286,20 +338,58 @@ class RadxaGC9A01Display(SimGC9A01Display):
             (0xEB, b"\x14"),
             (0xFE, b""),
             (0xEF, b""),
+            (0x84, b"\x40"),
+            (0x85, b"\xFF"),
+            (0x86, b"\xFF"),
+            (0x87, b"\xFF"),
+            (0x88, b"\x0A"),
+            (0x89, b"\x21"),
+            (0x8A, b"\x00"),
+            (0x8B, b"\x80"),
+            (0x8C, b"\x01"),
+            (0x8D, b"\x01"),
+            (0x8E, b"\xFF"),
+            (0x8F, b"\xFF"),
+            (0xB6, b"\x00\x20"),
             (0x36, b"\x48"),
             (0x3A, b"\x05"),
+            (0x90, b"\x08\x08\x08\x08"),
+            (0xC3, b"\x13"),
+            (0xC4, b"\x13"),
+            (0xC9, b"\x22"),
+            (0xF0, b"\x45\x09\x08\x08\x26\x2A"),
+            (0xF1, b"\x43\x70\x72\x36\x37\x6F"),
+            (0xF2, b"\x45\x09\x08\x08\x26\x2A"),
+            (0xF3, b"\x43\x70\x72\x36\x37\x6F"),
+            (0x35, b"\x00"),
             (0x21, b""),
             (0x11, b""),
             (0x29, b""),
         ]
         for cmd, payload in init_seq:
-            self._spi.xfer2([cmd] + list(payload))
+            self._send_cmd(cmd, payload)
 
     def render_and_push(self, state: HUDFrameState) -> int:
         count = super().render_and_push(state)
         if self._spi is not None:
+            w_hi, w_lo = ((self.WIDTH - 1) >> 8) & 0xFF, (self.WIDTH - 1) & 0xFF
+            h_hi, h_lo = ((self.HEIGHT - 1) >> 8) & 0xFF, (self.HEIGHT - 1) & 0xFF
+            self._send_cmd(self._CMD_CASET, bytes([0x00, 0x00, w_hi, w_lo]))
+            self._send_cmd(self._CMD_RASET, bytes([0x00, 0x00, h_hi, h_lo]))
+            self._send_cmd(self._CMD_RAMWR)
+            self._set_gpio(self.pins.gc9a01_dc_pin, True)
             chunk = 4096
             payload = self.last_rgb565_bytes
             for offset in range(0, len(payload), chunk):
                 self._spi.xfer2(list(payload[offset : offset + chunk]))
         return count
+
+    def close(self) -> None:
+        if self._spi is not None:
+            try:
+                self._set_gpio(self.pins.gc9a01_bl_pin, False)
+                self._spi.close()
+            except Exception:
+                pass
+            self._spi = None
+        self.hardware_ready = False

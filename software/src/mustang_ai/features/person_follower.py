@@ -20,6 +20,7 @@ class PersonFollowerController:
         self.standoff_mm: int = self.pins.follow_standoff_mm
         self.hint_box_2d: tuple[int, int, int, int] | None = None
         self.last_bearing_deg: float = 0.0
+        self._has_prev_bearing: bool = False
         self.last_seen_ts: float = 0.0
         self.state: str = "DISABLED"
 
@@ -41,9 +42,13 @@ class PersonFollowerController:
                 int(target_box_2d[2]),
                 int(target_box_2d[3]),
             )
+        if self.enabled:
             self.last_seen_ts = time.monotonic()
-        if not self.enabled:
+            self._has_prev_bearing = False
+            self.last_bearing_deg = 0.0
+        else:
             self.state = "DISABLED"
+            self._has_prev_bearing = False
 
     def step(
         self,
@@ -67,7 +72,13 @@ class PersonFollowerController:
         if vision.person_detected:
             self.last_seen_ts = now
             bearing = vision.person_bearing_deg
+            d_bearing = (
+                (bearing - self.last_bearing_deg) / max(0.02, dt_sec) if self._has_prev_bearing else 0.0
+            )
+            self.last_bearing_deg = bearing
+            self._has_prev_bearing = True
         else:
+            self._has_prev_bearing = False
             if (now - self.last_seen_ts) > self.pins.follow_lost_timeout_sec:
                 self.state = "TARGET_LOST"
                 return ControlIntent(
@@ -79,10 +90,9 @@ class PersonFollowerController:
                     hud_caption="WHERE'D U GO?",
                 )
             bearing = self.last_bearing_deg
+            d_bearing = 0.0
 
         # Lateral PD steering law
-        d_bearing = (bearing - self.last_bearing_deg) / max(0.02, dt_sec)
-        self.last_bearing_deg = bearing
         raw_steer = self.pins.follow_kp_steer * bearing + self.pins.follow_kd_steer * d_bearing
         steer_deg = max(
             -self.pins.max_steering_deg,
@@ -107,12 +117,13 @@ class PersonFollowerController:
                 timestamp_s=now,
                 source_mode="FOLLOW_PERSON",
                 desired_throttle=-0.32,
-                desired_steering_deg=steer_deg,
+                desired_steering_deg=-steer_deg,
                 hud_emoji="WINK",
                 hud_caption="SPACE BACKUP",
             )
 
-        if tof.distance_mm <= self.pins.follow_approach_mm:
+        approach_threshold_mm = max(self.pins.follow_approach_mm, self.standoff_mm + 100)
+        if tof.distance_mm <= approach_threshold_mm:
             self.state = "STANDOFF_HOLD"
             return ControlIntent(
                 timestamp_s=now,

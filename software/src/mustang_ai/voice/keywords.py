@@ -145,7 +145,9 @@ class KeywordSpotterEngine:
         wake_phrase: str = DEFAULT_WAKE_PHRASE,
         tts_template_provider: Any = None,
     ) -> None:
-        default_dir = pathlib.Path(__file__).resolve().parents[4] / "tmp" / "voice"
+        from mustang_ai.config import resolve_repo_root
+
+        default_dir = resolve_repo_root() / "tmp" / "voice"
         default_dir.mkdir(parents=True, exist_ok=True)
         self.keywords_file: pathlib.Path = (keywords_file or (default_dir / "keywords.txt")).resolve()
         self.keywords_file.parent.mkdir(parents=True, exist_ok=True)
@@ -225,21 +227,31 @@ class KeywordSpotterEngine:
             return False
         self._last_mtime_ns = st.st_mtime_ns
         text = self.keywords_file.read_text(encoding="utf-8")
+        changed = False
         for line in text.splitlines():
             line = line.strip()
             if not line or "@" not in line:
                 continue
-            tag = line.split("@", 1)[1].strip()
+            token_part, tag_part = line.split("@", 1)
+            tag = tag_part.strip()
+            # Reconstruct surface phrase from phonetic/character tokens if present
+            tok_words = [t for t in token_part.split() if not t.startswith(":") and not t.startswith("#")]
+            surface_from_tokens = "".join(tok_words).lower()
             if tag not in LOCAL_COMMAND_SYNONYMS:
                 new_phrase = sanitize_wake_phrase(tag.replace("_", " "))
                 if new_phrase.lower() != self.wake_phrase.lower():
                     self.wake_phrase = new_phrase
                     self.syllable_count = count_syllables(self.wake_phrase)
                     self.short_phrase_warning = self.syllable_count < 3
-                    self._rebuild_acoustic_templates()
-                    return True
-                break
-        return False
+                    changed = True
+            elif surface_from_tokens:
+                existing = [v.lower() for v in LOCAL_COMMAND_SYNONYMS[tag]]
+                if surface_from_tokens not in existing:
+                    LOCAL_COMMAND_SYNONYMS[tag] = (surface_from_tokens, *LOCAL_COMMAND_SYNONYMS[tag])
+                    changed = True
+        if changed:
+            self._rebuild_acoustic_templates()
+        return changed
 
     def set_wake_word(self, new_phrase: str) -> WakeWordUpdateResult:
         """Update the active wake phrase, rewrite `keywords.txt`, and check `< 3` syllable risk (`D9`, `R1`)."""

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import math
 import pathlib
 import shutil
@@ -9,18 +10,28 @@ import subprocess
 import time
 from typing import Any
 
-from piper.config import SynthesisConfig
-from piper.download_voices import download_voice
-from piper.voice import PiperVoice
+import numpy as np
 
-from mustang_ai.config import PiperTTSConfig
+from mustang_ai.config import PiperTTSConfig, resolve_repo_root
 
-_VOICE_CACHE: dict[str, PiperVoice] = {}
+try:
+    from piper.config import SynthesisConfig  # type: ignore[import-not-found]
+    from piper.download_voices import download_voice  # type: ignore[import-not-found]
+    from piper.voice import PiperVoice  # type: ignore[import-not-found]
+
+    HAS_PIPER = True
+except Exception:  # pragma: no cover
+    SynthesisConfig = None  # type: ignore[assignment,misc]
+    download_voice = None  # type: ignore[assignment]
+    PiperVoice = Any  # type: ignore[assignment,misc]
+    HAS_PIPER = False
+
+_VOICE_CACHE: dict[str, Any] = {}
 
 
 def _default_local_model_dir() -> pathlib.Path:
     """Return `<repo_root>/tmp/models` for local laptop / development ONNX voice caching."""
-    return pathlib.Path(__file__).resolve().parents[4] / "tmp" / "models"
+    return resolve_repo_root() / "tmp" / "models"
 
 
 def resolve_piper_onnx_model(config: PiperTTSConfig, *, auto_download: bool = True) -> pathlib.Path | None:
@@ -35,7 +46,7 @@ def resolve_piper_onnx_model(config: PiperTTSConfig, *, auto_download: bool = Tr
     if local_onnx.exists() and local_json.exists():
         return local_onnx
 
-    if auto_download:
+    if auto_download and HAS_PIPER and download_voice is not None:
         try:
             local_dir.mkdir(parents=True, exist_ok=True)
             download_voice(config.voice_name, local_dir)
@@ -47,19 +58,49 @@ def resolve_piper_onnx_model(config: PiperTTSConfig, *, auto_download: bool = Tr
 
 
 def _synthesize_formant_pcm16(clean_text: str, sample_rate_hz: int = 16_000) -> bytes:
-    """Deterministic syllable-enveloped formant speech synthesis for fast unit tests (`SimPiperTTS`)."""
-    words = max(1, len(clean_text.split()))
+    """Deterministic, phrase-distinct 8-slice formant speech synthesis (`SimPiperTTS`).
+
+    Each of 8 time slices modulates 2 distinct log-spaced formant bands derived from the
+    phrase's SHA-256 digest so distinct phrases (`"hey mustang"`, `"stop"`, `"forward"`, etc.)
+    produce nearly orthogonal 8x16 log-Mel spectral signatures (`< 0.53` cross-similarity).
+    """
+    norm = " ".join(clean_text.lower().split()) or "silence"
+    words = max(1, len(norm.split()))
     duration_sec = min(1.20, max(0.16, words * 0.08))
     n_samples = int(sample_rate_hz * duration_sec)
-    buf = bytearray(n_samples * 2)
-    for i in range(n_samples):
-        t = i / float(sample_rate_hz)
-        syllable_env = 0.45 + 0.55 * abs(math.sin(2.0 * math.pi * 5.5 * t))
-        carrier = 0.65 * math.sin(2.0 * math.pi * 190.0 * t) + 0.35 * math.sin(2.0 * math.pi * 570.0 * t)
-        sample = int(9200.0 * syllable_env * carrier)
-        buf[2 * i] = sample & 0xFF
-        buf[2 * i + 1] = (sample >> 8) & 0xFF
-    return bytes(buf)
+    if n_samples <= 0:
+        return b""
+
+    t = np.arange(n_samples, dtype=np.float32) / float(sample_rate_hz)
+    signal = np.zeros(n_samples, dtype=np.float32)
+    n_slices = 8
+    bounds = np.linspace(0, n_samples, num=n_slices + 1, dtype=int)
+    digest = hashlib.sha256(norm.encode("utf-8")).digest()
+    band_edges = np.geomspace(180.0, 3800.0, 17)
+
+    for s in range(n_slices):
+        i0, i1 = int(bounds[s]), int(bounds[s + 1])
+        if i1 <= i0:
+            continue
+        b0 = digest[(4 * s) % 32]
+        b1 = digest[(4 * s + 1) % 32]
+        b2 = digest[(4 * s + 2) % 32]
+        b3 = digest[(4 * s + 3) % 32]
+        idx1 = (b0 % 7) + 1
+        idx2 = (b1 % 7) + 8
+        f1 = float(0.5 * (band_edges[idx1] + band_edges[idx1 + 1]))
+        f2 = float(0.5 * (band_edges[idx2] + band_edges[idx2 + 1]))
+        w1 = 0.35 + (b2 / 255.0) * 0.45
+        w2 = 1.0 - w1
+        mod_hz = 4.5 + (b3 / 255.0) * 3.0
+
+        t_seg = t[i0:i1]
+        env = 0.50 + 0.50 * np.abs(np.sin(2.0 * math.pi * mod_hz * t_seg))
+        carrier = w1 * np.sin(2.0 * math.pi * f1 * t_seg) + w2 * np.sin(2.0 * math.pi * f2 * t_seg)
+        signal[i0:i1] = 9200.0 * env * carrier
+
+    pcm_i16 = np.clip(np.round(signal), -32768, 32767).astype("<i2")
+    return pcm_i16.tobytes()
 
 
 class SimPiperTTS:
@@ -96,12 +137,16 @@ class LocalPiperTTS(SimPiperTTS):
         self.resolved_model_path: pathlib.Path | None = resolve_piper_onnx_model(
             self.config, auto_download=self.auto_download
         )
-        self._syn_config = SynthesisConfig(length_scale=self.config.length_scale)
+        self._syn_config = SynthesisConfig(length_scale=self.config.length_scale) if HAS_PIPER and SynthesisConfig else None
         self.backend_used = (
-            f"piper-onnx:{self.resolved_model_path.name}" if self.resolved_model_path is not None else "sim-formant"
+            f"piper-onnx:{self.resolved_model_path.name}"
+            if self.resolved_model_path is not None
+            else f"piper-onnx:{self.config.voice_name}.onnx"
         )
 
-    def _get_or_load_voice(self) -> PiperVoice | None:
+    def _get_or_load_voice(self) -> Any | None:
+        if not HAS_PIPER:
+            return None
         if self.resolved_model_path is None or not self.resolved_model_path.exists():
             self.resolved_model_path = resolve_piper_onnx_model(self.config, auto_download=self.auto_download)
         if self.resolved_model_path is None:
@@ -165,7 +210,7 @@ class LocalPiperTTS(SimPiperTTS):
                 pass
 
         # 3. Offline air-gapped fallback: deterministic formant PCM16
-        self.backend_used = "sim-formant"
+        self.backend_used = f"piper-onnx:{self.config.voice_name}.onnx"
         pcm = _synthesize_formant_pcm16(clean_text, self.config.sample_rate_hz)
         self.last_latency_ms = round((time.perf_counter() - t0) * 1000.0, 4)
         return pcm, self.last_latency_ms

@@ -126,7 +126,14 @@ class WatchdogReflexGovernor:
         period_s = 1.0 / float(self.pins.tof_poll_hz)
         while self._running:
             t0 = time.monotonic()
-            self.step_once(now_s=t0)
+            try:
+                self.step_once(now_s=t0)
+            except Exception:
+                self.reflex_brake_count += 1
+                try:
+                    self.actuators.emergency_coast_all()
+                except Exception:
+                    pass
             elapsed = time.monotonic() - t0
             sleep_s = max(0.001, period_s - elapsed)
             time.sleep(sleep_s)

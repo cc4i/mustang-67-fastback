@@ -4,13 +4,14 @@
 # `gc9a01_bezel.stl` in Silver #C8C8CC) across 9 auto-arranged plates inside the 256 x 256 mm X2D bed.
 set -euo pipefail
 
-BAMBU=/Applications/BambuStudio.app/Contents/MacOS/BambuStudio
+BAMBU="${BAMBU_BIN:-/Applications/BambuStudio.app/Contents/MacOS/BambuStudio}"
 HERE="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$HERE/.." && pwd)"
 STL="$ROOT/output/ai_edition/stl"
 OUT="${1:-$ROOT/output/ai_edition/mustang_67_ai_edition_x2d.3mf}"
 WORK="$(mktemp -d /tmp/mustang_ai_project.XXXXXX)"
 trap 'echo "make_ai_project: failed (work dir $WORK)" >&2' ERR
+trap 'rm -rf "$WORK"' EXIT
 
 python3 "$HERE/bambu_presets.py" "$WORK/presets" > /dev/null
 FILS=""

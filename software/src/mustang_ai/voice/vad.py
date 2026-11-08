@@ -64,8 +64,16 @@ class SileroVADTracker:
         self.in_speech: bool = False
         self.speech_start_frame: int = 0
         self.speech_frame_count: int = 0
-        self.Trailing_silence_frames: int = 0
+        self.trailing_silence_frames: int = 0
         self.peak_rms: float = 0.0
+
+    @property
+    def Trailing_silence_frames(self) -> int:
+        return self.trailing_silence_frames
+
+    @Trailing_silence_frames.setter
+    def Trailing_silence_frames(self, value: int) -> None:
+        self.trailing_silence_frames = int(value)
 
     def reset(self) -> None:
         """Clear active utterance buffer and reset VAD state."""
@@ -74,7 +82,7 @@ class SileroVADTracker:
         self.in_speech = False
         self.speech_start_frame = 0
         self.speech_frame_count = 0
-        self.Trailing_silence_frames = 0
+        self.trailing_silence_frames = 0
         self.peak_rms = 0.0
 
     def process_frame(
@@ -96,7 +104,7 @@ class SileroVADTracker:
                 self.speech_start_frame = max(0, frame_index - len(self._preroll) + 1)
                 self._active_frames = list(self._preroll)
                 self.speech_frame_count = 1
-                self.Trailing_silence_frames = 0
+                self.trailing_silence_frames = 0
                 self.peak_rms = rms
             return None
 
@@ -104,14 +112,14 @@ class SileroVADTracker:
         self._active_frames.append(clean_pcm16)
         if is_voiced:
             self.speech_frame_count += 1
-            self.Trailing_silence_frames = 0
+            self.trailing_silence_frames = 0
             if rms > self.peak_rms:
                 self.peak_rms = rms
         else:
-            self.Trailing_silence_frames += 1
+            self.trailing_silence_frames += 1
 
         total_frames = len(self._active_frames)
-        if self.Trailing_silence_frames >= self.silence_hangover_frames or total_frames >= self.max_utterance_frames:
+        if self.trailing_silence_frames >= self.silence_hangover_frames or total_frames >= self.max_utterance_frames:
             if self.speech_frame_count < self.min_speech_frames:
                 self.reset()
                 return None

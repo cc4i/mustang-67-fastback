@@ -1,6 +1,7 @@
 """Export print-ready parts: one binary STL per unique part, in print orientation, centred and
 resting on Z=0, into output/stl. make_project.sh then builds the Bambu Studio project from them.
 """
+import contextlib
 import json
 import math
 import os
@@ -219,6 +220,24 @@ def write_stl(bm, path, name):
 
 
 HINGED = ("Hood", "TrunkLid", "Door_L", "Door_R", "Knuckle_L", "Knuckle_R")
+AI_EDITION_COLOURS = {"WaymoPod": "#6B0F1A", "GC9A01Bezel": "#C8C8CC"}
+
+
+@contextlib.contextmanager
+def neutral_hinged_poses():
+    """Temporarily zero all HINGED object rotations (`Hood`, `TrunkLid`, `Door_L/R`, `Knuckle_L/R`)
+    so evaluation and export always sample the closed / neutral (`0°`) pose."""
+    poses = {n: bpy.data.objects[n].rotation_euler.copy() for n in HINGED if n in bpy.data.objects}
+    try:
+        for n in poses:
+            bpy.data.objects[n].rotation_euler = (0.0, 0.0, 0.0)
+        bpy.context.view_layer.update()
+        yield
+    finally:
+        for n, pose in poses.items():
+            if n in bpy.data.objects:
+                bpy.data.objects[n].rotation_euler = pose
+        bpy.context.view_layer.update()
 
 
 def run(out_dir=paths.OUTPUT):
@@ -228,19 +247,11 @@ def run(out_dir=paths.OUTPUT):
     riders' print rotation)."""
     stl_dir = os.path.join(out_dir, "stl")
     os.makedirs(stl_dir, exist_ok=True)
-    poses = {n: bpy.data.objects[n].rotation_euler.copy() for n in HINGED}
-    try:
-        return _write_parts(stl_dir, poses)
-    finally:                                     # put any opened hood / doors back as they were
-        for n, pose in poses.items():
-            bpy.data.objects[n].rotation_euler = pose
-        bpy.context.view_layer.update()
+    with neutral_hinged_poses():
+        return _write_parts(stl_dir)
 
 
-def _write_parts(stl_dir, poses):
-    for n in poses:
-        bpy.data.objects[n].rotation_euler = (0.0, 0.0, 0.0)
-    bpy.context.view_layer.update()
+def _write_parts(stl_dir):
     report, manifest, frames = {}, [], {}
     for key, ob_name, rot, qty, colour in PARTS:
         bm, shift = print_mesh(ob_name, rot)
@@ -287,7 +298,11 @@ def remove_stale(folder, written):
 def print_colour(ob_name):
     """The colour an object prints in: its own PARTS / INLAYS entry's, or else that of the one copy
     in PARTS it is printed as (Rim_FL prints as Rim_FR, TailBezel_L1 as TailBezel_L0)."""
-    colours = {ob: colour for _, ob, _, _, colour in PARTS} | {ob: colour for _, ob, _, colour in INLAYS}
+    colours = (
+        AI_EDITION_COLOURS
+        | {ob: colour for _, ob, _, _, colour in PARTS}
+        | {ob: colour for _, ob, _, colour in INLAYS}
+    )
     if ob_name in colours:
         return colours[ob_name]
     base = ob_name.rsplit("_", 1)[0]
@@ -302,29 +317,30 @@ def run_assembled(out_dir=paths.OUTPUT, collections=("Body", "Wheels", "Parts"))
     make_step.py turns into STEP solids for CAD tools such as Shapr3D."""
     folder = os.path.join(out_dir, "stl_assembled")
     os.makedirs(folder, exist_ok=True)
-    dg = bpy.context.evaluated_depsgraph_get()
-    combined = bmesh.new()
-    written, manifest = [], []
-    for col_name in collections:
-        for ob in sorted(bpy.data.collections[col_name].objects, key=lambda o: o.name):
-            if ob.type != 'MESH':
-                continue
-            bm = bmesh.new()
-            bm.from_object(ob, dg)
-            bm.transform(ob.matrix_world)
-            clean_triangulate(bm, 'BEAUTY', 3e-5)
-            name = ob.name.lower()
-            write_stl(bm, os.path.join(folder, f"{name}.stl"), f"mustang67 {name}")
-            tmp = bpy.data.meshes.new("_tmp_combined")
-            bm.to_mesh(tmp)
-            combined.from_mesh(tmp)
-            bpy.data.meshes.remove(tmp)
-            written.append(name)
-            manifest.append({"file": f"{name}.stl", "object": ob.name, "colour": print_colour(ob.name)})
-            bm.free()
-    write_stl(combined, os.path.join(folder, "_mustang_assembled_all_parts.stl"), "mustang67 assembled")
-    combined.free()
-    with open(os.path.join(folder, "manifest.json"), "w") as f:
-        json.dump(manifest, f, indent=1)
-    remove_stale(folder, {f"{n}.stl" for n in written} | {"_mustang_assembled_all_parts.stl"})
-    return written
+    with neutral_hinged_poses():
+        dg = bpy.context.evaluated_depsgraph_get()
+        combined = bmesh.new()
+        written, manifest = [], []
+        for col_name in collections:
+            for ob in sorted(bpy.data.collections[col_name].objects, key=lambda o: o.name):
+                if ob.type != 'MESH':
+                    continue
+                bm = bmesh.new()
+                bm.from_object(ob, dg)
+                bm.transform(ob.matrix_world)
+                clean_triangulate(bm, 'BEAUTY', 3e-5)
+                name = ob.name.lower()
+                write_stl(bm, os.path.join(folder, f"{name}.stl"), f"mustang67 {name}")
+                tmp = bpy.data.meshes.new("_tmp_combined")
+                bm.to_mesh(tmp)
+                combined.from_mesh(tmp)
+                bpy.data.meshes.remove(tmp)
+                written.append(name)
+                manifest.append({"file": f"{name}.stl", "object": ob.name, "colour": print_colour(ob.name)})
+                bm.free()
+        write_stl(combined, os.path.join(folder, "_mustang_assembled_all_parts.stl"), "mustang67 assembled")
+        combined.free()
+        with open(os.path.join(folder, "manifest.json"), "w") as f:
+            json.dump(manifest, f, indent=1)
+        remove_stale(folder, {f"{n}.stl" for n in written} | {"_mustang_assembled_all_parts.stl"})
+        return written

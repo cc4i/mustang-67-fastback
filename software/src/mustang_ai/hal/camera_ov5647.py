@@ -7,6 +7,7 @@ import math
 import time
 from typing import Callable, Literal
 
+import numpy as np
 from PIL import Image, ImageDraw
 
 from mustang_ai.config import CameraConfig
@@ -28,13 +29,11 @@ def _compute_vision_metrics_from_rgb(
     right_roi = frame.crop((int(w * 0.56), y0, int(w * 0.94), y1))
 
     def _obstacle_clutter(patch: Image.Image) -> float:
-        raw = patch.tobytes()
-        total = 0.0
-        n = max(1, len(raw) // 3)
-        for i in range(0, len(raw), 3):
-            r, g, b = raw[i], raw[i + 1], raw[i + 2]
-            total += abs(r - 36) * 1.4 + abs(g - 42) + abs(b - 50)
-        return total / n
+        arr = np.frombuffer(patch.tobytes(), dtype=np.uint8).reshape(-1, 3).astype(np.float32)
+        if arr.shape[0] == 0:
+            return 0.0
+        diff = np.abs(arr[:, 0] - 36.0) * 1.4 + np.abs(arr[:, 1] - 42.0) + np.abs(arr[:, 2] - 50.0)
+        return float(np.mean(diff))
 
     left_clear = max(1.0, 255.0 - _obstacle_clutter(left_roi))
     right_clear = max(1.0, 255.0 - _obstacle_clutter(right_roi))
@@ -212,6 +211,7 @@ class RadxaOV5647:
         self.config = config or CameraConfig()
         self._frame_seq: int = 0
         self._cap = None
+        self.hardware_ready: bool = False
         self._fallback_sim = SimFisheyeCamera(self.config)
         try:
             import cv2  # type: ignore[import-not-found]
@@ -222,8 +222,12 @@ class RadxaOV5647:
                 cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.config.height)
                 cap.set(cv2.CAP_PROP_FPS, self.config.fps)
                 self._cap = cap
+                self.hardware_ready = True
+            else:
+                cap.release()
         except Exception:
             self._cap = None
+            self.hardware_ready = False
 
     def capture_frame(self) -> bytes:
         self._frame_seq += 1
@@ -263,3 +267,12 @@ class RadxaOV5647:
         mode: str,
     ) -> bytes:
         return _encode_jpeg_with_banner(rgb_bytes, self.config, tof_mm, steer_deg, emoji, mode)
+
+    def close(self) -> None:
+        if self._cap is not None:
+            try:
+                self._cap.release()
+            except Exception:
+                pass
+            self._cap = None
+        self.hardware_ready = False

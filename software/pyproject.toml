@@ -4,10 +4,10 @@ build-backend = "hatchling.build"
 
 [project]
 name = "mustang-ai"
-version = "3.2.0"
+version = "3.3.0"
 description = "Standalone 3-Tier Autonomous Control, HAL Protocol & Pre-Hardware Verification Stack for the 1:20 1967 Ford Mustang Fastback AI Edition (Radxa Zero 3W + Gemini Robotics ER 2.0)"
 readme = "README.md"
-requires-python = ">=3.14"
+requires-python = ">=3.11"
 dependencies = [
     "google-genai>=2.34.0",
     "livekit>=1.2.0",
@@ -23,6 +23,7 @@ dependencies = [
 
 [project.optional-dependencies]
 radxa = [
+    "opencv-python-headless>=4.8.0; sys_platform == 'linux'",
     "spidev>=3.6; sys_platform == 'linux'",
     "smbus2>=0.4.3; sys_platform == 'linux'",
 ]
@@ -40,6 +41,7 @@ dev = [
 [project.scripts]
 mustang-ai = "mustang_ai.cli.run_agent:main"
 mustang-ai-doctor = "mustang_ai.cli.doctor:main"
+mustang-ai-voice-live = "mustang_ai.cli.voice_live:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/mustang_ai"]
@@ -51,7 +53,7 @@ addopts = "-ra -q"
 
 [tool.ruff]
 line-length = 140
-target-version = "py314"
+target-version = "py311"
 
 [tool.ruff.lint]
 select = ["E", "F", "W"]
@@ -61,5 +63,6 @@ ignore = ["E731"]
 required-environments = [
     "sys_platform == 'darwin' and platform_machine == 'arm64'",
     "sys_platform == 'linux' and platform_machine == 'aarch64'",
+    "sys_platform == 'linux' and platform_machine == 'x86_64'",
 ]
 

@@ -25,7 +25,7 @@ P_UUID = "{%s}UUID" % NS["p"]
 
 # applied to every object: Arachne walls print features down to ~0.1 mm (widening them to a printable
 # bead) where the classic generator silently drops anything narrower than one 0.42 mm line, and a
-# 1:24 model is full of such details (plug wires, fan blades, lettering, lamp rims)
+# 1:20 model is full of such details (plug wires, fan blades, lettering, lamp rims)
 ALL_OBJECT_SETTINGS = {"wall_generator": "arachne"}
 # small/miniature parts (< ~50 mm^2 bed contact or thin open frames) get an outer-only brim so delicate
 # inner windows/bores stay brim-free while Textured PEI adhesion and low wall speeds prevent mid-print knock-offs

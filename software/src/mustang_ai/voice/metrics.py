@@ -10,6 +10,9 @@ from dataclasses import asdict, dataclass, field
 from typing import Any
 
 
+from mustang_ai.config import resolve_repo_root
+
+
 @dataclass
 class VoiceMetricsLedger:
     """Tracks real-time voice metrics and evaluates pass/fail against Milestone A criteria `S1`–`S7`."""
@@ -33,7 +36,7 @@ class VoiceMetricsLedger:
 
     def __post_init__(self) -> None:
         if self.ledger_path is None:
-            default_dir = pathlib.Path(__file__).resolve().parents[4] / "tmp"
+            default_dir = resolve_repo_root() / "tmp"
             default_dir.mkdir(parents=True, exist_ok=True)
             self.ledger_path = default_dir / "voice_metrics_ledger.jsonl"
 
@@ -77,7 +80,10 @@ class VoiceMetricsLedger:
         s4_pass = not sorted_ttfa or (ttfa_p50 <= 2000.0 and ttfa_p90 <= 3000.0)
         s5_pass = not self.barge_in_latencies_ms or max_barge_ms <= 200.0
         s6_pass = not self.stop_latencies_ms or max_stop_ms <= 100.0
-        s7_pass = self.follow_up_turns_completed >= 1 or self.conversations_reset_at_idle >= 0
+        s7_pass = (
+            (self.follow_up_turns_completed == 0 and self.conversations_reset_at_idle == 0 and not sorted_ttfa)
+            or (self.follow_up_turns_completed >= 1 and self.conversations_reset_at_idle >= 1)
+        )
 
         gates = {
             "S1_zero_self_triggers_and_erle_15db": {

@@ -173,6 +173,12 @@ class ConversationStateMachine:
         if abs(throttle) >= 0.10 and mic_clean_frame in (None, SILENCE_FRAME) and not bundle.speaker_playing:
             self.metrics.motor_noise_frames_tested += 1
 
+        self.vad.process_frame(
+            fe_res.clean_pcm16,
+            frame_index=fe_res.frame_index,
+            applied_throttle=throttle,
+        )
+
         hit = self.keywords.process_clean_pcm16_frame(
             fe_res.clean_pcm16,
             frame_index=fe_res.frame_index,
@@ -194,6 +200,8 @@ class ConversationStateMachine:
                     self.metrics.barge_in_latencies_ms.append(flush_ms)
                 self.live_session.start_conversation()
                 self._set_state("LISTENING", now_s=ts)
+            elif hit.kind in ("command", "volume") and self.state in ("LISTENING", "FOLLOW_UP"):
+                self.handle_utterance(hit.phrase, now_s=ts)
 
         self.tick_timers(now_s=ts)
         return fe_res, hit
@@ -576,7 +584,7 @@ class ConversationStateMachine:
             if c_name == "execute_maneuver":
                 req_maneuver = str(c_args.get("maneuver_name", "")).strip().lower()
                 # D8: If local KWS already started this move, drop the duplicate cloud move!
-                if local_move_started and (req_maneuver == local_move_started or bool(local_move_started)):
+                if local_move_started and req_maneuver == local_move_started:
                     duplicate_filtered = True
                     self.metrics.duplicate_cloud_moves_filtered += 1
                     continue

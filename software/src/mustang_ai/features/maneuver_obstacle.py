@@ -189,6 +189,21 @@ class ManeuverObstacleSequencer:
         if self.obstacle_state == "EVASIVE_REVERSE":
             self.evasive_elapsed_sec += dt_sec
             if (tof.valid and tof.distance_mm >= self.pins.bypass_reverse_target_mm) or self.evasive_elapsed_sec >= 1.20:
+                if vision.left_clearance_score != vision.right_clearance_score:
+                    self.preferred_bypass_dir = int(vision.preferred_bypass_dir)
+                if (not tof.valid or tof.distance_mm < self.pins.emergency_stop_mm) and getattr(
+                    self, "_evasive_retries", 0
+                ) >= 3:
+                    self.stop()
+                    return ControlIntent(
+                        timestamp_s=now,
+                        source_mode="IDLE",
+                        desired_throttle=0.0,
+                        desired_steering_deg=0.0,
+                        active_maneuver="",
+                        hud_emoji="ALERT_STOP",
+                        hud_caption="BOXED IN STOP",
+                    )
                 self.obstacle_state = "EVASIVE_BYPASS_PASS"
                 self.evasive_elapsed_sec = 0.0
                 self.bypass_count += 1
@@ -206,6 +221,7 @@ class ManeuverObstacleSequencer:
         # Phase 2 & 3: EVASIVE_BYPASS_PASS (0.65 s) -> EVASIVE_BYPASS_REJOIN (0.45 s)
         if self.obstacle_state in ("EVASIVE_BYPASS_PASS", "EVASIVE_BYPASS_REJOIN"):
             if not tof.valid or tof.distance_mm < self.pins.emergency_stop_mm:
+                self._evasive_retries = getattr(self, "_evasive_retries", 0) + 1
                 self.preferred_bypass_dir = int(vision.preferred_bypass_dir)
                 self.obstacle_state = "EVASIVE_REVERSE"
                 self.evasive_elapsed_sec = 0.0
@@ -242,6 +258,7 @@ class ManeuverObstacleSequencer:
                     hud_emoji="HAPPY",
                     hud_caption="PATH CLEAR!",
                 )
+            self._evasive_retries = 0
             self.obstacle_state = "CLEAR"
             self.evasive_elapsed_sec = 0.0
 

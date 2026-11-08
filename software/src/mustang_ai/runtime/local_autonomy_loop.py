@@ -8,7 +8,7 @@ import time
 from dataclasses import replace
 from typing import Any
 
-from mustang_ai.config import RadxaPinConfig
+from mustang_ai.config import ALLOWED_EMOJIS, RadxaPinConfig
 from mustang_ai.features.maneuver_obstacle import ManeuverObstacleSequencer
 from mustang_ai.features.person_follower import PersonFollowerController
 from mustang_ai.features.voice_emoji_hud import VoiceEmojiHUDController
@@ -106,11 +106,16 @@ class LocalAutonomyEngine:
         elif name == "set_drive_command":
             self.maneuver_seq.stop()
             self.person_follower.configure(enabled=False)
-            self._manual_throttle = float(args.get("throttle", 0.0))
-            self._manual_steering_deg = float(args.get("steering_deg", 0.0))
+            self._manual_throttle = max(-1.0, min(1.0, float(args.get("throttle", 0.0))))
+            self._manual_steering_deg = max(
+                -self.pins.max_steering_deg,
+                min(self.pins.max_steering_deg, float(args.get("steering_deg", 0.0))),
+            )
             self._manual_active = True
-            emo = str(args.get("hud_emoji", "CRUISE"))
-            msg = str(args.get("hud_message", "MANUAL DRIVE"))
+            emo = str(args.get("hud_emoji", "CRUISE")).strip().upper()
+            if emo not in ALLOWED_EMOJIS:
+                emo = "CRUISE"
+            msg = str(args.get("hud_message", "MANUAL DRIVE")).strip().upper()[:16]
             self.voice_hud.current_emoji = emo
             self.voice_hud.current_caption = msg
             result = {
@@ -160,10 +165,18 @@ class LocalAutonomyEngine:
 
         audio_chunk = self.voice_hud.poll_mic_with_barge_in()
         self.bus.publish_audio(audio_chunk)
+        tof = self.bus.tof
         if audio_chunk.barge_in_triggered:
             self.handle_tool_call("emergency_stop", {"reason": "VOICE BARGE-IN"})
+            hud_state = self.voice_hud.update_hud(
+                tof=tof,
+                actuator_cmd=self.bus.actuator_cmd,
+                override_emoji="ALERT_STOP",
+                override_caption="VOICE BARGE-IN",
+            )
+            self.bus.publish_hud(hud_state)
+            return self.bus.intent
 
-        tof = self.bus.tof
         if self.maneuver_seq.is_active:
             intent = self.maneuver_seq.step(dt_sec=dt_sec, tof=tof, vision=vision)
             self.voice_hud.current_emoji = intent.hud_emoji
@@ -174,7 +187,20 @@ class LocalAutonomyEngine:
                 self.voice_hud.current_emoji = intent.hud_emoji
                 self.voice_hud.current_caption = intent.hud_caption
         elif self._manual_active:
-            if self._manual_throttle > 0.0 and (not tof.valid or tof.distance_mm < self.pins.emergency_stop_mm):
+            if self._manual_throttle > 0.0 and not tof.valid:
+                self._manual_active = False
+                self._manual_throttle = 0.0
+                self.voice_hud.current_emoji = "ALERT_STOP"
+                self.voice_hud.current_caption = "TOF FAULT STOP"
+                intent = ControlIntent(
+                    timestamp_s=now,
+                    source_mode="IDLE",
+                    desired_throttle=0.0,
+                    desired_steering_deg=0.0,
+                    hud_emoji="ALERT_STOP",
+                    hud_caption="TOF FAULT STOP",
+                )
+            elif self._manual_throttle > 0.0 and tof.distance_mm < self.pins.emergency_stop_mm:
                 self._manual_active = False
                 self.maneuver_seq.start(
                     "keep_going",
@@ -204,6 +230,6 @@ class LocalAutonomyEngine:
 
         hud_state = self.voice_hud.update_hud(tof=tof, actuator_cmd=self.bus.actuator_cmd)
         self.bus.publish_hud(hud_state)
-        intent = replace(intent, timestamp_s=time.monotonic())
+        intent = replace(intent, timestamp_s=now)
         self.bus.publish_intent(intent)
         return intent

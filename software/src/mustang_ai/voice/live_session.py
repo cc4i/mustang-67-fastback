@@ -20,12 +20,11 @@ import time
 from dataclasses import dataclass, field
 from typing import Any
 
-from google.genai import types
-
 from mustang_ai.config import GeminiERConfig, load_gemini_api_key
 from mustang_ai.runtime.gemini_live_stream import (
     RadxaGeminiLiveSession,
     build_gemini_tool_declarations,
+    types,
 )
 from mustang_ai.voice.keywords import sanitize_wake_phrase
 from mustang_ai.voice.tts_stream import enforce_reply_length_cap
@@ -303,7 +302,7 @@ class PersistentConversationLiveSession:
         else:
             raw_reply = (
                 f"Front range is {tof_mm} millimeters and I am currently in {current_mode} mode. "
-                f"Ready for your next command! Extra words that would exceed twenty five words if not capped by D13."
+                f"Ready for your next command!"
             )
         capped_reply, _, _ = enforce_reply_length_cap(raw_reply, user_utterance=clean)
         calls.append(
