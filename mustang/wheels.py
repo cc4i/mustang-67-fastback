@@ -226,7 +226,7 @@ def axle_mesh(name, length):
 
 KP_X = 792.0        # kingpin X (real mm, matches body.FRONT_AXLE_X)
 KP_Y = 596.0        # kingpin |Y| (real mm, inboard of front tire inner sidewall)
-ARM_X = 716.0       # steering arm ball/pin X (real mm, 3.80 mm lever arm inside BayTub arch)
+ARM_X = 706.0       # steering arm ball/pin X (real mm, 4.30 mm lever arm ahead of kingpin)
 ARM_Y = 596.0       # steering arm ball/pin |Y| (real mm, parallel 4-bar linkage with KP_Y)
 
 
@@ -254,8 +254,10 @@ def _oct_stub(name, x_c, z_c, y0, y1):
 def knuckle_parts(side):
     """(knuckle, unions, cuts, pivot_world) for side = -1 (L) or +1 (R).
     Flat underside at Z = WHEEL_RADIUS*SCALE - AXLE_FLATS/2 (14.70 mm / 294.0 real mm) so the base,
-    Max-Beef Ø 4.20 mm kingpin barrel (r = 42.0 real mm), root hub collar (|Y| = 628..676),
-    Ø 2.00 mm steering pin (r = 20.0 real mm = 3.14 mm^2 shear area), and 3.60 mm octagonal stub axle are coplanar on the bed."""
+    Max-Beef Ø 4.30 mm kingpin barrel (r = 43.0 real mm) with Ø 2.85 mm through-bore (r = 28.5,
+    0.125 mm/side running clearance on Ø 2.60 mm kingpin), root hub collar (|Y| = 628..676),
+    tall Ø 1.80 mm steering pin (r = 18.0 real mm, Z = 334..398 so it passes 100% through SteeringLink
+    with 0.80 mm proud tip), and 3.60 mm octagonal stub axle are coplanar on the bed."""
     from mathutils import Vector
     import features as F
     tag = "L" if side < 0 else "R"
@@ -263,30 +265,30 @@ def knuckle_parts(side):
     z_bot = WHEEL_RADIUS * SCALE - AXLE_FLATS / 2
     # Plan outline of the reinforced base plate + thickened forward steering arm + hub root collar
     pts = [
-        (KP_X - 42.0, s * (KP_Y + 80.0)),
-        (KP_X + 42.0, s * (KP_Y + 80.0)),
-        (KP_X + 42.0, s * (KP_Y - 30.0)),
-        (ARM_X - 26.0, s * (ARM_Y - 26.0)),
-        (ARM_X - 26.0, s * (ARM_Y + 28.0)),
+        (KP_X - 43.0, s * (KP_Y + 80.0)),
+        (KP_X + 43.0, s * (KP_Y + 80.0)),
+        (KP_X + 43.0, s * (KP_Y - 30.0)),
+        (ARM_X - 24.0, s * (ARM_Y - 24.0)),
+        (ARM_X - 24.0, s * (ARM_Y + 26.0)),
     ]
-    poly = F.rounded_poly(pts, [10.0, 10.0, 14.0, 18.0, 18.0], steps=6)
+    poly = F.rounded_poly(pts, [10.0, 10.0, 14.0, 16.0, 16.0], steps=6)
     if s < 0:
         poly = list(reversed(poly))
     base = F.prism_cutter(f"Knuckle_{tag}", "+Z", poly, z_bot, 338.0 * SCALE)
     barrel = F.prism_cutter(f"Knuckle_{tag}_Barrel", "+Z",
-                            F.circle(KP_X, s * KP_Y, 42.0, 36), z_bot, 386.0 * SCALE)
-    c_ya, c_yb = sorted((s * 628.0, s * 676.0))
+                            F.circle(KP_X, s * KP_Y, 43.0, 36), z_bot, 386.0 * SCALE)
+    c_ya, c_yb = sorted((s * 632.0, s * 676.0))
     collar_pts = [
-        (KP_X - 42.0, c_ya), (KP_X + 42.0, c_ya),
-        (KP_X + 42.0, c_yb), (KP_X - 42.0, c_yb),
+        (KP_X - 38.0, c_ya), (KP_X + 38.0, c_ya),
+        (KP_X + 38.0, c_yb), (KP_X - 38.0, c_yb),
     ]
     collar = F.prism_cutter(f"Knuckle_{tag}_HubCollar", "+Z",
-                            F.rounded_poly(collar_pts, 8.0, steps=4), z_bot, 380.0 * SCALE)
+                            F.rounded_poly(collar_pts, 8.0, steps=4), z_bot, 338.0 * SCALE)
     pin = F.prism_cutter(f"Knuckle_{tag}_Pin", "+Z",
-                         F.circle(ARM_X, s * ARM_Y, 20.0, 28), 334.0 * SCALE, 392.0 * SCALE)
+                         F.circle(ARM_X, s * ARM_Y, 18.0, 28), 334.0 * SCALE, 398.0 * SCALE)
     stub = _oct_stub(f"Knuckle_{tag}_Stub", KP_X, WHEEL_RADIUS, s * (KP_Y + 18.0), s * 854.4)
     bore = F.prism_cutter(f"Knuckle_{tag}_Bore", "+Z",
-                          F.circle(KP_X, s * KP_Y, 26.5, 36), z_bot - 0.5, 396.0 * SCALE)
+                          F.circle(KP_X, s * KP_Y, 28.5, 36), z_bot - 0.5, 396.0 * SCALE)
     pivot = Vector((KP_X * SCALE, s * KP_Y * SCALE, WHEEL_RADIUS * SCALE))
     return base, [barrel, collar, pin, stub], [bore], pivot
 
@@ -308,35 +310,40 @@ def set_knuckle_pivot(knuckle, pieces, pivot, riders=()):
 
 
 def steering_link_part():
-    """(link, unions, cuts) for the Max-Beef 4.10 x 2.40 mm transverse tie-rod connecting Knuckle_L
-    and Knuckle_R (reinforced 1.1+ mm eyelet walls around Ø 2.00 mm pins) to the front micro servo horn at
-    (X = 668..746, Y = 0, Z = 342..390 real mm)."""
+    """(link, unions, cuts) for the Max-Beef transverse tie-rod connecting Knuckle_L and Knuckle_R
+    (1.05-1.18 mm solid eyelet walls on all 4 sides around Ø 1.80 mm pins, with 0.125 mm/side lateral
+    running clearance and +0.18 mm rearward +X arc slot relief) to the front micro servo horn at
+    (X = 663..748, Y = 0, Z = 342..382 real mm = 2.00 mm thick)."""
     import features as F
-    z0, z1 = 342.0 * SCALE, 390.0 * SCALE
+    z0, z1 = 342.0 * SCALE, 382.0 * SCALE
     pts = [
-        (680.0, -(ARM_Y + 44.0)),
-        (680.0, -76.0),
+        (663.0, -(ARM_Y + 44.0)),
+        (663.0, -572.0),
+        (682.0, -562.0),
+        (682.0, -76.0),
         (668.0, -58.0),
         (668.0, 58.0),
-        (680.0, 76.0),
-        (680.0, ARM_Y + 44.0),
-        (744.0, ARM_Y + 44.0),
-        (744.0, -(ARM_Y + 44.0)),
+        (682.0, 76.0),
+        (682.0, 562.0),
+        (663.0, 572.0),
+        (663.0, ARM_Y + 44.0),
+        (747.5, ARM_Y + 44.0),
+        (747.5, -(ARM_Y + 44.0)),
     ]
-    poly = F.rounded_poly(pts, [18.0, 10.0, 12.0, 12.0, 10.0, 18.0, 18.0, 18.0], steps=6)
+    poly = F.rounded_poly(pts, [16.0, 6.0, 6.0, 10.0, 12.0, 12.0, 10.0, 6.0, 6.0, 16.0, 16.0, 16.0], steps=6)
     link = F.prism_cutter("SteeringLink", "+Z", poly, z0, z1)
     cuts = []
     for s, tag in ((-1, "L"), (1, "R")):
         slot = F.rounded_poly([
-            (ARM_X - 21.5, s * ARM_Y - 22.5),
-            (ARM_X + 23.5, s * ARM_Y - 22.5),
-            (ARM_X + 23.5, s * ARM_Y + 22.5),
-            (ARM_X - 21.5, s * ARM_Y + 22.5),
-        ], 20.0, steps=8)
+            (ARM_X - 20.5, s * ARM_Y - 20.5),
+            (ARM_X + 23.5, s * ARM_Y - 20.5),
+            (ARM_X + 23.5, s * ARM_Y + 20.5),
+            (ARM_X - 20.5, s * ARM_Y + 20.5),
+        ], 19.0, steps=8)
         cuts.append(F.prism_cutter(f"SteeringLink_Slot{tag}", "+Z", slot, z0 - 0.5, z1 + 0.5))
     horn_slot = F.rounded_poly([
-        (686.0, -18.0), (728.0, -18.0), (728.0, 18.0), (686.0, 18.0)
-    ], 17.0, steps=8)
+        (688.0, -18.5), (726.0, -18.5), (726.0, 18.5), (688.0, 18.5)
+    ], 17.5, steps=8)
     cuts.append(F.prism_cutter("SteeringLink_HornSlot", "+Z", horn_slot, z0 - 0.5, z1 + 0.5))
     return link, [], cuts
 

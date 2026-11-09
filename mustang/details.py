@@ -1347,8 +1347,8 @@ def chassis_slots():
     c = SLOT_CLEAR / SCALE
     slots = [
         ("Cut_BossSlotF", F.prism_cutter(
-            "Cut_BossSlotF", "+Z", rect(676.0 - c, -630.0 - c, 858.0 + c, 630.0 + c, 8),
-            Z_BOTTOM * SCALE - 2.0, BOSS_TOP * SCALE + SLOT_CLEAR)),
+            "Cut_BossSlotF", "+Z", rect(654.0 - c, -645.0 - c, 858.0 + c, 645.0 + c, 8),
+            Z_BOTTOM * SCALE - 2.0, 402.0 * SCALE + SLOT_CLEAR)),
         ("Cut_BossSlotR", F.prism_cutter(
             "Cut_BossSlotR", "+Z", rect(REAR_AXLE_X - BOSS_HALF_X - c, -CHASSIS_Y - 26 - c,
                                         REAR_AXLE_X + BOSS_HALF_X + c, CHASSIS_Y + 26 + c, 8),
@@ -1356,8 +1356,8 @@ def chassis_slots():
     ]
     for s, stag in ((-1, "L"), (1, "R")):
         slots.append((f"Cut_BossSlotKingpin_{stag}", F.prism_cutter(
-            f"Cut_BossSlotKingpin_{stag}", "+Z", F.circle(FRONT_AXLE_X, s * 596.0, 25.5 + c, 28),
-            Z_BOTTOM * SCALE - 2.0, 400.0 * SCALE + SLOT_CLEAR)))
+            f"Cut_BossSlotKingpin_{stag}", "+Z", F.circle(FRONT_AXLE_X, s * 596.0, 27.5 + c, 28),
+            Z_BOTTOM * SCALE - 2.0, 424.0 * SCALE + SLOT_CLEAR)))
     return slots
 
 
@@ -1412,13 +1412,13 @@ def chassis_parts():
     for s, stag in ((-1, "L"), (1, "R")):
         ya, yb = sorted((s * 435.0, s * 635.0))
         unions.append(F.prism_cutter(f"Chassis_KingpinArm_{stag}", "+Z", rect(750.0, ya, 834.0, yb, 18.0),
-                                     CHASSIS_Z0 * SCALE, 286.0 * SCALE))
-        unions.append(F.prism_cutter(f"Chassis_KingpinBase_{stag}", "+Z", F.circle(FRONT_AXLE_X, s * 596.0, 41.0, 32),
-                                     CHASSIS_Z0 * SCALE, 286.0 * SCALE))
-        unions.append(F.prism_cutter(f"Chassis_Kingpin_{stag}", "+Z", F.circle(FRONT_AXLE_X, s * 596.0, 25.0, 32),
-                                     280.0 * SCALE, 396.0 * SCALE))
-        plate_cuts.append(F.prism_cutter(f"Cut_ChassisSteerCore_{stag}", "+Z", F.circle(FRONT_AXLE_X, s * 596.0, 18.4, 28),
-                                         (CHASSIS_Z0 - 5.0) * SCALE, 400.0 * SCALE))
+                                     CHASSIS_Z0 * SCALE, 290.0 * SCALE))
+        unions.append(F.prism_cutter(f"Chassis_KingpinBase_{stag}", "+Z", F.circle(FRONT_AXLE_X, s * 596.0, 42.0, 32),
+                                     CHASSIS_Z0 * SCALE, 290.0 * SCALE))
+        unions.append(F.prism_cutter(f"Chassis_Kingpin_{stag}", "+Z", F.circle(FRONT_AXLE_X, s * 596.0, 26.0, 32),
+                                     280.0 * SCALE, 416.0 * SCALE))
+        plate_cuts.append(F.prism_cutter(f"Cut_ChassisSteerCore_{stag}", "+Z", F.circle(FRONT_AXLE_X, s * 596.0, 18.0, 28),
+                                         (CHASSIS_Z0 - 5.0) * SCALE, 425.0 * SCALE))
         w_ya, w_yb = sorted((s * 520.0, s * 645.0))
         plate_cuts.append(F.prism_cutter(f"Cut_ChassisSteerF_{stag}", "+Z", rect(415.0, w_ya, 742.0, w_yb, 16.0),
                                          (CHASSIS_Z0 - 10.0) * SCALE, (Z_BOTTOM + 10.0) * SCALE))
