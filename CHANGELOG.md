@@ -6,6 +6,53 @@ All notable changes and architectural upgrades to the procedural 1967 Ford Musta
 
 ---
 
+## [v3.5.0] - 2026-11-09 - Move A + B Max-Beef Drivetrain, Steering & 1.75 mm Filament-Core Hybrid Kingpin Expansion
+
+### Added & Hardened
+- **Move A + B Front Steering & Hybrid Filament-Core Kingpins (`mustang/wheels.py`, `mustang/details.py`, `mustang/engine_bay.py`)**:
+  - **Enlarged `Knuckle_L/R` & `Ø 2.00 mm` Tie-Rod Pins (`knuckle_l.stl`, `knuckle_r.stl`)**: Expanded the steering knuckle barrels from `Ø 3.90 mm` OD / `Ø 2.20 mm` ID to **`Ø 4.20 mm` OD (`r = 42.0` real mm) / `Ø 2.65 mm` ID (`r = 26.5`)** (`0.775 mm` solid barrel wall), lengthened the steering lever arm to `4.20 mm` (`ARM_X = 708.0`), and enlarged `Knuckle_Pin` from `Ø 1.50 mm` to **`Ø 2.00 mm` (`r = 20.0` real mm = `3.14 mm²` shear area, `1.78x` stronger than `Ø 1.50 mm` and `2.78x` stronger than `Ø 1.20 mm`)**.
+  - **Move A + B Hybrid Double-Shear Kingpins (`Chassis_Kingpin_L/R` + `Cut_ChassisSteerCore_L/R`)**: Enlarged the vertical front kingpin posts on `Chassis` from `Ø 2.05 mm` to **`Ø 2.50 mm` (`r = 25.0` real mm)** captured at the top in `Cut_BossSlotKingpin_L/R` (`r = 25.5 + c`), and added a **vertical `Ø 1.84 mm` (`r = 18.4`) through-bore (`Cut_ChassisSteerCore_L/R`)** through each kingpin post so a `7.2 mm` snip of raw **`1.75 mm` PLA/PETG filament** can be pushed through from the chassis underside for continuous axial-fiber reinforcement (`> 8x` layer-shear strength).
+  - **Max-Beef `SteeringLink` (`steering_link.stl`, `68.40 × 4.10 × 2.40 mm`)**: Enlarged the tie-rod beam from `3.45 × 2.10 mm` to **`4.10 × 2.40 mm` (`X = 662..744`, `Z = 342..390`)** with **`1.10+ mm` solid eyelet walls** around the `Ø 2.00 mm` knuckle pins, and shifted `BayTub_ServoRear` forward to `X = 644..658` for `0.000 mm³` clearance across the full `±15°` steering sweep.
+- **Move A Max-Beef Axles, Wheel Hubs, Driveshaft, Coupler & `7T:9T` Bevel Differential (`mustang/wheels.py`, `mustang/details.py`, `mustang/interior.py`, `mustang/engine_bay.py`, `mustang/ai_edition.py`, `mustang/build.py`, `mustang/materials.py`)**:
+  - **`3.60 mm` Octagonal `Axle_R` & Front Wheel Stubs (`axle.stl`, `rim_x4.stl`)**: Expanded `AXLE_FLATS` from `3.42 mm` to **`3.60 mm` across flats (`3.00 * K`, `Ø 3.90 mm` across corners, `+52%` polar torsional stiffness $J$ over `3.24 mm`)**, running inside `Ø 4.10 mm` (`AXLE_HOLE_R = 1.71 * K`) `Chassis_BossR` bearings (`BOSS_R_TOP = 425.0`), and enlarged the `Rim_*` solid center hub boss to **`Ø 9.60 mm` (`r_in = 4.00 * K`, `HUB_HOLE_R = 1.52 * K` 8-lobe octagonal bore, `2.98 mm` solid hub wall)**.
+  - **Widened Open-Bottom Driveshaft U-Channels & Shifted Wire Conduit**: Widened `BayTub_ShaftTunnel` (`Y = ±68.0`, `6.80 mm` wide), `Cut_DiffShaftWeb` (`Y = ±64.0`, `6.40 mm` wide), and `Tub_ShaftTunnel` (`Y = ±62.0`, `6.20 mm` wide), and shifted the enclosed driver-side 5-wire conduit outboard by `0.40 mm` to `Y = -162.0..-82.0` (`-8.10..-4.10 mm` print) across `BayTub`, `Body`, `InteriorTub`, `BootTub`, and `ai_edition.py` (`Tub_AIAmpDeck` / `Tub_AIAmpDrvBay`).
+  - **Enlarged `MotorCoupler` (`Ø 6.60 mm` OD) & `Driveshaft` (`3.64 mm` Tenons, `4.80 × 4.12 mm` Beam)**: Expanded `MotorCoupler` (`motor_coupler_*.stl`) from `Ø 6.20 mm` to **`Ø 6.60 mm` OD (`r_out = 66.0`, `1.40 mm` solid wall around the `3.80 mm`-flats rear spline socket)**, and enlarged `Driveshaft` (`driveshaft.stl`, `96.60 × 4.80 × 4.12 mm`) spline tenons from `3.22 mm` to **`3.64 mm` across flats (`+63%` torsional stiffness $J$)** and central beam to **`4.80 × 4.12 mm` (`+40%` bending stiffness)**.
+  - **Enlarged Differential Housing (`DIFF` `dr = 150.0`), `PinionGear` (`Ø 6.40 mm` Collar) & `AxleGear` (`Ø 8.00 mm` Collar, `3.625 mm` Wide)**: Expanded `DIFF` to `Ø 15.00 mm` (`dr = 150.0`, `a = 38..165 deg`) with a self-supporting `45°` internal gable pocket (`Cut_DiffCoverGear`) inside `DiffCover`, enlarged `PinionGear` (`pinion_gear.stl`) to a **`Ø 6.40 mm × 2.30 mm` bearing & spline collar** (`half_flat = 38.00`, solid tooth root core), and enlarged `AxleGear` (`axle_gear.stl`, `Y = 19.5..92.0 = 3.625 mm` wide) to a **`Ø 8.00 mm × 2.425 mm` rear hub collar (`2.12 mm` solid collar wall around `half_flat = 37.60`, stress-relieved circular front bore `r_max = 39.40`)**.
+
+### Verified
+- **5-Gate Pre-Print Verification (`G1..G5`) Across Classic RC & AI Edition (`tmp/ai_edition_build_report.json`)**:
+  - Verified `printcheck.run()` (`problems == {}`, `overlaps_with_body == {}`, `mirror_mismatches == {}`, `part_overlaps == {}`, `body.shells == 1`), `verify_virtual_ai_hardware() == {}` (`0.000 mm³` overlap), and `export.run()` (`0` non-manifold edges, `floating == []`, `cantilevers == []` across all support-free STLs).
+
+---
+
+## [v3.4.0] - 2026-11-09 - Physical Print Structural Hardening, Heavy-Duty AI Drivetrain, Sub-Frame Mortise-and-Tenon Interlocks & Real-BOM AI Pocket Expansion
+
+### Fixed & Hardened
+- **Wheels & Tires - Zero-Undercut Hand-Slide Fit, `3.0x` Thicker Rim Lip Neck & Heavy-Duty `3.42 mm` Octagonal Axle (`mustang/wheels.py`, `mustang/details.py`)**:
+  - Eliminated the `0.36 mm` radial bead-lock undercut (`RIM_BEAD_R = RIM_R = 9.60 mm`), increased radial fit gap to `FIT_GAP = 0.22 mm`/side, added a `45°` inboard tire entry chamfer, and replaced the 12 closed splines with **6 wide axial drive keys (`±0.36 mm`) open through the inboard tire entry** so `tire_x4.stl` slides onto `rim_x4.stl` by hand without prying or forcing.
+  - Shallowed the Torq-Thrust spoke trough (`RIM_R - 1.50 * K`) and trimmed `spoke_cutter_mesh` outer radius (`RIM_R - 1.65 * K`), thickening the outer rim lip neck from `0.60 mm` (`1` perimeter wall that sheared off during tire installation) to **`1.80 mm` (`3.0x` thicker, `4` continuous perimeter walls)**, with a `25°` self-supporting conical rear hub recess (`cantilevers == []`).
+  - Thickened `Axle_R` and `Knuckle_L/R` stub axles from `3.24 mm` (`2.70 * K`) to **`3.42 mm` across flats (`2.85 * K`, `Ø 3.70 mm` across corners, `+24%` torsional stiffness)** running inside `Ø 3.91 mm` `Chassis_BossR` bearings, and upgraded the `Ø 8.76 mm` rim hub boss (`HUB_HOLE_R = 1.44 * K`) to an **8-lobe octagonal hub socket** (`0.096 mm` radial flat-to-corner modulation) that transmits reversible AI start/stop torque across all 8 flat faces instead of wedging on corners.
+- **Front Steering Linkage & Double-Shear Kingpins (`mustang/wheels.py`, `mustang/details.py`)**:
+  - Thickened `SteeringLink` (`steering_link.stl`, `65.17 × 4.05 × 2.10 mm`) to a **`3.45 × 2.10 mm` beam (`> 3x` bending strength)** with **`1.0-1.2 mm` reinforced eyelet walls** around enlarged **`Ø 1.50 mm` `Knuckle_Pin`s** (`+56%` shear area) and `ARM_X = 720.0` (`3.60 mm` steering lever arm).
+  - Enlarged `Knuckle_L/R` kingpin barrels to **`Ø 3.90 mm` OD / `Ø 2.20 mm` ID** (`0.85 mm` wall) rotating on **`Ø 2.05 mm` `Chassis_Kingpin_L/R` posts** whose top tips (`Z = 396`) key into `Cut_BossSlotKingpin_L/R` on `Body` for **double-shear top-and-bottom kingpin capture**.
+- **Heavy-Duty N25 Bevel Drivetrain (`mustang/engine_bay.py`, `mustang/details.py`)**:
+  - Enlarged `MotorCoupler` (`motor_coupler_*.stl`) from `Ø 5.50 mm` to **`Ø 6.20 mm` OD (`1.35+ mm` wall)**, replaced deep `0.45 mm` V-notches with shallow `0.15 mm` index grooves, and widened the rear octagonal socket to `3.38 mm` across flats (`+0.08 mm`/side clearance around `Driveshaft`'s `3.22 mm` tenons).
+  - Reinforced `Driveshaft` (`driveshaft.stl`, `96.60 × 4.20 × 3.81 mm`) with a thicker central octagonal beam.
+  - Upgraded `PinionGear` (`pinion_gear.stl`, `X = 3422..3504`) with a **`Ø 5.80 mm × 2.30 mm` cylindrical bearing & spline collar** and stopped `PinionGear_Bore` at `X = 3464` ahead of the bevel teeth so the tooth root core prints 100% solid.
+  - Widened `AxleGear` (`axle_gear.stl`, `Y = 19.5..82.0 = 3.125 mm` wide, `1.8x` wider) with a **`Ø 7.00 mm × 1.95 mm` rear hub collar (`1.72 mm` solid wall)** and a **stress-relieved circular front bore (`r_max = 37.30`)** under the bevel tooth valleys to prevent corner splitting under N25 shock loads.
+- **Positive Sub-Frame Mortise-and-Tenon Interlocks (`Chassis <-> BayTub + InteriorTub`, `mustang/details.py`, `mustang/engine_bay.py`, `mustang/interior.py`)**:
+  - Added **4 locking tenon rails for `BayTub`** (`Chassis_BayKeyF_L/R` mating into `BayTub_FrontLockBossL/R` + `BayTub_ChassisSlotF_L/R`, and `Chassis_BayKeyR_L/R` mating into `BayTub_TowerL/R` + `BayTub_ChassisSlotR_L/R`), **4 locking tenon bosses for `InteriorTub`** (`Chassis_TubKeyF_L/R` and `Chassis_TubKeyR_L/R` mating into `45°` gable-roofed bottom mortise sockets `Tub_ChassisSlotF_L/R` and `Tub_ChassisSlotR_L/R` under the front and rear seats), **1 central driveshaft guide key (`Chassis_TunnelKey`)**, and **recessed solid floors (`Cut_ChassisAxleServoBed` at `Z = 295`, `Cut_ChassisAxleN25Bed` at `Z = 294`)** on `Chassis`.
+- **Real-BOM AI Edition Hardware Pockets (`mustang/ai_edition.py`)**:
+  - Cleared `BootTub_AIClearFloor` across the **full `45.0 mm` width** (`Y = -450..+450`, `Z = 584..760`) and deepened `Cut_RadxaBulkheadBridge` (`28.0 × 8.6 mm` vault below the `Z = 37.8 mm` Radxa shelf, with rear corner L-pillars `BootTub_RadxaShelf_L/R`) so a real **`35.0 × 20.0 × 8.0 mm` `2S 300-350mAh LiPo`** + **`18.0 × 12.0 × 4.2 mm` `5V 3A Buck BEC`** + slide switch fit with **`0.000 mm³` overlap**.
+  - Enlarged `Tub_AISpeakerBay` (`16.75 × 25.00 × 10.90 mm`) for the real `15.0 × 24.0 × 4.0 mm` speaker and deepened `Tub_AIAmpDrvBay` (`19.25 × 16.20 × 17.90 mm`) to house **both** the real `18.0 × 15.0 × 3.2 mm` `DRV8833` and `18.0 × 14.0 × 3.2 mm` `MAX98357A` boards.
+  - Enlarged `WaymoPod` (`15.2 mm` Gothic lens arch for `Ø 14.0 mm` `OV5647` M12 lens barrel, `16.8 mm` cable channel + `2.7 × 17.2 mm` `Cut_WaymoChimney` for `16.0 mm` CSI ribbon, and `12.0 × 15.2 mm` `WaymoPod_MicCup` for `10.0 × 14.0 × 2.0 mm` `INMP441` mic), added `Cut_RearGlassHUDPCB` (`35.0 × 37.2 × 5.2 mm` sub-surface well) for the `35.6 × 35.6 mm` `GC9A01` PCB carrier, and widened `BayTub_ToFSlot` (`18.8 mm`) for the `18.0 mm` `VL53L1X` ToF sensor.
+
+### Verified
+- **Zero-Overlap Classic & AI Edition CAD, STL Export & Virtual BOM Hardware Verification**:
+  - Verified `printcheck.run()` (`problems == {}`, `overlaps_with_body == {}`, `mirror_mismatches == {}`, `part_overlaps == {}`, `body.shells == 1`), `export.run()` (`0` non-manifold edges, `floating == []`, `cantilevers == []` across all support-free STLs), and `verify_virtual_ai_hardware() == {}` (`0.000 mm³` overlap across all 11 real-dimension AI BOM hardware envelopes).
+
+---
+
 ## [v3.3.0] - 2026-11-06 — Milestone A Laptop-First Radxa Voice Stack, Hardware HAL Hardening & End-to-End Codebase Audit Fixes
 
 ### Added

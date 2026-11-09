@@ -871,17 +871,17 @@ def body_cutters(tree, body_mesh):
     ys = sorted({s * y for y in ys for s in (-1, 1)})
     cuts.append(("Cut_RearUnder", under_solid("Cut_RearUnder", xs, ys, lambda x, y: rear_under_z(x, y, ramp), REAR_UNDER[0][1])))
     # tunnel over the differential housing, N25 driveshaft through firewall web, and dedicated motor-to-battery wire conduit
-    cuts.append(("Cut_DiffTunnel", F.prism_cutter("Cut_DiffTunnel", "+Z", rect(3375.0, -130.0, 3665.0, 130.0, 60.0),
-                                                  (body_z_bottom() - 2.0) * SCALE, 480.0 * SCALE)))
+    cuts.append(("Cut_DiffTunnel", F.prism_cutter("Cut_DiffTunnel", "+Z", rect(3350.0, -168.0, 3700.0, 168.0, 45.0),
+                                                  (body_z_bottom() - 2.0) * SCALE, 505.0 * SCALE)))
     cuts.append(("Cut_DiffShaftWeb", F.prism_cutter(
         "Cut_DiffShaftWeb", "+X",
-        [(-56.0, body_z_bottom() - 20.0), (56.0, body_z_bottom() - 20.0), (56.0, 448.0), (0.0, 504.0), (-56.0, 448.0)],
+        [(-64.0, body_z_bottom() - 20.0), (64.0, body_z_bottom() - 20.0), (64.0, 446.0), (0.0, 510.0), (-64.0, 446.0)],
         1610.0 * SCALE, 1760.0 * SCALE)))
     cuts.append(("Cut_FirewallWireWeb", F.prism_cutter(
-        "Cut_FirewallWireWeb", "+X", [(-154.0, 310.0), (-74.0, 310.0), (-74.0, 423.0), (-114.0, 463.0), (-154.0, 423.0)],
+        "Cut_FirewallWireWeb", "+X", [(-162.0, 310.0), (-82.0, 310.0), (-82.0, 423.0), (-122.0, 463.0), (-162.0, 423.0)],
         1610.0 * SCALE, 1760.0 * SCALE)))
     cuts.append(("Cut_WireTunnel", F.prism_cutter(
-        "Cut_WireTunnel", "+X", [(-154.0, 598.0), (-74.0, 598.0), (-74.0, 655.0), (-114.0, 695.0), (-154.0, 655.0)],
+        "Cut_WireTunnel", "+X", [(-162.0, 598.0), (-82.0, 598.0), (-82.0, 655.0), (-122.0, 695.0), (-162.0, 655.0)],
         3400.0 * SCALE, 4015.0 * SCALE)))
     f = gas_cap_floor(tree)
     cuts.append(("Cut_GasCap", F.prism_cutter("Cut_GasCap", "+X", F.circle(GAS_CAP[0], GAS_CAP[1], GAS_CAP[2], 32), f, f + 30.0)))
@@ -1325,8 +1325,9 @@ def bolt_head(name, tree, y, z):
 
 CHASSIS_Z0 = 255.0        # underside of the chassis plate (real mm above ground)
 CHASSIS_X0, CHASSIS_X1, CHASSIS_Y = 350.0, 3600.0, 590.0      # ends just behind the rear axle boss
-DIFF = (3535.0, 338.0, 120.0)            # differential housing on the rear axle: x, z, radius (flat underside)
-BOSS_HALF_X, BOSS_TOP = 60.0, 390.0     # axle bosses rise into slots in the body bottom
+DIFF = (3535.0, 338.0, 150.0)            # max-beef differential housing on the rear axle: x, z, radius (flat underside)
+BOSS_HALF_X, BOSS_TOP = 60.0, 390.0     # front axle boss rises into slot in the body bottom
+BOSS_R_TOP = 425.0                       # thickened rear axle boss top (2.72 mm arch over 3.60 mm-flats octagonal axle)
 SLOT_CLEAR = 0.15                        # print mm per side
 # exhaust: separate chrome tips under the rear valance, each hung from the floor by a fin pushed
 # into a slot; printed standing on the pipe's front end (the fin's lower edge is 45 degrees)
@@ -1337,85 +1338,124 @@ EXHAUST_X0, EXHAUST_X1 = 3880.0, 4400.0
 EXHAUST_FIN = [(4080.0 - (REAR_FLOOR_Z + 65.0 - EXHAUST_Z), EXHAUST_Z), (4080.0, REAR_FLOOR_Z + 65.0),
                (4150.0, REAR_FLOOR_Z + 65.0), (4150.0, EXHAUST_Z)]             # leading edge at 45 degrees
 EXHAUST_FIN_T = 20.0
-AXLE_HOLE_R = 1.535 * (SCALE / (1.0 / 24.0))  # 1:20 close-running bearing bore (Ø 3.68 mm) around 3.24 mm-flats axle
+AXLE_HOLE_R = 1.71 * (SCALE / (1.0 / 24.0))   # 1:20 close-running bearing bore (Ø 4.10 mm) around 3.60 mm-flats axle
 
 
 def chassis_slots():
-    """[(name, cutter)] transverse slots in the body bottom that the chassis axle bosses key into."""
-    from body import REAR_AXLE_X, Z_BOTTOM
+    """[(name, cutter)] transverse slots in the body bottom that the chassis axle bosses and double-shear kingpin tips key into."""
+    from body import FRONT_AXLE_X, REAR_AXLE_X, Z_BOTTOM
     c = SLOT_CLEAR / SCALE
-    return [
+    slots = [
         ("Cut_BossSlotF", F.prism_cutter(
             "Cut_BossSlotF", "+Z", rect(676.0 - c, -630.0 - c, 858.0 + c, 630.0 + c, 8),
             Z_BOTTOM * SCALE - 2.0, BOSS_TOP * SCALE + SLOT_CLEAR)),
         ("Cut_BossSlotR", F.prism_cutter(
             "Cut_BossSlotR", "+Z", rect(REAR_AXLE_X - BOSS_HALF_X - c, -CHASSIS_Y - 26 - c,
                                         REAR_AXLE_X + BOSS_HALF_X + c, CHASSIS_Y + 26 + c, 8),
-            Z_BOTTOM * SCALE - 2.0, BOSS_TOP * SCALE + SLOT_CLEAR)),
+            Z_BOTTOM * SCALE - 2.0, BOSS_R_TOP * SCALE + SLOT_CLEAR)),
     ]
+    for s, stag in ((-1, "L"), (1, "R")):
+        slots.append((f"Cut_BossSlotKingpin_{stag}", F.prism_cutter(
+            f"Cut_BossSlotKingpin_{stag}", "+Z", F.circle(FRONT_AXLE_X, s * 596.0, 25.5 + c, 28),
+            Z_BOTTOM * SCALE - 2.0, 400.0 * SCALE + SLOT_CLEAR)))
+    return slots
 
 
 def chassis_parts():
     """Black chassis plate, inset well inside the rockers so the body stands clear of the ground.
 
-    Returns (plate, unions, plate_cuts). The plate's top mates with the body's flat bottom; the rear
-    boss carries the rear drive axle bore, while the front boss carries lower kingpin control arms,
-    vertical kingpin posts (X = 792, |Y| = 596), and a tie-rod guide shelf."""
+    Returns (plate, unions, plate_cuts). The plate's top mates with the body's flat bottom and carries
+    positive mortise-and-tenon locking bosses for BayTub and InteriorTub, recessed floors for the
+    steering servo and N25 motor, a mid-ship driveshaft support saddle, heavy-duty rear axle bearings,
+    and double-shear Ø 2.50 mm front kingpin posts (X = 792, |Y| = 596) with Ø 1.84 mm vertical core
+    sockets for raw 1.75 mm filament reinforcement."""
     from body import FRONT_AXLE_X, REAR_AXLE_X, WHEEL_RADIUS, Z_BOTTOM
     plate = F.prism_cutter("Chassis", "+Z", rect(CHASSIS_X0, -CHASSIS_Y, CHASSIS_X1, CHASSIS_Y, 60),
                            CHASSIS_Z0 * SCALE, Z_BOTTOM * SCALE)
     unions = [
-        F.prism_cutter("Chassis_BossF", "+Z", rect(762.0, -450.0, 852.0, 450.0, 8),
+        F.prism_cutter("Chassis_BossF", "+Z", rect(764.0, -450.0, 852.0, 450.0, 8),
                        Z_BOTTOM * SCALE - 0.2, BOSS_TOP * SCALE),
-        F.prism_cutter("Chassis_SteeringShelf", "+Z", rect(696.0, -450.0, 768.0, 450.0, 8),
-                       Z_BOTTOM * SCALE - 0.2, 342.0 * SCALE),
+        F.prism_cutter("Chassis_SteeringShelf", "+Z", rect(684.0, -450.0, 768.0, 450.0, 8),
+                       Z_BOTTOM * SCALE - 0.2, 338.0 * SCALE),
         F.prism_cutter("Chassis_BossR", "+Z", rect(REAR_AXLE_X - BOSS_HALF_X, -CHASSIS_Y - 22.0,
                                                    REAR_AXLE_X + BOSS_HALF_X, CHASSIS_Y + 22.0, 8),
-                       Z_BOTTOM * SCALE - 0.2, BOSS_TOP * SCALE),
+                       Z_BOTTOM * SCALE - 0.2, BOSS_R_TOP * SCALE),
+        # Central driveshaft pillow-block guide key mating into InteriorTub's Tub_ShaftTunnel
+        F.prism_cutter("Chassis_TunnelKey", "+Z", rect(2380.0, -50.0, 2620.0, 50.0, 8.0),
+                       Z_BOTTOM * SCALE - 0.2, 342.0 * SCALE),
     ]
+    # 4 locking tenon rails for BayTub (2 inside front apron lock plinths, 2 inside BayTub_TowerL/R shock-tower bases)
+    # and 4 corner locking tenon bosses for InteriorTub (front & rear seat risers)
+    for s, stag in ((-1, "L"), (1, "R")):
+        by_f0, by_f1 = sorted((s * 442.0, s * 490.0))
+        unions.append(F.prism_cutter(f"Chassis_BayKeyF_{stag}", "+Z", rect(465.0, by_f0, 605.0, by_f1, 6.0),
+                                     Z_BOTTOM * SCALE - 0.2, 372.0 * SCALE))
+        by_r0, by_r1 = sorted((s * 420.0, s * 480.0))
+        unions.append(F.prism_cutter(f"Chassis_BayKeyR_{stag}", "+Z", rect(910.0, by_r0, 1130.0, by_r1, 8.0),
+                                     Z_BOTTOM * SCALE - 0.2, 384.0 * SCALE))
+        ty_f0, ty_f1 = sorted((s * 290.0, s * 350.0))
+        unions.append(F.prism_cutter(f"Chassis_TubKeyF_{stag}", "+Z", rect(2260.0, ty_f0, 2510.0, ty_f1, 8.0),
+                                     Z_BOTTOM * SCALE - 0.2, 372.0 * SCALE))
+        ty_r0, ty_r1 = sorted((s * 250.0, s * 310.0))
+        unions.append(F.prism_cutter(f"Chassis_TubKeyR_{stag}", "+Z", rect(3115.0, ty_r0, 3265.0, ty_r1, 8.0),
+                                     Z_BOTTOM * SCALE - 0.2, 372.0 * SCALE))
     plate_cuts = [
         F.loft_solid("Cut_ChassisAxleR", "-Y", [
-            (F.circle(REAR_AXLE_X, WHEEL_RADIUS, AXLE_HOLE_R / SCALE, 28), -45.0),
-            (F.circle(REAR_AXLE_X, WHEEL_RADIUS, AXLE_HOLE_R / SCALE, 28), 45.0)]),
+            (F.circle(REAR_AXLE_X, WHEEL_RADIUS, AXLE_HOLE_R / SCALE, 32), -45.0),
+            (F.circle(REAR_AXLE_X, WHEEL_RADIUS, AXLE_HOLE_R / SCALE, 32), 45.0)]),
+        # Recessed solid cradle floors in Chassis for BayTub's steering servo (Z = 296) and N25/N20 motor (Z = 295)
+        F.prism_cutter("Cut_ChassisAxleServoBed", "+Z", rect(452.0, -162.0, 650.0, 162.0, 4.0),
+                       295.0 * SCALE, (Z_BOTTOM + 4.0) * SCALE),
+        F.prism_cutter("Cut_ChassisAxleN25Bed", "+Z", rect(926.0, -122.0, 1384.0, 122.0, 4.0),
+                       294.0 * SCALE, (Z_BOTTOM + 4.0) * SCALE),
     ]
     for s, stag in ((-1, "L"), (1, "R")):
-        ya, yb = sorted((s * 435.0, s * 625.0))
-        unions.append(F.prism_cutter(f"Chassis_KingpinArm_{stag}", "+Z", rect(760.0, ya, 824.0, yb, 18.0),
-                                     CHASSIS_Z0 * SCALE, 294.0 * SCALE))
-        unions.append(F.prism_cutter(f"Chassis_KingpinBase_{stag}", "+Z", F.circle(FRONT_AXLE_X, s * 596.0, 28.0, 28),
-                                     CHASSIS_Z0 * SCALE, 294.0 * SCALE))
-        unions.append(F.prism_cutter(f"Chassis_Kingpin_{stag}", "+Z", F.circle(FRONT_AXLE_X, s * 596.0, 19.0, 28),
-                                     288.0 * SCALE, 388.0 * SCALE))
-        w_ya, w_yb = sorted((s * 520.0, s * 640.0))
-        plate_cuts.append(F.prism_cutter(f"Cut_ChassisSteerF_{stag}", "+Z", rect(415.0, w_ya, 758.0, w_yb, 16.0),
+        ya, yb = sorted((s * 435.0, s * 635.0))
+        unions.append(F.prism_cutter(f"Chassis_KingpinArm_{stag}", "+Z", rect(750.0, ya, 834.0, yb, 18.0),
+                                     CHASSIS_Z0 * SCALE, 286.0 * SCALE))
+        unions.append(F.prism_cutter(f"Chassis_KingpinBase_{stag}", "+Z", F.circle(FRONT_AXLE_X, s * 596.0, 41.0, 32),
+                                     CHASSIS_Z0 * SCALE, 286.0 * SCALE))
+        unions.append(F.prism_cutter(f"Chassis_Kingpin_{stag}", "+Z", F.circle(FRONT_AXLE_X, s * 596.0, 25.0, 32),
+                                     280.0 * SCALE, 396.0 * SCALE))
+        plate_cuts.append(F.prism_cutter(f"Cut_ChassisSteerCore_{stag}", "+Z", F.circle(FRONT_AXLE_X, s * 596.0, 18.4, 28),
+                                         (CHASSIS_Z0 - 5.0) * SCALE, 400.0 * SCALE))
+        w_ya, w_yb = sorted((s * 520.0, s * 645.0))
+        plate_cuts.append(F.prism_cutter(f"Cut_ChassisSteerF_{stag}", "+Z", rect(415.0, w_ya, 742.0, w_yb, 16.0),
                                          (CHASSIS_Z0 - 10.0) * SCALE, (Z_BOTTOM + 10.0) * SCALE))
-        plate_cuts.append(F.prism_cutter(f"Cut_ChassisSteerR_{stag}", "+Z", rect(826.0, w_ya, 1165.0, w_yb, 16.0),
+        plate_cuts.append(F.prism_cutter(f"Cut_ChassisSteerR_{stag}", "+Z", rect(840.0, w_ya, 1165.0, w_yb, 16.0),
                                          (CHASSIS_Z0 - 10.0) * SCALE, (Z_BOTTOM + 10.0) * SCALE))
     dx, dz, dr = DIFF
     unions.append(F.loft_solid("Chassis_Diff", "+X", [
-        (F.circle(0.0, dz, dr * math.sin(math.radians(a)), 24), (dx - dr * math.cos(math.radians(a))) * SCALE)
-        for a in (12, 35, 60, 90, 120, 145, 168)]))
+        (F.circle(0.0, dz, dr * math.sin(math.radians(a)), 28), (dx - dr * math.cos(math.radians(a))) * SCALE)
+        for a in (38, 52, 70, 90, 115, 140, 165)]))
     plate_cuts.append(F.prism_cutter("Chassis_DiffFlat", "+Z", rect(dx - dr - 20, -dr - 20, dx + dr + 20, dr + 20, 0),
                                      (CHASSIS_Z0 - 100.0) * SCALE, CHASSIS_Z0 * SCALE))
-    # open-top U-channel pinion & crown bevel gear chamber inside Chassis_Diff for PinionGear + AxleGear
+    # Close-running cylindrical bearing cradle & bevel gear chamber inside Chassis_Diff for PinionGear + AxleGear
     plate_cuts.append(F.prism_cutter("Cut_ChassisAxlePinion", "+X",
-                                     rect(-62.0, 318.0, 62.0, 485.0, 0),
-                                     3380.0 * SCALE, 3528.0 * SCALE))
+                                     rect(-68.0, 327.0, 68.0, 495.0, 0),
+                                     3380.0 * SCALE, 3520.0 * SCALE))
     plate_cuts.append(F.prism_cutter("Cut_ChassisAxleGear", "+Z",
-                                     rect(3455.0, 10.0, 3615.0, 58.0, 8.0),
-                                     258.5 * SCALE, 485.0 * SCALE))
+                                     rect(3445.0, 14.0, 3625.0, 98.0, 8.0),
+                                     248.0 * SCALE, 495.0 * SCALE))
     return plate, unions, plate_cuts
 
 
 def diff_cover():
     """The differential housing's underside, below the chassis plate: a black dome glued on under
-    the plate (printed flat side down), so the round housing shows below the car."""
+    the plate (printed flat side down), with a self-supporting 45-deg internal gable pocket clearing
+    the enlarged Ø8.00 mm AxleGear collar."""
     dx, dz, dr = DIFF
     rings = []
     for k in range(7):
         z = CHASSIS_Z0 - (CHASSIS_Z0 - (dz - dr) - 2.0) * k / 6     # stop 2 mm short of the pole: a small flat
         rings.append((F.circle(dx, 0.0, math.sqrt(dr * dr - (dz - z) ** 2), 32), z * SCALE))
-    return F.loft_solid("DiffCover", "+Z", rings)
+    cover = F.loft_solid("DiffCover", "+Z", rings)
+    gear_cut = F.prism_cutter(
+        "Cut_DiffCoverGear", "+Y",
+        [(3501.0, 260.0), (3569.0, 260.0), (3569.0, 244.0), (3535.0, 210.0), (3501.0, 244.0)],
+        14.0 * SCALE, 98.0 * SCALE,
+    )
+    return cover, [gear_cut]
 
 
 def exhaust_slots():

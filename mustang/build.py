@@ -172,7 +172,10 @@ def build_parts(body_ob, shell):
         link(part, "Parts")
         for p in pieces:
             add_union(part, link(p, "Cutters"))
-    link(details.diff_cover(), "Parts")
+    dcover, dcover_cuts = details.diff_cover()
+    link(dcover, "Parts")
+    for c in dcover_cuts:
+        add_boolean(dcover, link(c, "Cutters"))
     plate, unions, cuts = details.chassis_parts()
     link(plate, "Parts")
     for p in unions:

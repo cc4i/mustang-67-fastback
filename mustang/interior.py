@@ -483,7 +483,7 @@ def tub_parts():
     cuts.append(_cylinder("Tub_ColumnSocket", Vector(COLUMN_BASE) - axis * 95, Vector(COLUMN_BASE) + axis * 60, COLUMN_R + 0.15 / SCALE))
 
     # transmission tunnel, sculpted waterfall center console, and forward-swept T-handle shifter
-    pieces.append(_box("Tub_Tunnel", CAB_X0 + i, CAB_X1 - i, -168, 168, FLOOR_Z0, 515, 40))
+    pieces.append(_box("Tub_Tunnel", CAB_X0 + i, CAB_X1 - i, -176, 176, FLOOR_Z0, 515, 40))
     _waterfall_console_parts(pieces, cuts, late_pieces)
 
     # front bucket seats: smooth cushion with rounded front nose, lofted horseshoe thigh bolsters, reclined backrest,
@@ -574,13 +574,13 @@ def tub_parts():
     pieces.append(_box("Tub_CargoShelf", 3235.0, CAB_X1 - i, -(REAR_HALF - i), REAR_HALF - i, FLOOR_Z0, 710.0, 20))
     for k, sy in enumerate((-360.0, -180.0, 0.0, 180.0, 360.0)):
         pieces.append(_box(f"Tub_SeatTrimCargo{k}", 3315.0, CAB_X1 - i - 8.0, sy - 8.0, sy + 8.0, 706.0, 716.0, 3))
-    # self-supporting 45-deg gable-roofed open-bottom driveshaft U-channel (Y = -53..+53) and partitioned wire conduit (Y = -154..-74)
+    # self-supporting 45-deg gable-roofed open-bottom driveshaft U-channel (Y = -62..+62) and partitioned wire conduit (Y = -162..-82)
     cuts.append(F.prism_cutter("Tub_ShaftTunnel", "+X",
-                               [(-53.0, FLOOR_Z0 - 15.0), (53.0, FLOOR_Z0 - 15.0), (53.0, 448.0), (0.0, 501.0), (-53.0, 448.0)],
+                               [(-62.0, FLOOR_Z0 - 15.0), (62.0, FLOOR_Z0 - 15.0), (62.0, 446.0), (0.0, 508.0), (-62.0, 446.0)],
                                (CAB_X0 - 15.0) * SCALE, (CAB_X1 + 15.0) * SCALE))
 
     def _wire_prof(z0):
-        return [(-154.0, z0), (-74.0, z0), (-74.0, z0 + 57.0), (-114.0, z0 + 97.0), (-154.0, z0 + 57.0)]
+        return [(-162.0, z0), (-82.0, z0), (-82.0, z0 + 57.0), (-122.0, z0 + 97.0), (-162.0, z0 + 57.0)]
 
     wire_stations = [
         (CAB_X0 - 15.0, 335.0),
@@ -590,6 +590,23 @@ def tub_parts():
         (CAB_X1 + 15.0, 598.0),
     ]
     cuts.append(F.loft_solid("Tub_WireTunnel", "+X", [(_wire_prof(z0), x * SCALE) for x, z0 in wire_stations]))
+    # 4 self-supporting 45-deg gable-roofed bottom mortise sockets inside the solid front and rear seat
+    # risers that mate with Chassis_TubKeyF_L/R and Chassis_TubKeyR_L/R for positive X/Y sub-frame locking
+    for s, stag in ((-1, "L"), (1, "R")):
+        fy0, fy1 = sorted((s * 285.0, s * 355.0))
+        f_ym = 0.5 * (fy0 + fy1)
+        cuts.append(F.prism_cutter(
+            f"Tub_ChassisSlotF_{stag}", "+X",
+            [(fy0, FLOOR_Z0 - 15.0), (fy1, FLOOR_Z0 - 15.0), (fy1, 376.0), (f_ym, 411.0), (fy0, 376.0)],
+            2255.0 * SCALE, 2515.0 * SCALE,
+        ))
+        ry0, ry1 = sorted((s * 245.0, s * 315.0))
+        r_ym = 0.5 * (ry0 + ry1)
+        cuts.append(F.prism_cutter(
+            f"Tub_ChassisSlotR_{stag}", "+X",
+            [(ry0, FLOOR_Z0 - 15.0), (ry1, FLOOR_Z0 - 15.0), (ry1, 376.0), (r_ym, 411.0), (ry0, 376.0)],
+            3110.0 * SCALE, 3270.0 * SCALE,
+        ))
     return tub, pieces, cuts, late_pieces
 
 

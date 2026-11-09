@@ -81,24 +81,25 @@ def _oct_gable_prism_y(name, y0, y1, x_center, x_half, z_bot, z_wall_top):
 
 
 def _build_waymo_pod():
-    """Build the support-free (`floating == []`, `cantilevers == []`) 5.5 mm low-profile Burgundy
-    teardrop roof vision scoop (`WaymoPod`) and its matching `Body` roof cutters:
-      - `WaymoPod` rests 100% flat on `Z = 63.80 mm` (`1276.0` real mm) inside `Cut_WaymoSocket`
-        (`Z >= 63.60 mm` = `1272.0` real mm, `0.20 mm` clearance around all sides and bottom).
-      - Front Gothic-arched fisheye hood (`45 deg` self-supporting crown) frames the upper half of
-        the wide-angle/fisheye `OV5647` lens (`-9 deg` downward pitch).
-      - Top recessed acoustic/status ring (`Ø 11.0 mm`) vents the `INMP441` I2S MEMS microphone.
+    """Build the support-free (`floating == []`, `cantilevers == []`) low-profile Burgundy
+    teardrop roof vision scoop (`WaymoPod`) and its matching `Body` roof cutters sized for real BOM parts:
+      - `WaymoPod` rests 100% flat on `Z = 63.80 mm` (`1276.0` real mm) inside `Cut_WaymoSocket`.
+      - Front 15.2 mm Gothic-arched fisheye hood (`45 deg` self-supporting crown) frames the real
+        `Ø 14.0 mm` wide-angle/fisheye `OV5647` M12 lens barrel (`-9 deg` downward pitch).
+      - Sunk roof camera well (`Cut_WaymoSocket`) and `2.7 x 17.2 mm` vertical chimney (`Cut_WaymoChimney`)
+        house the `OV5647` camera and `16.0 mm` MIPI CSI ribbon behind the front seats.
+      - Top recessed acoustic/status pocket (`12.0 x 15.2 mm`) houses the real `10 x 14 x 2 mm` `INMP441` MEMS mic.
     """
     z_base = 1276.0  # 63.80 mm print: completely flat bottom face on Z=0 when printed!
     stations = [
         # (x_real, half_w_real, z_top_real) — sits 100% on the solid roof panel ahead of Glass_Rear (X >= 2900)
-        (2240.0, 150.0, 1378.0),
-        (2295.0, 198.0, 1402.0),
-        (2400.0, 220.0, 1406.0),
-        (2550.0, 212.0, 1396.0),
-        (2710.0, 198.0, 1382.0),
-        (2835.0, 176.0, 1362.0),
-        (2895.0, 110.0, 1306.0),
+        (2230.0, 190.0, 1418.0),
+        (2290.0, 255.0, 1462.0),
+        (2400.0, 285.0, 1472.0),
+        (2550.0, 278.0, 1460.0),
+        (2710.0, 258.0, 1432.0),
+        (2835.0, 225.0, 1396.0),
+        (2895.0, 150.0, 1318.0),
     ]
     n_arch = 16
     sections = []
@@ -114,55 +115,52 @@ def _build_waymo_pod():
     pod = F.loft_solid("WaymoPod", "+X", sections)
 
     # Cutters on WaymoPod (all upward-facing or 45-deg gable-roofed so floating == [] and cantilevers == []):
-    # 1. Front 45-deg Gothic-arched fisheye lens bay (X = 2230..2385, Y = -110..+110, Z = 1268..1325, peak 1435)
+    # 1. Front 15.2 mm wide 45-deg Gothic-arched fisheye lens bay for Ø 14.0 mm M12 barrel (X = 2220..2395, Y = -152..+152)
     lens_arch = [
-        (-110.0, z_base - 8.0),
-        (110.0, z_base - 8.0),
-        (110.0, 1325.0),
-        (0.0, 1435.0),
-        (-110.0, 1325.0),
+        (-152.0, z_base - 8.0),
+        (152.0, z_base - 8.0),
+        (152.0, 1345.0),
+        (0.0, 1497.0),
+        (-152.0, 1345.0),
     ]
-    c_lens = F.prism_cutter("WaymoPod_LensArch", "+X", lens_arch, 2230.0 * SCALE, 2385.0 * SCALE)
+    c_lens = F.prism_cutter("WaymoPod_LensArch", "+X", lens_arch, 2220.0 * SCALE, 2395.0 * SCALE)
 
-    # 2. Internal 45-deg gabled CSI ribbon & camera PCB tunnel running from the front lens bay (X = 2350)
-    #    back to the roof chimney (X = 2785), keeping >= 2.2 mm side walls and >= 1.3 mm crown wall so shells == 1!
+    # 2. Internal 45-deg gabled CSI ribbon & camera tunnel (X = 2350..2850, Y = -168..+168 = 16.8 mm wide for 16.0 mm FPC)
     cable_arch = [
-        (-125.0, z_base - 8.0),
-        (125.0, z_base - 8.0),
-        (125.0, 1282.0),
-        (0.0, 1336.0),
-        (-125.0, 1282.0),
+        (-168.0, z_base - 8.0),
+        (168.0, z_base - 8.0),
+        (168.0, 1280.0),
+        (0.0, 1368.0),
+        (-168.0, 1280.0),
     ]
     c_pod_cable = F.prism_cutter("WaymoPod_CableChannel", "+X", cable_arch, 2350.0 * SCALE, 2850.0 * SCALE)
 
-    # 3. Top upward-facing circular recess for the Waymo halo ring & INMP441 MEMS mic vents (X = 2500, Y = 0, Z = 1362..1425)
-    n_ring = 32
-    mic_circle = [(2500.0 + 92.0 * math.cos(2 * math.pi * k / n_ring),
-                   92.0 * math.sin(2 * math.pi * k / n_ring)) for k in range(n_ring)]
-    c_mic = F.prism_cutter("WaymoPod_MicCup", "+Z", mic_circle, 1362.0 * SCALE, 1425.0 * SCALE)
+    # 3. Top upward-facing 12.0 x 15.2 mm rounded recess for the real 10.0 x 14.0 x 2.0 mm INMP441 MEMS mic (X = 2520, Y = 0)
+    c_mic = F.prism_cutter("WaymoPod_MicCup", "+Z", _rect(2400.0, -152.0, 2640.0, 152.0, 24.0),
+                           1388.0 * SCALE, 1485.0 * SCALE)
 
-    # Matching Body cutters (`Cut_WaymoSocket` with +0.40 mm clearance around WaymoPod, plus vertical CSI ribbon chimney):
+    # Matching Body cutters (`Cut_WaymoSocket` with +0.40 mm clearance + 2.7 x 17.2 mm vertical CSI ribbon chimney):
     clr = 8.0  # 0.40 mm print clearance around the pod perimeter
-    z_sock = z_base - 6.0  # 0.30 mm print clearance below z_base (stays above cabin ceiling ~1230!)
+    z_sock = z_base - 12.0  # recessed roof socket floor (stays above cabin ceiling ~1230!)
     sock_pts = []
     for x, hw, _ in stations:
         sock_pts.append((x - clr if x == stations[0][0] else (x + clr if x == stations[-1][0] else x), hw + clr))
     sock_poly = [(x, -w) for x, w in sock_pts] + [(x, w) for x, w in reversed(sock_pts)]
-    c_body_sock = F.prism_cutter("Cut_WaymoSocket", "+Z", sock_poly, z_sock * SCALE, 1450.0 * SCALE)
+    c_body_sock = F.prism_cutter("Cut_WaymoSocket", "+Z", sock_poly, z_sock * SCALE, 1485.0 * SCALE)
 
-    # Vertical CSI ribbon & mic wire chimney through the rear roof header (X = 2842..2896, Y = -170..+170 = 17.0 mm wide)
+    # Vertical CSI ribbon & mic wire chimney through the rear roof header (X = 2842..2896, Y = -172..+172 = 17.2 mm wide)
     # Strictly behind front seats (X <= 2840) and ahead of Glass_Rear (X >= 2900), concealed under WaymoPod!
-    c_chimney = F.prism_cutter("Cut_WaymoChimney", "+Z", _rect(2842.0, -170.0, 2896.0, 170.0, 10.0),
-                               1040.0 * SCALE, 1450.0 * SCALE)
+    c_chimney = F.prism_cutter("Cut_WaymoChimney", "+Z", _rect(2842.0, -172.0, 2896.0, 172.0, 10.0),
+                               1040.0 * SCALE, 1485.0 * SCALE)
 
     return pod, [c_lens, c_pod_cable, c_mic], [c_body_sock, c_chimney]
 
 
 def _build_gc9a01_bezel():
     """Build the 0.0 mm protrusion sub-surface flush chrome bezel ring (`GC9A01Bezel`) for the
-    1.28-inch Round GC9A01 IPS TFT (`Ø 32.4 mm` active screen), modelled in its own local frame
-    (`rot = "LOCAL"`, flat back face on `Z = 0` for support-free printing) and positioned flush inside
-    `Cut_RearGlassHUD` on `Glass_Rear` at `(176.5, 0.0, 56.10) mm`, slope `+20.5 deg`.
+    1.28-inch Round GC9A01 IPS TFT (`Ø 32.4 mm` active screen on a `35.6 x 35.6 x 3.2 mm` PCB carrier),
+    modelled in its own local frame (`rot = "LOCAL"`, flat back face on `Z = 0` for support-free printing)
+    and positioned flush inside `Cut_RearGlassHUD` on `Glass_Rear` at `(176.5, 0.0, 56.10) mm`, slope `+20.5 deg`.
     """
     n_seg = 64
     r_out = 14.80   # Ø 29.60 mm outer chrome ring (0.40 mm radial clearance inside Ø 30.40 mm Cut_RearGlassHUD)
@@ -206,13 +204,22 @@ def _build_gc9a01_bezel():
     c_hud.location = Vector((176.5, 0.0, 56.10))
     c_hud.rotation_euler = Euler((0.0, math.radians(20.5), 0.0), 'XYZ')
 
-    # Matching wider vertical well in Body (`r = 16.20 mm`, Z = 40.0..62.0 mm) so Glass_Rear's cut rim
-    # has 1.0 mm radial clearance over Body and the sub-surface GC9A01 PCB sits cleanly inside Body!
+    # Matching vertical well in Body (`r = 324.0 real mm = Ø 32.40 mm`, Z = 800..1240) plus sub-surface PCB carrier well
     hud_well_circle = [(3530.0 + 324.0 * math.cos(2 * math.pi * k / 48),
                         324.0 * math.sin(2 * math.pi * k / 48)) for k in range(48)]
     c_body_hud = F.prism_cutter("Cut_RearGlassHUDWell", "+Z", hud_well_circle, 800.0 * SCALE, 1240.0 * SCALE)
 
-    return bezel, c_hud, c_body_hud
+    bm_pcb = bmesh.new()
+    bmesh.ops.create_cube(bm_pcb, size=1.0)
+    bmesh.ops.scale(bm_pcb, vec=(35.0, 37.2, 5.2), verts=bm_pcb.verts)
+    me_pcb = bpy.data.meshes.new("Cut_RearGlassHUDPCB")
+    bm_pcb.to_mesh(me_pcb)
+    bm_pcb.free()
+    c_body_pcb = bpy.data.objects.new("Cut_RearGlassHUDPCB", me_pcb)
+    c_body_pcb.location = Vector((176.5, 0.0, 50.0))
+    c_body_pcb.rotation_euler = Euler((0.0, math.radians(20.5), 0.0), 'XYZ')
+
+    return bezel, c_hud, [c_body_hud, c_body_pcb]
 
 
 def _apply_ai_upgrades():
@@ -238,7 +245,7 @@ def _apply_ai_upgrades():
     boot_ob = bpy.data.objects["BootTub"]
     bay_ob = bpy.data.objects["BayTub"]
 
-    # 1. WaymoPod (5.5 mm low-profile Burgundy roof scoop) + Body roof socket & CSI chimney
+    # 1. WaymoPod (low-profile Burgundy roof scoop) + Body roof socket & CSI chimney
     pod, pod_cuts, body_roof_cuts = _build_waymo_pod()
     build.link(pod, "Parts")
     for c in pod_cuts:
@@ -247,91 +254,92 @@ def _apply_ai_upgrades():
         build.add_boolean(body_ob, build.link(c, "Cutters"))
 
     # 2. GC9A01Bezel (0.0 mm protrusion sub-surface chrome bezel in Glass_Rear) + Cut_RearGlassHUD
-    bezel, c_hud, c_body_hud = _build_gc9a01_bezel()
+    bezel, c_hud, body_hud_cuts = _build_gc9a01_bezel()
     build.link(bezel, "Parts")
     build.add_boolean(glass_r, build.link(c_hud, "Cutters"))
-    build.add_boolean(body_ob, build.link(c_body_hud, "Cutters"))
+    for c in body_hud_cuts:
+        build.add_boolean(body_ob, build.link(c, "Cutters"))
 
-    # 3. Bridged Two-Story Rear Avionics Deck & Full-Length Stepped L-Rail Cradle for Radxa Zero 3W (65 x 30 x 5.2 mm):
-    # 3a. Body bulkhead bridge (`X = 3390..4010` = `169.5..200.5 mm`):
-    #     Stepped L-ledge cross-section: lower wire/component relief (`Y = -260..+260, Z = 660..720`),
-    #     two continuous 2.25 mm horizontal PCB support ledges at `Z = 720` (`36.0 mm`, `|Y| = 260..305`),
-    #     vertical lateral keeper walls (`|Y| = 305`, `Z = 720..860`), and a 45-deg self-supporting gable roof (peak `Z = 1165`).
+    # 3. Bridged Two-Story Rear Avionics Deck & Full-Length Stepped L-Rail Cradle for Radxa Zero 3W (65 x 30 x 5.0 mm):
+    # 3a. Body bulkhead bridge (`X = 3390..4020` = `169.5..201.0 mm`):
+    #     Deepened lower battery/BEC vault (`Y = -280..+280 = 28.0 mm wide, Z = 584..756 = 29.2..37.8 mm = 8.6 mm tall`),
+    #     two continuous PCB support ledges at `Z = 756` (`37.8 mm`, `|Y| = 280..310`),
+    #     vertical lateral keeper walls (`|Y| = 310`, `Z = 756..865`), and a 45-deg self-supporting gable roof (peak `Z = 1175`).
     bulkhead_stepped_prof = [
-        (-260.0, 660.0),
-        (260.0, 660.0),
-        (260.0, 720.0),
-        (305.0, 720.0),
-        (305.0, 860.0),
-        (0.0, 1165.0),
-        (-305.0, 860.0),
-        (-305.0, 720.0),
-        (-260.0, 720.0),
+        (-280.0, 584.0),
+        (280.0, 584.0),
+        (280.0, 756.0),
+        (310.0, 756.0),
+        (310.0, 865.0),
+        (0.0, 1175.0),
+        (-310.0, 865.0),
+        (-310.0, 756.0),
+        (-280.0, 756.0),
     ]
-    c_bulkhead = F.prism_cutter("Cut_RadxaBulkheadBridge", "+X", bulkhead_stepped_prof, 3390.0 * SCALE, 4010.0 * SCALE)
+    c_bulkhead = F.prism_cutter("Cut_RadxaBulkheadBridge", "+X", bulkhead_stepped_prof, 3390.0 * SCALE, 4020.0 * SCALE)
     build.add_boolean(body_ob, build.link(c_bulkhead, "Cutters"))
 
-    # 3b. BootTub (`X = 4004..4360` = `200.2..218.0 mm`):
-    #     Clear the central lower floor (`Y = -260..+260, Z = 596..720`) for the 2S LiPo + 5V 3A BEC vault,
-    #     open the front bridge entry (`Z = 720..860, Y = -305..+305`), and union stepped L-rails (`Z = 592..720`
-    #     shelf at `|Y| = 265..345` + `Z = 716..825` wall at `|Y| = 305..345`) plus rear corner stops (`X = 4322..4338`)
-    #     that physically support and lock the rear of the 30.0 mm wide Radxa Zero 3W (`Y = -15..+15 mm, X = 151..216 mm`).
-    c_boot_clear = F.prism_cutter("BootTub_AIClearFloor", "+Z", _rect(4030.0, -260.0, 4334.0, 260.0, 8.0),
-                                  596.0 * SCALE, 725.0 * SCALE)
-    c_boot_bridge = F.prism_cutter("BootTub_RadxaBridge", "+Z", _rect(3995.0, -305.0, 4040.0, 305.0, 8.0),
-                                   720.0 * SCALE, 860.0 * SCALE)
+    # 3b. BootTub (`X = 3988..4368` = `199.4..218.4 mm`, `Y = -486..+486` = `48.6 mm`, `Z = 564..855` = `28.2..42.75 mm`):
+    #     Clear the full-width lower floor (`X = 3980..4346, Y = -450..+450 = 45.0 mm wide, Z = 584..760 = 29.2..38.0 mm`)
+    #     so a real 35.0 x 20.0 x 8.0 mm 2S 300-350mAh LiPo + 18.0 x 12.0 x 4.2 mm 5V 3A Buck BEC + Slide Switch fit
+    #     both transversely inside BootTub (45.0 mm Y span) and longitudinally across the bridged lower vault (X = 172..217 mm).
+    #     Support the rear of the Radxa Zero 3W (`Z = 37.8 mm`) on rear corner L-pillars (`X = 4284..4346, |Y| = 275..355`)
+    #     so the middle of BootTub stays 100% open across all 45.0 mm of width!
+    c_boot_clear = F.prism_cutter("BootTub_AIClearFloor", "+Z", _rect(3980.0, -450.0, 4346.0, 450.0, 8.0),
+                                  584.0 * SCALE, 760.0 * SCALE)
+    c_boot_bridge = F.prism_cutter("BootTub_RadxaBridge", "+Z", _rect(3980.0, -310.0, 4040.0, 310.0, 8.0),
+                                   756.0 * SCALE, 865.0 * SCALE)
     build.add_boolean(boot_ob, build.link(c_boot_clear, "Cutters"))
     build.add_boolean(boot_ob, build.link(c_boot_bridge, "Cutters"))
     for tag, sgn in (("L", -1.0), ("R", 1.0)):
-        sy0, sy1 = sorted((sgn * 265.0, sgn * 345.0))
-        wy0, wy1 = sorted((sgn * 305.0, sgn * 345.0))
-        ry0, ry1 = sorted((sgn * 220.0, sgn * 345.0))
-        shelf = F.prism_cutter(f"BootTub_RadxaShelf_{tag}", "+Z", _rect(4030.0, sy0, 4336.0, sy1, 4.0),
-                               592.0 * SCALE, 720.0 * SCALE)
-        wall = F.prism_cutter(f"BootTub_RadxaWall_{tag}", "+Z", _rect(4030.0, wy0, 4336.0, wy1, 3.0),
-                              716.0 * SCALE, 825.0 * SCALE)
-        rstop = F.prism_cutter(f"BootTub_RadxaStopR_{tag}", "+Z", _rect(4322.0, ry0, 4338.0, ry1, 3.0),
-                               716.0 * SCALE, 825.0 * SCALE)
+        sy0, sy1 = sorted((sgn * 285.0, sgn * 355.0))
+        wy0, wy1 = sorted((sgn * 310.0, sgn * 355.0))
+        ry0, ry1 = sorted((sgn * 225.0, sgn * 355.0))
+        shelf = F.prism_cutter(f"BootTub_RadxaShelf_{tag}", "+Z", _rect(4310.0, sy0, 4346.0, sy1, 4.0),
+                               580.0 * SCALE, 756.0 * SCALE)
+        wall = F.prism_cutter(f"BootTub_RadxaWall_{tag}", "+Z", _rect(4310.0, wy0, 4346.0, wy1, 3.0),
+                              752.0 * SCALE, 845.0 * SCALE)
+        rstop = F.prism_cutter(f"BootTub_RadxaStopR_{tag}", "+Z", _rect(4326.0, ry0, 4346.0, ry1, 3.0),
+                               752.0 * SCALE, 845.0 * SCALE)
         build.add_union(boot_ob, build.link(shelf, "Cutters"))
         build.add_union(boot_ob, build.link(wall, "Cutters"))
         build.add_union(boot_ob, build.link(rstop, "Cutters"))
 
     # 3c. InteriorTub (`X = 2990..3411` = `149.5..170.55 mm`):
-    #     - Union front L-bracket cradle pillars (`Tub_RadxaFrontPillar_L/R`, `X = 2990..3100, |Y| = 250..345, Z = 310..830`)
-    #       anchored inside the solid cabin floor (`FLOOR_Z0..FLOOR_Z1 = 290..330`) so the front of the Radxa Zero 3W
-    #       (`X = 151.0 mm`) sits on a `Z = 36.0 mm` shelf (`|Y| = 12.5..15.25 mm`) with zero bottom cantilever.
+    #     - Union front L-bracket cradle pillars (`Tub_RadxaFrontPillar_L/R`, `X = 2990..3100, |Y| = 250..345, Z = 310..840`)
+    #       anchored in the solid cabin floor (`FLOOR_Z0..FLOOR_Z1 = 290..330`) so the front of the Radxa Zero 3W
+    #       (`X = 151.0 mm`) sits on a `Z = 37.8 mm` shelf with zero bottom cantilever.
     #     - Union level rear deck extensions (`Tub_AISpeakerDeck` at `Y = -65..+510` and `Tub_AIAmpDeck` at `Y = -510..-160`,
-    #       `X = 3085..3408, Z = 520..720`) on top of `Tub_RearSeat + Tub_CargoShelf` (staying clear of `Tub_ShaftTunnel`
-    #       `Z <= 501` and `Tub_WireTunnel` `Y = -154..-74`).
-    #     - Cut `Tub_AIRadxaSled` (`X = 3015..3425, Y = -305..+305, Z = 720..920`) so the Radxa board slides flat at `Z = 36.0 mm`.
-    #     - Cut the full-size `15.25 x 24.50 x 7.75 mm` speaker pocket (`Tub_AISpeakerBay`, `X = 3095..3400, Y = -45..+445, Z = 565..920`)
-    #       for the real physical `15.0 x 24.0 x 4.0 mm` speaker, and `Tub_AIAmpDrvBay` (`X = 3100..3395, Y = -490..-175, Z = 565..920`)
-    #       for the `MAX98357A + DRV8833` boards all the way through the top of `Tub_RearSeatBack` (`Z <= 870`) so no upper
-    #       seatback remnant cantilevers over the pockets.
+    #       `X = 3085..3408, Z = 520..756`) inside `Tub_RearSeat + Tub_CargoShelf` (`|Y| <= 525`).
+    #     - Cut `Tub_AIRadxaSled` (`X = 3015..3425, Y = -310..+310, Z = 756..920`) so the Radxa board slides flat at `Z = 37.8 mm`.
+    #     - Cut the `15.40 x 24.50 x 10.90 mm` speaker pocket (`Tub_AISpeakerBay`, `X = 3092..3400, Y = -45..+445, Z = 560..920`)
+    #       for the real physical `15.0 x 24.0 x 4.0 mm` (`1524`) speaker.
+    #     - Cut the deep `15.40 x 16.20 x 17.90 mm` dual-board pocket (`Tub_AIAmpDrvBay`, `X = 3092..3400, Y = -496..-172, Z = 420..920`)
+    #       that holds BOTH the `DRV8833` and `MAX98357A` boards stacked vertically with zero overhang!
     for tag, (py0, py1) in (("L", (-345.0, -250.0)), ("R", (250.0, 345.0))):
         pillar = F.prism_cutter(f"Tub_RadxaFrontPillar_{tag}", "+Z", _rect(2990.0, py0, 3100.0, py1, 4.0),
-                                310.0 * SCALE, 830.0 * SCALE)
+                                310.0 * SCALE, 840.0 * SCALE)
         build.add_union(tub_ob, build.link(pillar, "Cutters"))
 
-    u_spk_deck = F.prism_cutter("Tub_AISpeakerDeck", "+Z", _rect(3085.0, -65.0, 3408.0, 510.0, 10.0),
-                                520.0 * SCALE, 720.0 * SCALE)
-    u_amp_deck = F.prism_cutter("Tub_AIAmpDeck", "+Z", _rect(3085.0, -510.0, 3408.0, -160.0, 10.0),
-                                520.0 * SCALE, 720.0 * SCALE)
+    u_spk_deck = F.prism_cutter("Tub_AISpeakerDeck", "+Z", _rect(3085.0, -55.0, 3408.0, 510.0, 10.0),
+                                520.0 * SCALE, 756.0 * SCALE)
+    u_amp_deck = F.prism_cutter("Tub_AIAmpDeck", "+Z", _rect(3085.0, -510.0, 3408.0, -172.0, 10.0),
+                                520.0 * SCALE, 756.0 * SCALE)
     build.add_union(tub_ob, build.link(u_spk_deck, "Cutters"))
     build.add_union(tub_ob, build.link(u_amp_deck, "Cutters"))
 
-    c_tub_radxa = F.prism_cutter("Tub_AIRadxaSled", "+Z", _rect(3015.0, -305.0, 3425.0, 305.0, 6.0),
-                                 720.0 * SCALE, 920.0 * SCALE)
-    c_spk_bay = F.prism_cutter("Tub_AISpeakerBay", "+Z", _rect(3095.0, -45.0, 3400.0, 445.0, 10.0),
-                               565.0 * SCALE, 920.0 * SCALE)
-    c_amp_bay = F.prism_cutter("Tub_AIAmpDrvBay", "+Z", _rect(3100.0, -490.0, 3395.0, -175.0, 10.0),
-                               565.0 * SCALE, 920.0 * SCALE)
+    c_tub_radxa = F.prism_cutter("Tub_AIRadxaSled", "+Z", _rect(3015.0, -310.0, 3425.0, 310.0, 6.0),
+                                 756.0 * SCALE, 920.0 * SCALE)
+    c_spk_bay = F.prism_cutter("Tub_AISpeakerBay", "+Z", _rect(3092.0, -45.0, 3400.0, 445.0, 8.0),
+                               560.0 * SCALE, 920.0 * SCALE)
+    c_amp_bay = F.prism_cutter("Tub_AIAmpDrvBay", "+Z", _rect(3092.0, -498.0, 3400.0, -182.0, 8.0),
+                               420.0 * SCALE, 920.0 * SCALE)
     build.add_boolean(tub_ob, build.link(c_tub_radxa, "Cutters"))
     build.add_boolean(tub_ob, build.link(c_spk_bay, "Cutters"))
     build.add_boolean(tub_ob, build.link(c_amp_bay, "Cutters"))
 
-    # 4. BayTub: front open-top `VL53L1X` ToF sensor cradle slot (`X = 674..736, Y = -182..+182, Z = 435..600`)
-    c_tof_slot = F.prism_cutter("BayTub_ToFSlot", "+Z", _rect(674.0, -182.0, 736.0, 182.0, 8.0),
+    # 4. BayTub: front open-top `VL53L1X` ToF sensor cradle slot (`X = 674..742 = 33.7..37.1 mm, Y = -188..+188 = 18.8 mm, Z = 435..600`)
+    c_tof_slot = F.prism_cutter("BayTub_ToFSlot", "+Z", _rect(674.0, -188.0, 742.0, 188.0, 8.0),
                                 435.0 * SCALE, 600.0 * SCALE)
     build.add_boolean(bay_ob, build.link(c_tof_slot, "Cutters"))
 
@@ -346,21 +354,31 @@ def _apply_ai_upgrades():
 
 
 def verify_virtual_ai_hardware():
-    """Verify 0.0 mm^3 overlap between the virtual 1:20 AI hardware envelopes
-    (Radxa Zero 3W 65x30x5.2mm, OV5647 Fisheye + 16mm CSI ribbon cable, GC9A01 1.28" HUD,
-    2S LiPo, 5V 3A BEC, full-size 15x24x4mm Speaker, MAX98357A + DRV8833, VL53L1X ToF)
+    """Verify 0.0 mm^3 overlap between the REAL physical 1:20 AI BOM hardware envelopes:
+      - Radxa Zero 3W: 65.0 x 30.0 x 5.0 mm
+      - OV5647 Lens Barrel + Camera Module: Ø 14.0 mm (6.0 x 14.0 x 3.6 mm) + 16.0 mm wide CSI ribbon
+      - INMP441 MEMS Mic Breakout: 10.0 x 14.0 x 2.0 mm
+      - GC9A01 1.28" Round Display PCB Carrier: 32.0 x 35.6 x 3.2 mm
+      - 2S 7.4V 300-350mAh LiPo Battery: 35.0 x 20.0 x 8.0 mm (plus transverse 38.0 x 15.0 x 8.0 mm fit)
+      - 5V 3A Buck BEC (Mini360 / Pololu): 16.0 x 11.5 x 4.0 mm
+      - Full-size 1524 Cabin Speaker: 15.0 x 24.0 x 4.0 mm
+      - DRV8833 Dual H-Bridge Breakout: 14.8 x 15.0 x 3.2 mm
+      - MAX98357A I2S Amp Breakout: 14.8 x 14.0 x 3.2 mm
+      - VL53L1X Front ToF Laser Breakout: 3.2 x 18.0 x 5.5 mm
     and all printed parts."""
     specs = [
         # (name, center_print_mm, size_print_mm, rot_deg)
-        ("_v_radxa_zero_3w", (183.5, 0.0, 38.7), (65.0, 30.0, 5.0), (0.0, 0.0, 0.0)),
+        ("_v_radxa_zero_3w", (183.5, 0.0, 40.5), (65.0, 30.0, 5.0), (0.0, 0.0, 0.0)),
         ("_v_csi_ribbon", (143.4, 0.0, 52.4), (1.6, 16.0, 21.8), (0.0, 0.0, 0.0)),
-        ("_v_lipo_2s", (209.2, 5.5, 32.8), (14.0, 14.0, 5.0), (0.0, 0.0, 0.0)),
-        ("_v_bec_5v", (209.2, -7.8, 32.5), (14.0, 9.5, 4.0), (0.0, 0.0, 0.0)),
-        ("_v_speaker_1524", (162.38, 10.0, 30.5), (14.8, 24.0, 4.0), (0.0, 0.0, 0.0)),
-        ("_v_amp_drv8833", (162.38, -16.6, 30.5), (14.0, 15.0, 3.8), (0.0, 0.0, 0.0)),
-        ("_v_gc9a01_pcb", (176.5, 0.0, 50.5), (16.0, 20.0, 2.6), (0.0, 20.5, 0.0)),
-        ("_v_ov5647_lens", (115.6, 0.0, 65.5), (4.8, 7.6, 2.4), (0.0, 9.0, 0.0)),
-        ("_v_vl53l1x_tof", (35.2, 0.0, 24.5), (2.6, 16.0, 5.0), (0.0, 0.0, 0.0)),
+        ("_v_lipo_2s", (193.0, 2.5, 33.4), (35.0, 20.0, 8.0), (0.0, 0.0, 0.0)),
+        ("_v_bec_5v", (207.2, -15.0, 31.5), (16.0, 11.5, 4.0), (0.0, 0.0, 0.0)),
+        ("_v_speaker_1524", (162.3, 10.0, 30.5), (15.0, 24.0, 4.0), (0.0, 0.0, 0.0)),
+        ("_v_drv8833", (162.3, -17.0, 23.2), (14.8, 14.6, 3.2), (0.0, 0.0, 0.0)),
+        ("_v_max98357a", (162.3, -17.0, 28.5), (14.8, 14.0, 3.2), (0.0, 0.0, 0.0)),
+        ("_v_gc9a01_pcb", (176.5, 0.0, 50.0), (32.0, 35.6, 3.2), (0.0, 20.5, 0.0)),
+        ("_v_ov5647_lens", (115.2, 0.0, 65.7), (6.0, 14.0, 3.6), (0.0, 9.0, 0.0)),
+        ("_v_inmp441_mic", (126.0, 0.0, 70.8), (10.0, 14.0, 2.0), (0.0, 0.0, 0.0)),
+        ("_v_vl53l1x_tof", (35.4, 0.0, 24.8), (3.2, 18.0, 5.5), (0.0, 0.0, 0.0)),
     ]
     v_objs = []
     for name, loc, sz, rot in specs:
@@ -415,9 +433,9 @@ def build_and_export(save_blend=True):
         bpy.ops.wm.save_as_mainfile(filepath=AI_BLEND_PATH)
 
     summary = {
-        "edition": "e-Mustang 1967 Fastback 1:20 AI Edition (v3.0.0 — Sleek Sub-Surface Option B)",
-        "blend_path": AI_BLEND_PATH,
-        "stl_dir": AI_STL_DIR,
+        "edition": "e-Mustang 1967 Fastback 1:20 AI Edition (v3.5.0 - Sleek Sub-Surface Option B + Max-Beef Drivetrain)",
+        "blend_path": "output/ai_edition/mustang_67_ai_edition.blend",
+        "stl_dir": "output/ai_edition/stl",
         "stl_count": len(exp_report),
         "printed_pieces": sum(v["qty"] for v in exp_report.values()),
         "printcheck": pc_report,
