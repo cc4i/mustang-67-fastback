@@ -6,6 +6,15 @@ All notable changes and architectural upgrades to the procedural 1967 Ford Musta
 
 ---
 
+## [v3.6.2] - 2026-11-13 - Transparent Underbody Stage, Elevation Fade & Under-Chassis Illumination
+
+### Fixed
+- **Transparent Underbody Turntable Stage (`site/src/viewer3d.ts`, `site/src/main.ts`)**:
+  - Replaced the opaque `CylinderGeometry` showroom pedestal (`pad` at `Y = -1.2`, whose solid underside blocked the `Underbody` camera preset, `Stage 4` under-chassis view, and `+Z` bottom-up assembly parts) with a single-sided (`FrontSide`, `+Y` normal, `depthWrite: false`) translucent smoked-glass `CircleGeometry` disc + thin outer ring and smooth camera-elevation fade (`opacity -> 0` and `visible = false` when `camera.position.y <= 0`).
+  - Expanded `OrbitControls.maxPolarAngle` from `0.88π` (`158°`) to `0.97π` (`174.6°`), added dual under-chassis fill lights (`underKeyLight` + `underFillLight`) so matte-black `Chassis`, `SteeringLink`, `Knuckle_L/R`, and `DiffCover` details read crisply from below, and reset `xray: false` on exterior/underbody camera presets after leaving `7T:9T Gears`.
+
+---
+
 ## [v3.6.1] - 2026-11-13 - Fix Left/Right Wheel Spin Parity, Zero-Runout Gear/Shaft Origins & Differential X-Ray Cutaway
 
 ### Fixed

@@ -11,12 +11,12 @@ import type {
 import { MustangStudio3D } from './viewer3d';
 
 const CAMERA_PRESETS: Record<string, { label: string; preset: CameraPreset; xray?: boolean }> = {
-  front34: { label: 'Front 3/4', preset: { pos: [-165, 88, 190], target: [112, 30, 0] } },
-  rear34: { label: 'Rear 3/4', preset: { pos: [355, 92, 165], target: [125, 34, 0] } },
-  engine: { label: '289 V8 Bay', preset: { pos: [-55, 118, 92], target: [62, 26, 0] } },
+  front34: { label: 'Front 3/4', preset: { pos: [-165, 88, 190], target: [112, 30, 0] }, xray: false },
+  rear34: { label: 'Rear 3/4', preset: { pos: [355, 92, 165], target: [125, 34, 0] }, xray: false },
+  engine: { label: '289 V8 Bay', preset: { pos: [-55, 118, 92], target: [62, 26, 0] }, xray: false },
   gears: { label: '7T:9T Gears', preset: { pos: [215, 22, 78], target: [176, 18, 0] }, xray: true },
-  cabin: { label: 'Twin-Cowl Cabin', preset: { pos: [148, 86, 110], target: [98, 36, 0] } },
-  chassis: { label: 'Underbody', preset: { pos: [112, -135, 155], target: [112, 14, 0] } },
+  cabin: { label: 'Twin-Cowl Cabin', preset: { pos: [148, 86, 110], target: [98, 36, 0] }, xray: false },
+  chassis: { label: 'Underbody', preset: { pos: [113, -195, 165], target: [113, 14, 0] }, xray: false },
 };
 
 function parseInitialUrlParams(): {

@@ -109,6 +109,9 @@ export class MustangStudio3D {
   private hudCanvas: HTMLCanvasElement;
   private hudCtx: CanvasRenderingContext2D;
   private hudTexture: THREE.CanvasTexture;
+  private stageDiscMat: THREE.MeshStandardMaterial | null = null;
+  private stageDiscMesh: THREE.Mesh | null = null;
+  private stageGridMat: THREE.Material | null = null;
   private pulsePhase = 0;
   private wheelSpinAngle = 0;
 
@@ -183,7 +186,7 @@ export class MustangStudio3D {
     this.controls.dampingFactor = 0.07;
     this.controls.minDistance = 45;
     this.controls.maxDistance = 680;
-    this.controls.maxPolarAngle = Math.PI * 0.88;
+    this.controls.maxPolarAngle = Math.PI * 0.97;
     this.controls.target.set(112, 30, 0);
     this.controls.update();
 
@@ -222,26 +225,55 @@ export class MustangStudio3D {
     rimLight.position.set(280, 140, -190);
     this.scene.add(rimLight);
 
-    const underLight = new THREE.DirectionalLight(0x64748b, 0.55);
-    underLight.position.set(110, -160, 40);
-    this.scene.add(underLight);
+    const underKeyLight = new THREE.DirectionalLight(0xf1f5f9, 1.35);
+    underKeyLight.position.set(70, -210, 130);
+    this.scene.add(underKeyLight);
 
-    // Subtle showroom turntable pedestal centered under the 226 mm car (X = 0..226 -> center X = 113)
-    const padGeo = new THREE.CylinderGeometry(168, 174, 2.2, 72);
+    const underFillLight = new THREE.DirectionalLight(0x93c5fd, 0.85);
+    underFillLight.position.set(190, -180, -120);
+    this.scene.add(underFillLight);
+
+    // Translucent smoked-glass showroom stage (single-sided +Y normal + elevation fade so Underbody views are 100% unobstructed)
+    const padGeo = new THREE.CircleGeometry(170, 84);
+    padGeo.rotateX(-Math.PI / 2);
     const padMat = new THREE.MeshStandardMaterial({
-      color: 0x0f172a,
-      roughness: 0.42,
-      metalness: 0.35,
+      color: 0x1e293b,
+      roughness: 0.24,
+      metalness: 0.15,
+      transparent: true,
+      opacity: 0.22,
+      depthWrite: false,
+      side: THREE.FrontSide,
     });
     const pad = new THREE.Mesh(padGeo, padMat);
-    pad.position.set(113, -1.2, 0);
+    pad.position.set(113, -0.15, 0);
+    pad.renderOrder = -2;
+    this.stageDiscMat = padMat;
+    this.stageDiscMesh = pad;
     this.scene.add(pad);
 
+    const rimGeo = new THREE.RingGeometry(168.8, 170.4, 96);
+    rimGeo.rotateX(-Math.PI / 2);
+    const rimMat = new THREE.MeshBasicMaterial({
+      color: 0x38bdf8,
+      transparent: true,
+      opacity: 0.28,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+    });
+    const rim = new THREE.Mesh(rimGeo, rimMat);
+    rim.position.set(113, -0.12, 0);
+    rim.renderOrder = -1;
+    this.scene.add(rim);
+
     const grid = new THREE.GridHelper(340, 34, 0x334155, 0x1e293b);
-    grid.position.set(113, 0.05, 0);
+    grid.position.set(113, -0.05, 0);
+    grid.renderOrder = -1;
     const gridMat = grid.material as THREE.Material;
     gridMat.transparent = true;
-    gridMat.opacity = 0.45;
+    gridMat.depthWrite = false;
+    gridMat.opacity = 0.36;
+    this.stageGridMat = gridMat;
     this.scene.add(grid);
   }
 
@@ -791,6 +823,17 @@ export class MustangStudio3D {
     }
 
     this.controls.update();
+
+    // Fade translucent stage disc & grid smoothly as camera approaches or orbits below floor plane (Y <= 0)
+    const elevT = THREE.MathUtils.clamp(this.camera.position.y / 14.0, 0, 1);
+    if (this.stageDiscMat && this.stageDiscMesh) {
+      this.stageDiscMat.opacity = 0.22 * elevT;
+      this.stageDiscMesh.visible = elevT > 0.01;
+    }
+    if (this.stageGridMat) {
+      this.stageGridMat.opacity = 0.08 + 0.28 * elevT;
+    }
+
     this.renderer.render(this.scene, this.camera);
   };
 }
