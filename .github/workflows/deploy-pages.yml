@@ -39,7 +39,7 @@ jobs:
           cache-dependency-path: site/package-lock.json
 
       - name: Install dependencies & copy first-party Draco WASM decoder
-        run: npm ci
+        run: npm install --no-audit --no-fund
 
       - name: Typecheck & build static Three.js bundle
         run: npm run build
