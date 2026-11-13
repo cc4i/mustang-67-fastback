@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Strict Content-Security-Policy: zero third-party CDNs, zero unsafe-inline scripts, wasm-unsafe-eval solely for first-party Draco WASM -->
+    <!-- TODO(security): GitHub Pages static hosting cannot set HTTP response headers X-Frame-Options or CSP frame-ancestors; add X-Frame-Options: SAMEORIGIN and frame-ancestors 'self' if served behind a custom reverse proxy or Cloud CDN. -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; style-src 'self'; img-src 'self' data: blob:; connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none';"
+    />
+    <title>1967 Ford Mustang Fastback (e-Mustang 1:20) — Interactive 3D Assembly &amp; Drive Studio</title>
+    <meta
+      name="description"
+      content="Interactive 3D assembly guide, 9-plate Bambu print explorer, and live kinematic RC + Gemini AI test-drive studio for the 100% code-generated 1:20 1967 Ford Mustang Fastback."
+    />
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

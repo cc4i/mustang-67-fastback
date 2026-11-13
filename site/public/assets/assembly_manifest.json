@@ -1,0 +1,2490 @@
+{
+  "project": "1967 Ford Mustang Fastback (`e-Mustang`) - 1:20 Printable RC & Gemini AI Studio",
+  "version": "3.6.0",
+  "scale": "1:20",
+  "dimensions_mm": [
+    226,
+    91,
+    66
+  ],
+  "assets": {
+    "rc_glb": "assets/mustang_rc.glb",
+    "rc_glb_bytes": 2624804,
+    "ai_delta_glb": "assets/mustang_ai_delta.glb",
+    "ai_delta_glb_bytes": 794324
+  },
+  "counts": {
+    "classic_rc": {
+      "parts": 67,
+      "stls": 53,
+      "pieces": 73,
+      "plates": 9
+    },
+    "ai_edition": {
+      "parts": 69,
+      "stls": 55,
+      "pieces": 75,
+      "plates": 9,
+      "bom_modules": 14,
+      "harnesses": 5
+    },
+    "stage1_mule": {
+      "stls": 16,
+      "pieces": 23,
+      "print_time_hrs": 2.5
+    }
+  },
+  "kinematics": {
+    "hood_max_deg": 50.0,
+    "trunk_max_deg": 40.0,
+    "door_max_deg": 65.0,
+    "steer_max_deg": 15.0,
+    "steering_link_shift_mm": 0.83,
+    "bevel_gear_ratio_pinion_to_axle": [
+      7,
+      9
+    ],
+    "hinge_pivots_3js": {
+      "Hood": [
+        77.0,
+        44.529,
+        -0.0
+      ],
+      "TrunkLid": [
+        197.25,
+        53.697,
+        -0.0
+      ],
+      "Door_L": [
+        83.0,
+        0.0,
+        39.75
+      ],
+      "Door_R": [
+        83.0,
+        0.0,
+        -39.75
+      ],
+      "Knuckle_L": [
+        39.6,
+        16.5,
+        29.8
+      ],
+      "Knuckle_R": [
+        39.6,
+        16.5,
+        -29.8
+      ]
+    }
+  },
+  "plates": [
+    {
+      "plate": 1,
+      "group": "1_body",
+      "title": "Plate 1 - Fastback Body & Tinted Glass Inlays",
+      "colour_name": "Burgundy + Black Inlays",
+      "colour": "#6B0F1A",
+      "pieces": 3,
+      "notes": "Multi-colour assembled print (`body.stl` + `windshield.stl` + `rear_glass.stl`) with `tree(auto)` build-plate supports.",
+      "stls": [
+        "body.stl",
+        "windshield.stl",
+        "rear_glass.stl"
+      ]
+    },
+    {
+      "plate": 2,
+      "group": "1_hood",
+      "title": "Plate 2 - Hinged Hood & Trunk Lid",
+      "colour_name": "Burgundy",
+      "colour": "#6B0F1A",
+      "pieces": 2,
+      "notes": "Dedicated plate so `tree(auto)` supports never crowd neighbouring parts.",
+      "stls": [
+        "hood.stl",
+        "trunk_lid.stl"
+      ]
+    },
+    {
+      "plate": 3,
+      "group": "1_doors",
+      "title": "Plate 3 - Hinged Doors (+ Roof Pod in AI Edition)",
+      "colour_name": "Burgundy",
+      "colour": "#6B0F1A",
+      "pieces": 2,
+      "pieces_ai": 3,
+      "notes": "Doors print flat on their inner face (`0` supports); AI Edition adds support-free `waymo_pod.stl`.",
+      "stls": [
+        "door_l.stl",
+        "door_r.stl"
+      ],
+      "stls_ai_extra": [
+        "waymo_pod.stl"
+      ]
+    },
+    {
+      "plate": 4,
+      "group": "2_black",
+      "title": "Plate 4 - Structural Chassis, Tubs, Tires & Steering",
+      "colour_name": "Black",
+      "colour": "#1A1A1A",
+      "pieces": 24,
+      "notes": "100% support-free structural plate with `outer_only` brims on slender steering and trim parts.",
+      "stls": [
+        "chassis.stl",
+        "tire_x4.stl",
+        "grille.stl",
+        "diff_cover.stl",
+        "axle.stl",
+        "knuckle_r.stl",
+        "knuckle_l.stl",
+        "steering_link.stl",
+        "interior_tub.stl",
+        "steering_wheel.stl",
+        "door_card_r.stl",
+        "door_card_l.stl",
+        "bay_tub.stl",
+        "valve_cover_r.stl",
+        "valve_cover_l.stl",
+        "air_cleaner.stl",
+        "brace.stl",
+        "hood_prop.stl",
+        "boot_tub.stl",
+        "motor_shim_x2.stl"
+      ]
+    },
+    {
+      "plate": 5,
+      "group": "3_silver",
+      "title": "Plate 5 - Torq-Thrust Rims, Front Bumper & Driveshaft",
+      "colour_name": "Silver / Chrome",
+      "colour": "#C8C8CC",
+      "pieces": 9,
+      "notes": "Support-free silver plate; `driveshaft.stl` prints flat horizontally on `Z = 0` for axial fiber strength.",
+      "stls": [
+        "rim_x4.stl",
+        "bumper_front.stl",
+        "grille_surround.stl",
+        "exhaust_x2.stl",
+        "driveshaft.stl"
+      ]
+    },
+    {
+      "plate": 6,
+      "group": "3_silver_small",
+      "title": "Plate 6 - Precision Bevel Gears, Couplers & Chrome Trim",
+      "colour_name": "Silver / Chrome",
+      "colour": "#C8C8CC",
+      "pieces": 25,
+      "pieces_ai": 26,
+      "notes": "Isolated low-Z precision plate (`<= 10.04 mm`) with `outer_only` brims and gentle `20-25 mm/s` speeds; AI adds `gc9a01_bezel.stl`.",
+      "stls": [
+        "corral_emblem.stl",
+        "fog_lamp_x2.stl",
+        "headlight_x2.stl",
+        "park_light_x2.stl",
+        "taillight_bezel_r_x3.stl",
+        "taillight_bezel_l_x3.stl",
+        "gas_cap.stl",
+        "backup_light_x2.stl",
+        "mirror.stl",
+        "vent_window_r.stl",
+        "vent_window_l.stl",
+        "pinion_gear.stl",
+        "axle_gear.stl",
+        "motor_coupler_1p0.stl",
+        "motor_coupler_1p5.stl",
+        "motor_coupler_tube.stl",
+        "motor_coupler_n25.stl"
+      ],
+      "stls_ai_extra": [
+        "gc9a01_bezel.stl"
+      ]
+    },
+    {
+      "plate": 7,
+      "group": "3_bumper",
+      "title": "Plate 7 - Swept Rear Chrome Bumper",
+      "colour_name": "Silver / Chrome",
+      "colour": "#C8C8CC",
+      "pieces": 1,
+      "notes": "Dedicated plate standing upright on `tree(auto)` supports.",
+      "stls": [
+        "bumper_rear.stl"
+      ]
+    },
+    {
+      "plate": 8,
+      "group": "4_red",
+      "title": "Plate 8 - Tri-Bar Taillight Lenses",
+      "colour_name": "Red",
+      "colour": "#B01010",
+      "pieces": 6,
+      "notes": "6 concave red lenses (`outer_only` peel brims).",
+      "stls": [
+        "taillight_lens_r_x3.stl",
+        "taillight_lens_l_x3.stl"
+      ]
+    },
+    {
+      "plate": 9,
+      "group": "5_blue",
+      "title": "Plate 9 - 289 V8 Motor Shroud Block",
+      "colour_name": "Ford Engine Blue",
+      "colour": "#2B59C3",
+      "pieces": 1,
+      "notes": "Hollowed underside cavity (`Engine_N25Cavity`) disguising the `N25` gearmotor on `324.45 mm^2` flat bed rails.",
+      "stls": [
+        "engine_block.stl"
+      ]
+    }
+  ],
+  "stages_rc": [
+    {
+      "stage": 1,
+      "title": "Fastback Shell & Multi-Colour Glass Inlays",
+      "vector": "Plate 1 Assembled Print",
+      "xray": false,
+      "camera": {
+        "pos": [
+          -165,
+          95,
+          195
+        ],
+        "target": [
+          112,
+          34,
+          0
+        ]
+      },
+      "summary": "Print `body.stl` with flush black `windshield.stl` and `rear_glass.stl` inlays in one multi-colour job on Plate 1.",
+      "bullets": [
+        "Lofted from 1967 Mustang station tables at `1:20` scale (`226 x 91 x 66 mm`).",
+        "Zero hand-sculpted polygons: every louver, V-prow crease, and recess is procedural Python CAD."
+      ]
+    },
+    {
+      "stage": 2,
+      "title": "Twin-Cowl Cabin & Front Bay Liners",
+      "vector": "+Z Bottom-Up Slide",
+      "xray": true,
+      "camera": {
+        "pos": [
+          -115,
+          110,
+          185
+        ],
+        "target": [
+          105,
+          28,
+          0
+        ]
+      },
+      "summary": "Plug `SteeringWheel` into the 5-pod twin-cowl dash, then push `InteriorTub` and `BayTub` straight up (`+Z`) into `Body`.",
+      "bullets": [
+        "Open-bottom `45\u00b0` gable shaft tunnels allow drop-in bottom-up driveshaft installation.",
+        "Dedicated driver-side wire conduit (`4.0 x 5.05 mm`) isolates wiring from the spinning shaft."
+      ]
+    },
+    {
+      "stage": 3,
+      "title": "Motor, Servo, Conduit & Open-Bottom Driveshaft",
+      "vector": "+Z U-Channel & Conduit",
+      "xray": true,
+      "camera": {
+        "pos": [
+          -85,
+          88,
+          155
+        ],
+        "target": [
+          85,
+          24,
+          0
+        ]
+      },
+      "summary": "Seat the front `1.7g` servo and `N25` gearmotor (+ Z-shims & multi-fit `MotorCoupler`), thread the floor conduit, and lift `Driveshaft + PinionGear` (`7T`) into the open-bottom U-channel.",
+      "bullets": [
+        "4 indexed couplers on Plate 6 fit `\u00d8 1.0 mm`, `\u00d8 1.5 mm`, silicone sleeve, or `\u00d8 3.0 mm` N25 D-shafts.",
+        "Horizontal bed-flat octagonal `Driveshaft` (`+63%` torsional stiffness) prints with zero supports."
+      ]
+    },
+    {
+      "stage": 4,
+      "title": "Filament-Core Kingpins, 9T Live Axle & Wheels",
+      "vector": "Rolling Sub-Assembly",
+      "xray": true,
+      "camera": {
+        "pos": [
+          -110,
+          -35,
+          175
+        ],
+        "target": [
+          110,
+          14,
+          0
+        ]
+      },
+      "summary": "Slide `1.75 mm` PLA filament cores into `Chassis` kingpins, snap `Knuckle_L/R` + `SteeringLink`, thread the `3.60 mm` octagonal `Axle_R` through `AxleGear` (`9T`) + `DiffCover`, and hand-slide the 4 `6`-key tires onto the rims.",
+      "bullets": [
+        "`7.5 mm` snips of raw `1.75 mm` filament inside `\u00d8 2.60 mm` kingpins give `> 8x` shear strength.",
+        "Zero-undercut `6`-key tires slide onto reinforced `1.80 mm`-lip Torq-Thrust rims by hand."
+      ]
+    },
+    {
+      "stage": 5,
+      "title": "Straight +Z Rolling Chassis Marriage",
+      "vector": "+Z 9-Boss Snap Lock",
+      "xray": true,
+      "camera": {
+        "pos": [
+          245,
+          58,
+          155
+        ],
+        "target": [
+          125,
+          22,
+          0
+        ]
+      },
+      "summary": "Push the complete rolling `Chassis` straight up (`+Z`) onto `Body`: 9 mortise-and-tenon bosses lock `BayTub` and `InteriorTub`, `PinionGear` (`7T`) meshes at `90\u00b0` with `AxleGear` (`9T`), and the servo horn engages `SteeringLink`.",
+      "bullets": [
+        "Kingpin top tips seat `1.30 mm` deep into `Body` sockets for true double-shear support.",
+        "Collared `7T:9T` bevel differential transfers smooth forward & reverse torque to the live rear axle."
+      ]
+    },
+    {
+      "stage": 6,
+      "title": "289 V8 Motor Shroud & Rear Electronics Deck",
+      "vector": "-Z Top-Down Drop",
+      "xray": true,
+      "camera": {
+        "pos": [
+          -95,
+          118,
+          145
+        ],
+        "target": [
+          115,
+          34,
+          0
+        ]
+      },
+      "summary": "Lower the hollowed Ford-blue 289 `EngineBlock` (+ Cobra valve covers & air cleaner) straight down (`-Z`) over the `N25` motor, and install `BootTub` + rear power/control modules in the trunk.",
+      "bullets": [
+        "`EngineBlock` completely disguises the electric motor with `0.45 mm` vertical booster clearance.",
+        "Classic RC houses `2.4GHz Rx + 5A ESC + LiPo` (or 4-wire keyfob); AI Edition mounts the 2-story `Radxa Zero 3W` deck."
+      ]
+    },
+    {
+      "stage": 7,
+      "title": "1.75 mm Filament Door Hinges, Chrome & Panels",
+      "vector": "Pin-Hinge & Trim Lock",
+      "xray": false,
+      "camera": {
+        "pos": [
+          -155,
+          78,
+          190
+        ],
+        "target": [
+          112,
+          30,
+          0
+        ]
+      },
+      "summary": "Snap chrome bumpers, grille, and tri-bar taillights onto `Body`, interlock `DoorVent` + `DoorCard` into `Door_L/R` on `1.75 mm` filament hinge pins, and seat `Hood` (`+42\u00b0`) & `TrunkLid` (`-40\u00b0`).",
+      "bullets": [
+        "`\u00d8 1.84 mm` sill press bore + `\u00d8 2.00 mm` door bore turn raw `1.75 mm` filament into crisp `+55\u00b0` door hinges.",
+        "Car is now 100% assembled and ready to steer, spin gears, and open all 4 hinged panels!"
+      ]
+    }
+  ],
+  "stages_ai": [
+    {
+      "stage": 1,
+      "title": "Fastback Shell & Multi-Colour Glass Inlays",
+      "vector": "Plate 1 Assembled Print",
+      "xray": false,
+      "camera": {
+        "pos": [
+          -165,
+          95,
+          195
+        ],
+        "target": [
+          112,
+          34,
+          0
+        ]
+      },
+      "summary": "Print `body.stl` with flush black `windshield.stl` and `rear_glass.stl` inlays in one multi-colour job on Plate 1.",
+      "bullets": [
+        "Lofted from 1967 Mustang station tables at `1:20` scale (`226 x 91 x 66 mm`).",
+        "Zero hand-sculpted polygons: every louver, V-prow crease, and recess is procedural Python CAD."
+      ]
+    },
+    {
+      "stage": 2,
+      "title": "Twin-Cowl Cabin & Front Bay Liners",
+      "vector": "+Z Bottom-Up Slide",
+      "xray": true,
+      "camera": {
+        "pos": [
+          -115,
+          110,
+          185
+        ],
+        "target": [
+          105,
+          28,
+          0
+        ]
+      },
+      "summary": "Plug `SteeringWheel` into the 5-pod twin-cowl dash, then push `InteriorTub` and `BayTub` straight up (`+Z`) into `Body`.",
+      "bullets": [
+        "Open-bottom `45\u00b0` gable shaft tunnels allow drop-in bottom-up driveshaft installation.",
+        "Dedicated driver-side wire conduit (`4.0 x 5.05 mm`) isolates wiring from the spinning shaft."
+      ]
+    },
+    {
+      "stage": 3,
+      "title": "Motor, Servo, Conduit & Open-Bottom Driveshaft",
+      "vector": "+Z U-Channel & Conduit",
+      "xray": true,
+      "camera": {
+        "pos": [
+          -85,
+          88,
+          155
+        ],
+        "target": [
+          85,
+          24,
+          0
+        ]
+      },
+      "summary": "Seat the front `1.7g` servo and `N25` gearmotor (+ Z-shims & multi-fit `MotorCoupler`), thread the floor conduit, and lift `Driveshaft + PinionGear` (`7T`) into the open-bottom U-channel.",
+      "bullets": [
+        "4 indexed couplers on Plate 6 fit `\u00d8 1.0 mm`, `\u00d8 1.5 mm`, silicone sleeve, or `\u00d8 3.0 mm` N25 D-shafts.",
+        "Horizontal bed-flat octagonal `Driveshaft` (`+63%` torsional stiffness) prints with zero supports."
+      ]
+    },
+    {
+      "stage": 4,
+      "title": "Filament-Core Kingpins, 9T Live Axle & Wheels",
+      "vector": "Rolling Sub-Assembly",
+      "xray": true,
+      "camera": {
+        "pos": [
+          -110,
+          -35,
+          175
+        ],
+        "target": [
+          110,
+          14,
+          0
+        ]
+      },
+      "summary": "Slide `1.75 mm` PLA filament cores into `Chassis` kingpins, snap `Knuckle_L/R` + `SteeringLink`, thread the `3.60 mm` octagonal `Axle_R` through `AxleGear` (`9T`) + `DiffCover`, and hand-slide the 4 `6`-key tires onto the rims.",
+      "bullets": [
+        "`7.5 mm` snips of raw `1.75 mm` filament inside `\u00d8 2.60 mm` kingpins give `> 8x` shear strength.",
+        "Zero-undercut `6`-key tires slide onto reinforced `1.80 mm`-lip Torq-Thrust rims by hand."
+      ]
+    },
+    {
+      "stage": 5,
+      "title": "Straight +Z Rolling Chassis Marriage",
+      "vector": "+Z 9-Boss Snap Lock",
+      "xray": true,
+      "camera": {
+        "pos": [
+          245,
+          58,
+          155
+        ],
+        "target": [
+          125,
+          22,
+          0
+        ]
+      },
+      "summary": "Push the complete rolling `Chassis` straight up (`+Z`) onto `Body`: 9 mortise-and-tenon bosses lock `BayTub` and `InteriorTub`, `PinionGear` (`7T`) meshes at `90\u00b0` with `AxleGear` (`9T`), and the servo horn engages `SteeringLink`.",
+      "bullets": [
+        "Kingpin top tips seat `1.30 mm` deep into `Body` sockets for true double-shear support.",
+        "Collared `7T:9T` bevel differential transfers smooth forward & reverse torque to the live rear axle."
+      ]
+    },
+    {
+      "stage": 6,
+      "title": "289 V8 Motor Shroud & Rear Electronics Deck",
+      "vector": "-Z Top-Down Drop",
+      "xray": true,
+      "camera": {
+        "pos": [
+          -95,
+          118,
+          145
+        ],
+        "target": [
+          115,
+          34,
+          0
+        ]
+      },
+      "summary": "Lower the hollowed Ford-blue 289 `EngineBlock` (+ Cobra valve covers & air cleaner) straight down (`-Z`) over the `N25` motor, and install `BootTub` + rear power/control modules in the trunk.",
+      "bullets": [
+        "`EngineBlock` completely disguises the electric motor with `0.45 mm` vertical booster clearance.",
+        "Classic RC houses `2.4GHz Rx + 5A ESC + LiPo` (or 4-wire keyfob); AI Edition mounts the 2-story `Radxa Zero 3W` deck."
+      ]
+    },
+    {
+      "stage": 7,
+      "title": "1.75 mm Filament Door Hinges, Chrome & Panels",
+      "vector": "Pin-Hinge & Trim Lock",
+      "xray": false,
+      "camera": {
+        "pos": [
+          -155,
+          78,
+          190
+        ],
+        "target": [
+          112,
+          30,
+          0
+        ]
+      },
+      "summary": "Snap chrome bumpers, grille, and tri-bar taillights onto `Body`, interlock `DoorVent` + `DoorCard` into `Door_L/R` on `1.75 mm` filament hinge pins, and seat `Hood` (`+42\u00b0`) & `TrunkLid` (`-40\u00b0`).",
+      "bullets": [
+        "`\u00d8 1.84 mm` sill press bore + `\u00d8 2.00 mm` door bore turn raw `1.75 mm` filament into crisp `+55\u00b0` door hinges.",
+        "Car is now 100% assembled and ready to steer, spin gears, and open all 4 hinged panels!"
+      ]
+    },
+    {
+      "stage": 8,
+      "title": "AI Roof Vision Pod & Rear Window Emoji HUD",
+      "vector": "Sub-Surface Option B",
+      "xray": false,
+      "camera": {
+        "pos": [
+          255,
+          96,
+          150
+        ],
+        "target": [
+          148,
+          48,
+          0
+        ]
+      },
+      "summary": "Seat the `OV5647` `160\u00b0` fisheye camera + `INMP441` mic under `WaymoPod` (routing `H1` down `Cut_WaymoChimney`), and mount the `1.28\"` Round `GC9A01` `240x240` IPS display flush inside `Glass_Rear` with `GC9A01Bezel`.",
+      "bullets": [
+        "`0.0 mm` exterior protrusion rear-window Emoji HUD with `< 12 mm` SPI3 jumper drop (`H2`) to `Radxa Zero 3W`.",
+        "Unlocks `gemini-robotics-er-2-streaming` maneuvers, `< 20 ms` `VL53L1X` brake reflex, and `\"Hey Mustang\"` voice!"
+      ]
+    }
+  ],
+  "ai_swapped_shells": [
+    "Body",
+    "Glass_Rear",
+    "InteriorTub",
+    "BootTub",
+    "BayTub"
+  ],
+  "parts": [
+    {
+      "node": "Body",
+      "label": "1967 Fastback Body Shell",
+      "category": "printed",
+      "stl": "body.stl",
+      "plate": 1,
+      "in_stage1_mule": false,
+      "qty": 1,
+      "colour": "#6B0F1A",
+      "stage_rc": 1,
+      "stage_ai": 1,
+      "start_offset_3js": [
+        0.0,
+        42.0,
+        0.0
+      ],
+      "tip": "Prints upright on Plate 1 (`1_body`) with `tree(auto)` build-plate supports (`0.12 mm` Arachne walls)."
+    },
+    {
+      "node": "Glass_Windshield",
+      "label": "Tinted Front Windshield Inlay",
+      "category": "printed",
+      "stl": "windshield.stl",
+      "plate": 1,
+      "in_stage1_mule": false,
+      "qty": 1,
+      "colour": "#1A1A1A",
+      "stage_rc": 1,
+      "stage_ai": 1,
+      "start_offset_3js": [
+        -18.0,
+        26.0,
+        0.0
+      ],
+      "tip": "Multi-colour black PLA inlay printed flush inside `Body` on Plate 1."
+    },
+    {
+      "node": "Glass_Rear",
+      "label": "Tinted Fastback Rear Glass Inlay",
+      "category": "printed",
+      "stl": "rear_glass.stl",
+      "plate": 1,
+      "in_stage1_mule": false,
+      "qty": 1,
+      "colour": "#1A1A1A",
+      "stage_rc": 1,
+      "stage_ai": 1,
+      "start_offset_3js": [
+        22.0,
+        26.0,
+        0.0
+      ],
+      "tip": "Multi-colour black PLA inlay; in AI Edition `Cut_RearGlassHUD` opens a circular `\u00d8 30.4 mm` HUD window."
+    },
+    {
+      "node": "SteeringWheel",
+      "label": "3-Spoke Brushed-Chrome Steering Wheel",
+      "category": "printed",
+      "stl": "steering_wheel.stl",
+      "plate": 4,
+      "in_stage1_mule": false,
+      "qty": 1,
+      "colour": "#1A1A1A",
+      "stage_rc": 2,
+      "stage_ai": 2,
+      "start_offset_3js": [
+        16.0,
+        14.0,
+        0.0
+      ],
+      "tip": "Plugs into the 5-pod twin-cowl dashboard before lifting `InteriorTub` into `Body`."
+    },
+    {
+      "node": "InteriorTub",
+      "label": "Twin-Cowl Cabin & Waterfall Console Tub",
+      "category": "printed",
+      "stl": "interior_tub.stl",
+      "plate": 4,
+      "in_stage1_mule": true,
+      "qty": 1,
+      "colour": "#1A1A1A",
+      "stage_rc": 2,
+      "stage_ai": 2,
+      "start_offset_3js": [
+        0.0,
+        -56.0,
+        0.0
+      ],
+      "tip": "Pushes straight up (`+Z`) into `Body`; open-bottom `45\u00b0` gable tunnel clears the driveshaft."
+    },
+    {
+      "node": "BayTub",
+      "label": "Front Engine Liner & Motor/Servo Cradle",
+      "category": "printed",
+      "stl": "bay_tub.stl",
+      "plate": 4,
+      "in_stage1_mule": true,
+      "qty": 1,
+      "colour": "#1A1A1A",
+      "stage_rc": 2,
+      "stage_ai": 2,
+      "start_offset_3js": [
+        0.0,
+        -56.0,
+        0.0
+      ],
+      "tip": "Pushes straight up (`+Z`) into front nose; houses `1.7g` servo (`BayTub_ServoBed`) and `N25` motor (`BayTub_N25Bed`)."
+    },
+    {
+      "node": "MotorShim_0p5",
+      "label": "Motor Height Calibration Z-Shims (0.48 mm)",
+      "category": "printed",
+      "stl": "motor_shim_x2.stl",
+      "plate": 4,
+      "in_stage1_mule": true,
+      "qty": 2,
+      "colour": "#1A1A1A",
+      "stage_rc": 3,
+      "stage_ai": 3,
+      "start_offset_3js": [
+        0.0,
+        34.0,
+        0.0
+      ],
+      "tip": "Use `0`, `1`, or `2` shims under `10 mm`, `9 mm`, or `8 mm` flat-can motors to align shaft to `Z = 19.75 mm`."
+    },
+    {
+      "node": "MotorCoupler",
+      "label": "Heavy-Duty \u00d8 6.60 mm Multi-Fit Motor Coupler",
+      "category": "printed",
+      "stl": "motor_coupler_1p0.stl",
+      "plate": 6,
+      "in_stage1_mule": true,
+      "qty": 1,
+      "colour": "#C8C8CC",
+      "stage_rc": 3,
+      "stage_ai": 3,
+      "start_offset_3js": [
+        14.0,
+        28.0,
+        0.0
+      ],
+      "tip": "Pick from 4 couplers on Plate 6 (`0` grooves = `\u00d8 3.0 mm` N25 D-shaft, `1` = `1.0 mm`, `2` = `1.5 mm`, `3` = tube)."
+    },
+    {
+      "node": "Driveshaft",
+      "label": "Horizontal Bed-Flat Octagonal Driveshaft",
+      "category": "printed",
+      "stl": "driveshaft.stl",
+      "plate": 5,
+      "in_stage1_mule": true,
+      "qty": 1,
+      "colour": "#C8C8CC",
+      "stage_rc": 3,
+      "stage_ai": 3,
+      "start_offset_3js": [
+        0.0,
+        -44.0,
+        0.0
+      ],
+      "tip": "Prints flat on `Z = 0` (`+63%` torsional stiffness); lifts straight up (`+Z`) into the open-bottom U-channel."
+    },
+    {
+      "node": "PinionGear",
+      "label": "Collared 7-Tooth Bevel Pinion Gear",
+      "category": "printed",
+      "stl": "pinion_gear.stl",
+      "plate": 6,
+      "in_stage1_mule": true,
+      "qty": 1,
+      "colour": "#C8C8CC",
+      "stage_rc": 3,
+      "stage_ai": 3,
+      "start_offset_3js": [
+        12.0,
+        -44.0,
+        0.0
+      ],
+      "tip": "Presses onto the rear `3.64 mm` driveshaft tenon (`\u00d8 6.40 mm` bearing collar, solid tooth-root core)."
+    },
+    {
+      "node": "Chassis",
+      "label": "Sub-Frame Locking Chassis Plate",
+      "category": "printed",
+      "stl": "chassis.stl",
+      "plate": 4,
+      "in_stage1_mule": true,
+      "qty": 1,
+      "colour": "#1A1A1A",
+      "stage_rc": 4,
+      "stage_ai": 4,
+      "start_offset_3js": [
+        0.0,
+        -52.0,
+        0.0
+      ],
+      "tip": "Features 9 mortise-and-tenon sub-frame locks and hollow `\u00d8 2.60 mm` double-shear front kingpin posts."
+    },
+    {
+      "node": "Knuckle_L",
+      "label": "Left Front Steering Knuckle (\u00d8 4.30 mm Barrel)",
+      "category": "printed",
+      "stl": "knuckle_l.stl",
+      "plate": 4,
+      "in_stage1_mule": true,
+      "qty": 1,
+      "colour": "#1A1A1A",
+      "stage_rc": 4,
+      "stage_ai": 4,
+      "start_offset_3js": [
+        0.0,
+        -32.0,
+        22.0
+      ],
+      "tip": "Drops onto `Chassis_Kingpin_L` (`\u00b115\u00b0` sweep) with a `\u00d8 1.80 mm` proud tie-rod pin."
+    },
+    {
+      "node": "Knuckle_R",
+      "label": "Right Front Steering Knuckle (\u00d8 4.30 mm Barrel)",
+      "category": "printed",
+      "stl": "knuckle_r.stl",
+      "plate": 4,
+      "in_stage1_mule": true,
+      "qty": 1,
+      "colour": "#1A1A1A",
+      "stage_rc": 4,
+      "stage_ai": 4,
+      "start_offset_3js": [
+        0.0,
+        -32.0,
+        -22.0
+      ],
+      "tip": "Drops onto `Chassis_Kingpin_R` (`\u00b115\u00b0` sweep) with `0.125 mm`/side smooth running clearance."
+    },
+    {
+      "node": "SteeringLink",
+      "label": "Reinforced Tie-Rod Steering Link",
+      "category": "printed",
+      "stl": "steering_link.stl",
+      "plate": 4,
+      "in_stage1_mule": true,
+      "qty": 1,
+      "colour": "#1A1A1A",
+      "stage_rc": 4,
+      "stage_ai": 4,
+      "start_offset_3js": [
+        -16.0,
+        -28.0,
+        0.0
+      ],
+      "tip": "Snaps over both `\u00d8 1.80 mm` knuckle pins (`0.90-1.18 mm` eyelet walls); center slot engages servo horn."
+    },
+    {
+      "node": "AxleGear",
+      "label": "Collared 9-Tooth Crown Bevel Gear",
+      "category": "printed",
+      "stl": "axle_gear.stl",
+      "plate": 6,
+      "in_stage1_mule": true,
+      "qty": 1,
+      "colour": "#C8C8CC",
+      "stage_rc": 4,
+      "stage_ai": 4,
+      "start_offset_3js": [
+        0.0,
+        -44.0,
+        -14.0
+      ],
+      "tip": "`3.625 mm` wide crown gear (`\u00d8 8.00 mm` collar) meshes at `90\u00b0` with the `7T` `PinionGear`."
+    },
+    {
+      "node": "Axle_R",
+      "label": "Max-Beef 3.60 mm Octagonal Live Rear Axle",
+      "category": "printed",
+      "stl": "axle.stl",
+      "plate": 4,
+      "in_stage1_mule": true,
+      "qty": 1,
+      "colour": "#1A1A1A",
+      "stage_rc": 4,
+      "stage_ai": 4,
+      "start_offset_3js": [
+        0.0,
+        -52.0,
+        -48.0
+      ],
+      "tip": "Slides laterally through `\u00d8 4.10 mm` `Chassis_BossR` bearings and `AxleGear`'s octagonal bore."
+    },
+    {
+      "node": "DiffCover",
+      "label": "Rear Differential Cover (`45\u00b0` Gable Pocket)",
+      "category": "printed",
+      "stl": "diff_cover.stl",
+      "plate": 4,
+      "in_stage1_mule": true,
+      "qty": 1,
+      "colour": "#1A1A1A",
+      "stage_rc": 4,
+      "stage_ai": 4,
+      "start_offset_3js": [
+        0.0,
+        -70.0,
+        0.0
+      ],
+      "tip": "Snaps underneath `Chassis` to enclose the `7T:9T` bevel gear mesh."
+    },
+    {
+      "node": "Rim_FL",
+      "label": "Front-Left Torq-Thrust 5-Spoke Rim",
+      "category": "printed",
+      "stl": "rim_x4.stl",
+      "plate": 5,
+      "in_stage1_mule": true,
+      "qty": 4,
+      "colour": "#C8C8CC",
+      "stage_rc": 4,
+      "stage_ai": 4,
+      "start_offset_3js": [
+        0.0,
+        -52.0,
+        34.0
+      ],
+      "tip": "`\u00d8 9.60 mm` hub with 8-lobe octagonal bore and `1.80 mm` reinforced lip neck."
+    },
+    {
+      "node": "Tire_FL",
+      "label": "Front-Left Radial Tire (6-Key Hand-Slide)",
+      "category": "printed",
+      "stl": "tire_x4.stl",
+      "plate": 4,
+      "in_stage1_mule": true,
+      "qty": 4,
+      "colour": "#1A1A1A",
+      "stage_rc": 4,
+      "stage_ai": 4,
+      "start_offset_3js": [
+        0.0,
+        -52.0,
+        52.0
+      ],
+      "tip": "Zero radial undercut (`0.22 mm`/side gap): slides onto rim by hand from inboard side across 6 drive keys."
+    },
+    {
+      "node": "Rim_FR",
+      "label": "Front-Right Torq-Thrust 5-Spoke Rim",
+      "category": "printed",
+      "stl": "rim_x4.stl",
+      "plate": 5,
+      "in_stage1_mule": true,
+      "qty": 4,
+      "colour": "#C8C8CC",
+      "stage_rc": 4,
+      "stage_ai": 4,
+      "start_offset_3js": [
+        0.0,
+        -52.0,
+        -34.0
+      ],
+      "tip": "`\u00d8 9.60 mm` hub with 8-lobe octagonal bore and `1.80 mm` reinforced lip neck."
+    },
+    {
+      "node": "Tire_FR",
+      "label": "Front-Right Radial Tire (6-Key Hand-Slide)",
+      "category": "printed",
+      "stl": "tire_x4.stl",
+      "plate": 4,
+      "in_stage1_mule": true,
+      "qty": 4,
+      "colour": "#1A1A1A",
+      "stage_rc": 4,
+      "stage_ai": 4,
+      "start_offset_3js": [
+        0.0,
+        -52.0,
+        -52.0
+      ],
+      "tip": "Zero radial undercut (`0.22 mm`/side gap): slides onto rim by hand from inboard side across 6 drive keys."
+    },
+    {
+      "node": "Rim_RL",
+      "label": "Rear-Left Torq-Thrust 5-Spoke Rim",
+      "category": "printed",
+      "stl": "rim_x4.stl",
+      "plate": 5,
+      "in_stage1_mule": true,
+      "qty": 4,
+      "colour": "#C8C8CC",
+      "stage_rc": 4,
+      "stage_ai": 4,
+      "start_offset_3js": [
+        0.0,
+        -52.0,
+        34.0
+      ],
+      "tip": "`\u00d8 9.60 mm` hub with 8-lobe octagonal bore and `1.80 mm` reinforced lip neck."
+    },
+    {
+      "node": "Tire_RL",
+      "label": "Rear-Left Radial Tire (6-Key Hand-Slide)",
+      "category": "printed",
+      "stl": "tire_x4.stl",
+      "plate": 4,
+      "in_stage1_mule": true,
+      "qty": 4,
+      "colour": "#1A1A1A",
+      "stage_rc": 4,
+      "stage_ai": 4,
+      "start_offset_3js": [
+        0.0,
+        -52.0,
+        52.0
+      ],
+      "tip": "Zero radial undercut (`0.22 mm`/side gap): slides onto rim by hand from inboard side across 6 drive keys."
+    },
+    {
+      "node": "Rim_RR",
+      "label": "Rear-Right Torq-Thrust 5-Spoke Rim",
+      "category": "printed",
+      "stl": "rim_x4.stl",
+      "plate": 5,
+      "in_stage1_mule": true,
+      "qty": 4,
+      "colour": "#C8C8CC",
+      "stage_rc": 4,
+      "stage_ai": 4,
+      "start_offset_3js": [
+        0.0,
+        -52.0,
+        -34.0
+      ],
+      "tip": "`\u00d8 9.60 mm` hub with 8-lobe octagonal bore and `1.80 mm` reinforced lip neck."
+    },
+    {
+      "node": "Tire_RR",
+      "label": "Rear-Right Radial Tire (6-Key Hand-Slide)",
+      "category": "printed",
+      "stl": "tire_x4.stl",
+      "plate": 4,
+      "in_stage1_mule": true,
+      "qty": 4,
+      "colour": "#1A1A1A",
+      "stage_rc": 4,
+      "stage_ai": 4,
+      "start_offset_3js": [
+        0.0,
+        -52.0,
+        -52.0
+      ],
+      "tip": "Zero radial undercut (`0.22 mm`/side gap): slides onto rim by hand from inboard side across 6 drive keys."
+    },
+    {
+      "node": "EngineBlock",
+      "label": "Hollowed 289 V8 Motor Shroud Block",
+      "category": "printed",
+      "stl": "engine_block.stl",
+      "plate": 9,
+      "in_stage1_mule": false,
+      "qty": 1,
+      "colour": "#2B59C3",
+      "stage_rc": 6,
+      "stage_ai": 6,
+      "start_offset_3js": [
+        0.0,
+        58.0,
+        0.0
+      ],
+      "tip": "Lowers straight down (`-Z`, `0\u00b0` pitch) over the `N25` motor, clearing `BayTub_Booster` by `0.45 mm`."
+    },
+    {
+      "node": "ValveCover_L",
+      "label": "Left Finned Cobra Valve Cover",
+      "category": "printed",
+      "stl": "valve_cover_l.stl",
+      "plate": 4,
+      "in_stage1_mule": false,
+      "qty": 1,
+      "colour": "#1A1A1A",
+      "stage_rc": 6,
+      "stage_ai": 6,
+      "start_offset_3js": [
+        0.0,
+        70.0,
+        14.0
+      ],
+      "tip": "Glues onto left cylinder bank of `EngineBlock` (printed at `45\u00b0` for crisp fins)."
+    },
+    {
+      "node": "ValveCover_R",
+      "label": "Right Finned Cobra Valve Cover",
+      "category": "printed",
+      "stl": "valve_cover_r.stl",
+      "plate": 4,
+      "in_stage1_mule": false,
+      "qty": 1,
+      "colour": "#1A1A1A",
+      "stage_rc": 6,
+      "stage_ai": 6,
+      "start_offset_3js": [
+        0.0,
+        70.0,
+        -14.0
+      ],
+      "tip": "Glues onto right cylinder bank of `EngineBlock`."
+    },
+    {
+      "node": "AirCleaner",
+      "label": "Oval Cobra Finned Air Cleaner",
+      "category": "printed",
+      "stl": "air_cleaner.stl",
+      "plate": 4,
+      "in_stage1_mule": false,
+      "qty": 1,
+      "colour": "#1A1A1A",
+      "stage_rc": 6,
+      "stage_ai": 6,
+      "start_offset_3js": [
+        0.0,
+        76.0,
+        0.0
+      ],
+      "tip": "Crowns the 289 V8 intake manifold directly above the hidden motor."
+    },
+    {
+      "node": "Brace",
+      "label": "Export Shock-Tower Monte Carlo Brace",
+      "category": "printed",
+      "stl": "brace.stl",
+      "plate": 4,
+      "in_stage1_mule": false,
+      "qty": 1,
+      "colour": "#1A1A1A",
+      "stage_rc": 6,
+      "stage_ai": 6,
+      "start_offset_3js": [
+        0.0,
+        48.0,
+        0.0
+      ],
+      "tip": "Clips across the front shock towers behind the radiator."
+    },
+    {
+      "node": "BootTub",
+      "label": "Divided Rear Trunk Electronics Tub",
+      "category": "printed",
+      "stl": "boot_tub.stl",
+      "plate": 4,
+      "in_stage1_mule": true,
+      "qty": 1,
+      "colour": "#1A1A1A",
+      "stage_rc": 6,
+      "stage_ai": 6,
+      "start_offset_3js": [
+        0.0,
+        52.0,
+        0.0
+      ],
+      "tip": "Drops straight down (`-Z`) into trunk; holds ESC + Receiver + LiPo (or `2S LiPo` + `5V BEC` in AI Edition)."
+    },
+    {
+      "node": "Grille",
+      "label": "Recessed Honeycomb Front Grille",
+      "category": "printed",
+      "stl": "grille.stl",
+      "plate": 4,
+      "in_stage1_mule": false,
+      "qty": 1,
+      "colour": "#1A1A1A",
+      "stage_rc": 7,
+      "stage_ai": 7,
+      "start_offset_3js": [
+        -36.0,
+        0.0,
+        0.0
+      ],
+      "tip": "Seats into the 1967 V-prow nose opening."
+    },
+    {
+      "node": "GrilleSurround",
+      "label": "7-Layer Stepped Chrome Grille Surround",
+      "category": "printed",
+      "stl": "grille_surround.stl",
+      "plate": 5,
+      "in_stage1_mule": false,
+      "qty": 1,
+      "colour": "#C8C8CC",
+      "stage_rc": 7,
+      "stage_ai": 7,
+      "start_offset_3js": [
+        -44.0,
+        0.0,
+        0.0
+      ],
+      "tip": "Frames the recessed grille with crisp Arachne chrome walls."
+    },
+    {
+      "node": "Corral",
+      "label": "Running Pony & Corral Grille Emblem",
+      "category": "printed",
+      "stl": "corral_emblem.stl",
+      "plate": 6,
+      "in_stage1_mule": false,
+      "qty": 1,
+      "colour": "#C8C8CC",
+      "stage_rc": 7,
+      "stage_ai": 7,
+      "start_offset_3js": [
+        -52.0,
+        0.0,
+        0.0
+      ],
+      "tip": "Presses into the central grille boss."
+    },
+    {
+      "node": "Bumper_F",
+      "label": "Front Chrome Blade Bumper",
+      "category": "printed",
+      "stl": "bumper_front.stl",
+      "plate": 5,
+      "in_stage1_mule": false,
+      "qty": 1,
+      "colour": "#C8C8CC",
+      "stage_rc": 7,
+      "stage_ai": 7,
+      "start_offset_3js": [
+        -48.0,
+        -8.0,
+        0.0
+      ],
+      "tip": "Prints upside-down support-free on Plate 5 and mounts below the V-prow nose."
+    },
+    {
+      "node": "Bumper_R",
+      "label": "Rear Swept Chrome Bumper",
+      "category": "printed",
+      "stl": "bumper_rear.stl",
+      "plate": 7,
+      "in_stage1_mule": false,
+      "qty": 1,
+      "colour": "#C8C8CC",
+      "stage_rc": 7,
+      "stage_ai": 7,
+      "start_offset_3js": [
+        48.0,
+        -6.0,
+        0.0
+      ],
+      "tip": "Hugs the tucked rear quarter corners beneath the tri-bar taillights."
+    },
+    {
+      "node": "Headlight_L",
+      "label": "Left 7-Inch Sealed-Beam Headlight",
+      "category": "printed",
+      "stl": "headlight_x2.stl",
+      "plate": 6,
+      "in_stage1_mule": false,
+      "qty": 2,
+      "colour": "#C8C8CC",
+      "stage_rc": 7,
+      "stage_ai": 7,
+      "start_offset_3js": [
+        -38.0,
+        0.0,
+        8.0
+      ],
+      "tip": "Presses into the deep-recessed outer headlight bucket."
+    },
+    {
+      "node": "FogLamp_L",
+      "label": "Left Grille Fog Lamp",
+      "category": "printed",
+      "stl": "fog_lamp_x2.stl",
+      "plate": 6,
+      "in_stage1_mule": false,
+      "qty": 2,
+      "colour": "#C8C8CC",
+      "stage_rc": 7,
+      "stage_ai": 7,
+      "start_offset_3js": [
+        -42.0,
+        0.0,
+        6.0
+      ],
+      "tip": "Seats inboard of the corral bar."
+    },
+    {
+      "node": "ParkLight_L",
+      "label": "Left Lower Valance Park Light",
+      "category": "printed",
+      "stl": "park_light_x2.stl",
+      "plate": 6,
+      "in_stage1_mule": false,
+      "qty": 2,
+      "colour": "#C8C8CC",
+      "stage_rc": 7,
+      "stage_ai": 7,
+      "start_offset_3js": [
+        -36.0,
+        -8.0,
+        6.0
+      ],
+      "tip": "Snaps into the lower front valance recess."
+    },
+    {
+      "node": "BackupLight_L",
+      "label": "Left Rear Valance Backup Lamp",
+      "category": "printed",
+      "stl": "backup_light_x2.stl",
+      "plate": 6,
+      "in_stage1_mule": false,
+      "qty": 2,
+      "colour": "#C8C8CC",
+      "stage_rc": 7,
+      "stage_ai": 7,
+      "start_offset_3js": [
+        38.0,
+        -8.0,
+        6.0
+      ],
+      "tip": "Presses into the lower rear valance below the bumper."
+    },
+    {
+      "node": "Exhaust_L",
+      "label": "Left Dual Chrome Exhaust Tip",
+      "category": "printed",
+      "stl": "exhaust_x2.stl",
+      "plate": 5,
+      "in_stage1_mule": false,
+      "qty": 2,
+      "colour": "#C8C8CC",
+      "stage_rc": 7,
+      "stage_ai": 7,
+      "start_offset_3js": [
+        40.0,
+        -12.0,
+        6.0
+      ],
+      "tip": "Slides into the rear valance exhaust cutout."
+    },
+    {
+      "node": "TailBezel_L0",
+      "label": "Tri-Bar Taillight Chrome Bezel (L0)",
+      "category": "printed",
+      "stl": "taillight_bezel_l_x3.stl",
+      "plate": 6,
+      "in_stage1_mule": false,
+      "qty": 3,
+      "colour": "#C8C8CC",
+      "stage_rc": 7,
+      "stage_ai": 7,
+      "start_offset_3js": [
+        38.0,
+        2.0,
+        4.0
+      ],
+      "tip": "Concave chrome bezel from precision Plate 6 (`outer_only` brim)."
+    },
+    {
+      "node": "Taillight_L0",
+      "label": "Tri-Bar Red Taillight Lens (L0)",
+      "category": "printed",
+      "stl": "taillight_lens_l_x3.stl",
+      "plate": 8,
+      "in_stage1_mule": false,
+      "qty": 3,
+      "colour": "#B01010",
+      "stage_rc": 7,
+      "stage_ai": 7,
+      "start_offset_3js": [
+        46.0,
+        2.0,
+        4.0
+      ],
+      "tip": "Red PLA lens (`Plate 8`) pressing into its matching `TailBezel`."
+    },
+    {
+      "node": "TailBezel_L1",
+      "label": "Tri-Bar Taillight Chrome Bezel (L1)",
+      "category": "printed",
+      "stl": "taillight_bezel_r_x3.stl",
+      "plate": 6,
+      "in_stage1_mule": false,
+      "qty": 3,
+      "colour": "#C8C8CC",
+      "stage_rc": 7,
+      "stage_ai": 7,
+      "start_offset_3js": [
+        38.0,
+        2.0,
+        4.0
+      ],
+      "tip": "Concave chrome bezel from precision Plate 6 (`outer_only` brim)."
+    },
+    {
+      "node": "Taillight_L1",
+      "label": "Tri-Bar Red Taillight Lens (L1)",
+      "category": "printed",
+      "stl": "taillight_lens_r_x3.stl",
+      "plate": 8,
+      "in_stage1_mule": false,
+      "qty": 3,
+      "colour": "#B01010",
+      "stage_rc": 7,
+      "stage_ai": 7,
+      "start_offset_3js": [
+        46.0,
+        2.0,
+        4.0
+      ],
+      "tip": "Red PLA lens (`Plate 8`) pressing into its matching `TailBezel`."
+    },
+    {
+      "node": "TailBezel_L2",
+      "label": "Tri-Bar Taillight Chrome Bezel (L2)",
+      "category": "printed",
+      "stl": "taillight_bezel_r_x3.stl",
+      "plate": 6,
+      "in_stage1_mule": false,
+      "qty": 3,
+      "colour": "#C8C8CC",
+      "stage_rc": 7,
+      "stage_ai": 7,
+      "start_offset_3js": [
+        38.0,
+        2.0,
+        4.0
+      ],
+      "tip": "Concave chrome bezel from precision Plate 6 (`outer_only` brim)."
+    },
+    {
+      "node": "Taillight_L2",
+      "label": "Tri-Bar Red Taillight Lens (L2)",
+      "category": "printed",
+      "stl": "taillight_lens_r_x3.stl",
+      "plate": 8,
+      "in_stage1_mule": false,
+      "qty": 3,
+      "colour": "#B01010",
+      "stage_rc": 7,
+      "stage_ai": 7,
+      "start_offset_3js": [
+        46.0,
+        2.0,
+        4.0
+      ],
+      "tip": "Red PLA lens (`Plate 8`) pressing into its matching `TailBezel`."
+    },
+    {
+      "node": "Headlight_R",
+      "label": "Right 7-Inch Sealed-Beam Headlight",
+      "category": "printed",
+      "stl": "headlight_x2.stl",
+      "plate": 6,
+      "in_stage1_mule": false,
+      "qty": 2,
+      "colour": "#C8C8CC",
+      "stage_rc": 7,
+      "stage_ai": 7,
+      "start_offset_3js": [
+        -38.0,
+        0.0,
+        -8.0
+      ],
+      "tip": "Presses into the deep-recessed outer headlight bucket."
+    },
+    {
+      "node": "FogLamp_R",
+      "label": "Right Grille Fog Lamp",
+      "category": "printed",
+      "stl": "fog_lamp_x2.stl",
+      "plate": 6,
+      "in_stage1_mule": false,
+      "qty": 2,
+      "colour": "#C8C8CC",
+      "stage_rc": 7,
+      "stage_ai": 7,
+      "start_offset_3js": [
+        -42.0,
+        0.0,
+        -6.0
+      ],
+      "tip": "Seats inboard of the corral bar."
+    },
+    {
+      "node": "ParkLight_R",
+      "label": "Right Lower Valance Park Light",
+      "category": "printed",
+      "stl": "park_light_x2.stl",
+      "plate": 6,
+      "in_stage1_mule": false,
+      "qty": 2,
+      "colour": "#C8C8CC",
+      "stage_rc": 7,
+      "stage_ai": 7,
+      "start_offset_3js": [
+        -36.0,
+        -8.0,
+        -6.0
+      ],
+      "tip": "Snaps into the lower front valance recess."
+    },
+    {
+      "node": "BackupLight_R",
+      "label": "Right Rear Valance Backup Lamp",
+      "category": "printed",
+      "stl": "backup_light_x2.stl",
+      "plate": 6,
+      "in_stage1_mule": false,
+      "qty": 2,
+      "colour": "#C8C8CC",
+      "stage_rc": 7,
+      "stage_ai": 7,
+      "start_offset_3js": [
+        38.0,
+        -8.0,
+        -6.0
+      ],
+      "tip": "Presses into the lower rear valance below the bumper."
+    },
+    {
+      "node": "Exhaust_R",
+      "label": "Right Dual Chrome Exhaust Tip",
+      "category": "printed",
+      "stl": "exhaust_x2.stl",
+      "plate": 5,
+      "in_stage1_mule": false,
+      "qty": 2,
+      "colour": "#C8C8CC",
+      "stage_rc": 7,
+      "stage_ai": 7,
+      "start_offset_3js": [
+        40.0,
+        -12.0,
+        -6.0
+      ],
+      "tip": "Slides into the rear valance exhaust cutout."
+    },
+    {
+      "node": "TailBezel_R0",
+      "label": "Tri-Bar Taillight Chrome Bezel (R0)",
+      "category": "printed",
+      "stl": "taillight_bezel_r_x3.stl",
+      "plate": 6,
+      "in_stage1_mule": false,
+      "qty": 3,
+      "colour": "#C8C8CC",
+      "stage_rc": 7,
+      "stage_ai": 7,
+      "start_offset_3js": [
+        38.0,
+        2.0,
+        -4.0
+      ],
+      "tip": "Concave chrome bezel from precision Plate 6 (`outer_only` brim)."
+    },
+    {
+      "node": "Taillight_R0",
+      "label": "Tri-Bar Red Taillight Lens (R0)",
+      "category": "printed",
+      "stl": "taillight_lens_r_x3.stl",
+      "plate": 8,
+      "in_stage1_mule": false,
+      "qty": 3,
+      "colour": "#B01010",
+      "stage_rc": 7,
+      "stage_ai": 7,
+      "start_offset_3js": [
+        46.0,
+        2.0,
+        -4.0
+      ],
+      "tip": "Red PLA lens (`Plate 8`) pressing into its matching `TailBezel`."
+    },
+    {
+      "node": "TailBezel_R1",
+      "label": "Tri-Bar Taillight Chrome Bezel (R1)",
+      "category": "printed",
+      "stl": "taillight_bezel_r_x3.stl",
+      "plate": 6,
+      "in_stage1_mule": false,
+      "qty": 3,
+      "colour": "#C8C8CC",
+      "stage_rc": 7,
+      "stage_ai": 7,
+      "start_offset_3js": [
+        38.0,
+        2.0,
+        -4.0
+      ],
+      "tip": "Concave chrome bezel from precision Plate 6 (`outer_only` brim)."
+    },
+    {
+      "node": "Taillight_R1",
+      "label": "Tri-Bar Red Taillight Lens (R1)",
+      "category": "printed",
+      "stl": "taillight_lens_r_x3.stl",
+      "plate": 8,
+      "in_stage1_mule": false,
+      "qty": 3,
+      "colour": "#B01010",
+      "stage_rc": 7,
+      "stage_ai": 7,
+      "start_offset_3js": [
+        46.0,
+        2.0,
+        -4.0
+      ],
+      "tip": "Red PLA lens (`Plate 8`) pressing into its matching `TailBezel`."
+    },
+    {
+      "node": "TailBezel_R2",
+      "label": "Tri-Bar Taillight Chrome Bezel (R2)",
+      "category": "printed",
+      "stl": "taillight_bezel_r_x3.stl",
+      "plate": 6,
+      "in_stage1_mule": false,
+      "qty": 3,
+      "colour": "#C8C8CC",
+      "stage_rc": 7,
+      "stage_ai": 7,
+      "start_offset_3js": [
+        38.0,
+        2.0,
+        -4.0
+      ],
+      "tip": "Concave chrome bezel from precision Plate 6 (`outer_only` brim)."
+    },
+    {
+      "node": "Taillight_R2",
+      "label": "Tri-Bar Red Taillight Lens (R2)",
+      "category": "printed",
+      "stl": "taillight_lens_r_x3.stl",
+      "plate": 8,
+      "in_stage1_mule": false,
+      "qty": 3,
+      "colour": "#B01010",
+      "stage_rc": 7,
+      "stage_ai": 7,
+      "start_offset_3js": [
+        46.0,
+        2.0,
+        -4.0
+      ],
+      "tip": "Red PLA lens (`Plate 8`) pressing into its matching `TailBezel`."
+    },
+    {
+      "node": "GasCap",
+      "label": "Vented GT Pop-Open Rear Gas Cap",
+      "category": "printed",
+      "stl": "gas_cap.stl",
+      "plate": 6,
+      "in_stage1_mule": false,
+      "qty": 1,
+      "colour": "#C8C8CC",
+      "stage_rc": 7,
+      "stage_ai": 7,
+      "start_offset_3js": [
+        42.0,
+        4.0,
+        0.0
+      ],
+      "tip": "Centers between the tri-bar taillights on the rear cove panel."
+    },
+    {
+      "node": "Door_L",
+      "label": "Driver Hinged Door Shell",
+      "category": "printed",
+      "stl": "door_l.stl",
+      "plate": 3,
+      "in_stage1_mule": false,
+      "qty": 1,
+      "colour": "#6B0F1A",
+      "stage_rc": 7,
+      "stage_ai": 7,
+      "start_offset_3js": [
+        0.0,
+        0.0,
+        42.0
+      ],
+      "tip": "Swings `+55\u00b0` on `1.75 mm` PLA filament pins (`\u00d8 1.84 mm` sill press bore, `\u00d8 2.00 mm` door running bore)."
+    },
+    {
+      "node": "DoorVent_L",
+      "label": "Driver Chrome Vent Window Frame",
+      "category": "printed",
+      "stl": "vent_window_l.stl",
+      "plate": 6,
+      "in_stage1_mule": false,
+      "qty": 1,
+      "colour": "#C8C8CC",
+      "stage_rc": 7,
+      "stage_ai": 7,
+      "start_offset_3js": [
+        0.0,
+        12.0,
+        26.0
+      ],
+      "tip": "Lower tenon is captured mechanically inside the `Door` + `DoorCard` sill U-channel."
+    },
+    {
+      "node": "DoorCard_L",
+      "label": "Driver Contoured Interior Door Card",
+      "category": "printed",
+      "stl": "door_card_l.stl",
+      "plate": 4,
+      "in_stage1_mule": false,
+      "qty": 1,
+      "colour": "#1A1A1A",
+      "stage_rc": 7,
+      "stage_ai": 7,
+      "start_offset_3js": [
+        0.0,
+        0.0,
+        -18.0
+      ],
+      "tip": "`45\u00b0` rear mortise boss + upper mirror-tongue keyway snap-lock into `Door` without cantilevers."
+    },
+    {
+      "node": "Door_R",
+      "label": "Passenger Hinged Door Shell",
+      "category": "printed",
+      "stl": "door_r.stl",
+      "plate": 3,
+      "in_stage1_mule": false,
+      "qty": 1,
+      "colour": "#6B0F1A",
+      "stage_rc": 7,
+      "stage_ai": 7,
+      "start_offset_3js": [
+        0.0,
+        0.0,
+        -42.0
+      ],
+      "tip": "Swings `+55\u00b0` on `1.75 mm` PLA filament pins (`\u00d8 1.84 mm` sill press bore, `\u00d8 2.00 mm` door running bore)."
+    },
+    {
+      "node": "DoorVent_R",
+      "label": "Passenger Chrome Vent Window Frame",
+      "category": "printed",
+      "stl": "vent_window_r.stl",
+      "plate": 6,
+      "in_stage1_mule": false,
+      "qty": 1,
+      "colour": "#C8C8CC",
+      "stage_rc": 7,
+      "stage_ai": 7,
+      "start_offset_3js": [
+        0.0,
+        12.0,
+        -26.0
+      ],
+      "tip": "Lower tenon is captured mechanically inside the `Door` + `DoorCard` sill U-channel."
+    },
+    {
+      "node": "DoorCard_R",
+      "label": "Passenger Contoured Interior Door Card",
+      "category": "printed",
+      "stl": "door_card_r.stl",
+      "plate": 4,
+      "in_stage1_mule": false,
+      "qty": 1,
+      "colour": "#1A1A1A",
+      "stage_rc": 7,
+      "stage_ai": 7,
+      "start_offset_3js": [
+        0.0,
+        0.0,
+        18.0
+      ],
+      "tip": "`45\u00b0` rear mortise boss + upper mirror-tongue keyway snap-lock into `Door` without cantilevers."
+    },
+    {
+      "node": "Mirror_L",
+      "label": "Driver Side Chrome Racing Mirror",
+      "category": "printed",
+      "stl": "mirror.stl",
+      "plate": 6,
+      "in_stage1_mule": false,
+      "qty": 1,
+      "colour": "#C8C8CC",
+      "stage_rc": 7,
+      "stage_ai": 7,
+      "start_offset_3js": [
+        0.0,
+        10.0,
+        24.0
+      ],
+      "tip": "Keys into the driver door upper beltline socket."
+    },
+    {
+      "node": "Hood",
+      "label": "Hinged Louvered 1967 Hood (+42\u00b0)",
+      "category": "printed",
+      "stl": "hood.stl",
+      "plate": 2,
+      "in_stage1_mule": false,
+      "qty": 1,
+      "colour": "#6B0F1A",
+      "stage_rc": 7,
+      "stage_ai": 7,
+      "start_offset_3js": [
+        0.0,
+        48.0,
+        0.0
+      ],
+      "tip": "Pivots `+42\u00b0` on front hinge pegs for instant battery/motor inspection."
+    },
+    {
+      "node": "HoodProp",
+      "label": "Swing-Up Hood Prop Rod",
+      "category": "printed",
+      "stl": "hood_prop.stl",
+      "plate": 4,
+      "in_stage1_mule": false,
+      "qty": 1,
+      "colour": "#1A1A1A",
+      "stage_rc": 7,
+      "stage_ai": 7,
+      "start_offset_3js": [
+        0.0,
+        36.0,
+        12.0
+      ],
+      "tip": "Holds `Hood` open at `+42\u00b0` while showcasing the 289 V8 engine bay."
+    },
+    {
+      "node": "TrunkLid",
+      "label": "Hinged Fastback Trunk Lid (-40\u00b0)",
+      "category": "printed",
+      "stl": "trunk_lid.stl",
+      "plate": 2,
+      "in_stage1_mule": false,
+      "qty": 1,
+      "colour": "#6B0F1A",
+      "stage_rc": 7,
+      "stage_ai": 7,
+      "start_offset_3js": [
+        0.0,
+        46.0,
+        0.0
+      ],
+      "tip": "Pivots `-40\u00b0` to expose `BootTub` power switch and `Radxa Zero 3W` USB-C ports."
+    },
+    {
+      "node": "WaymoPod",
+      "label": "Shelby-Style Roof Vision Scoop (`waymo_pod.stl`)",
+      "category": "printed",
+      "stl": "waymo_pod.stl",
+      "plate": 3,
+      "in_stage1_mule": false,
+      "qty": 1,
+      "colour": "#6B0F1A",
+      "stage_rc": null,
+      "stage_ai": 8,
+      "start_offset_3js": [
+        0.0,
+        44.0,
+        0.0
+      ],
+      "tip": "Support-free burgundy pod seating in `Cut_WaymoSocket` over `OV5647` `160\u00b0` fisheye lens & `INMP441` mic."
+    },
+    {
+      "node": "GC9A01Bezel",
+      "label": "Flush Chrome Rear Window HUD Bezel (`gc9a01_bezel.stl`)",
+      "category": "printed",
+      "stl": "gc9a01_bezel.stl",
+      "plate": 6,
+      "in_stage1_mule": false,
+      "qty": 1,
+      "colour": "#C8C8CC",
+      "stage_rc": null,
+      "stage_ai": 8,
+      "start_offset_3js": [
+        18.0,
+        18.0,
+        0.0
+      ],
+      "tip": "`0.0 mm` exterior protrusion sub-surface ring framing the `1.28\"` Round `GC9A01` `240x240` Emoji HUD."
+    },
+    {
+      "node": "RC_Servo1p7g",
+      "label": "1.7g Micro Digital Steering Servo",
+      "category": "rc_hw",
+      "stl": "9.5 x 16.0 x 6.2 mm",
+      "plate": null,
+      "in_stage1_mule": true,
+      "qty": 1,
+      "colour": "#1494E0",
+      "stage_rc": 3,
+      "stage_ai": null,
+      "start_offset_3js": [
+        0.0,
+        36.0,
+        0.0
+      ],
+      "tip": "Seats from above into `BayTub_ServoBed` behind radiator; horn pin engages `SteeringLink_HornSlot`."
+    },
+    {
+      "node": "RC_N25Motor",
+      "label": "N20/N25 / 21x11 mm Brushed Gearmotor",
+      "category": "rc_hw",
+      "stl": "21.0 x 11.0 x 10.0 mm",
+      "plate": null,
+      "in_stage1_mule": true,
+      "qty": 1,
+      "colour": "#E0A82E",
+      "stage_rc": 3,
+      "stage_ai": null,
+      "start_offset_3js": [
+        0.0,
+        38.0,
+        0.0
+      ],
+      "tip": "Drops into `BayTub_N25Bed` (`Z = 19.75 mm` shaft centerline) completely hidden beneath `EngineBlock`."
+    },
+    {
+      "node": "RC_FloorWire5",
+      "label": "5-Wire Under-Floor Conduit Bundle",
+      "category": "rc_hw",
+      "stl": "3 Servo + 2 Motor Leads",
+      "plate": null,
+      "in_stage1_mule": true,
+      "qty": 1,
+      "colour": "#FF9414",
+      "stage_rc": 3,
+      "stage_ai": null,
+      "start_offset_3js": [
+        0.0,
+        -24.0,
+        0.0
+      ],
+      "tip": "Threads invisibly through the enclosed driver-side floor conduit (`Y = -8.1..-4.1 mm`) to `BootTub`."
+    },
+    {
+      "node": "RC_KingpinCore_L",
+      "label": "Left 1.75 mm Raw Filament Kingpin Core",
+      "category": "rc_hw",
+      "stl": "\u00d8 1.75 x 7.5 mm PLA Snip",
+      "plate": null,
+      "in_stage1_mule": true,
+      "qty": 1,
+      "colour": "#FF6B0A",
+      "stage_rc": 4,
+      "stage_ai": 4,
+      "start_offset_3js": [
+        0.0,
+        -28.0,
+        0.0
+      ],
+      "tip": "Pushes up through `Cut_ChassisSteerCore_L` (`\u00d8 1.80 mm`) for `>8x` axial-fiber kingpin shear strength."
+    },
+    {
+      "node": "RC_KingpinCore_R",
+      "label": "Right 1.75 mm Raw Filament Kingpin Core",
+      "category": "rc_hw",
+      "stl": "\u00d8 1.75 x 7.5 mm PLA Snip",
+      "plate": null,
+      "in_stage1_mule": true,
+      "qty": 1,
+      "colour": "#FF6B0A",
+      "stage_rc": 4,
+      "stage_ai": 4,
+      "start_offset_3js": [
+        0.0,
+        -28.0,
+        0.0
+      ],
+      "tip": "Pushes up through `Cut_ChassisSteerCore_R` (`\u00d8 1.80 mm`) for double-shear reinforcement."
+    },
+    {
+      "node": "RC_ESC5A",
+      "label": "5A Bi-Directional Micro Brushed ESC",
+      "category": "rc_hw",
+      "stl": "18 x 13 x 5 mm (or 433MHz H-Bridge)",
+      "plate": null,
+      "in_stage1_mule": false,
+      "qty": 1,
+      "colour": "#245CEB",
+      "stage_rc": 6,
+      "stage_ai": null,
+      "start_offset_3js": [
+        0.0,
+        42.0,
+        0.0
+      ],
+      "tip": "Seats in left bay of `BootTub`; provides smooth proportional forward/brake/reverse throttle."
+    },
+    {
+      "node": "RC_Rx2p4G",
+      "label": "2.4GHz 3-Channel Micro Hobby Receiver",
+      "category": "rc_hw",
+      "stl": "14 x 10 x 4 mm",
+      "plate": null,
+      "in_stage1_mule": false,
+      "qty": 1,
+      "colour": "#149E52",
+      "stage_rc": 6,
+      "stage_ai": null,
+      "start_offset_3js": [
+        0.0,
+        46.0,
+        0.0
+      ],
+      "tip": "Connects CH1 to front `1.7g` steering servo and CH2 to `5A` brushed ESC."
+    },
+    {
+      "node": "RC_LiPo2S",
+      "label": "1S/2S 300mAh LiPo Battery Pack",
+      "category": "rc_hw",
+      "stl": "30 x 17 x 7.5 mm",
+      "plate": null,
+      "in_stage1_mule": false,
+      "qty": 1,
+      "colour": "#DC2428",
+      "stage_rc": 6,
+      "stage_ai": null,
+      "start_offset_3js": [
+        0.0,
+        44.0,
+        0.0
+      ],
+      "tip": "Captures between `BootTub_BatRail0/1` in the right trunk bay."
+    },
+    {
+      "node": "RC_DoorPin_L",
+      "label": "Driver Door 1.75 mm Filament Hinge Pin",
+      "category": "rc_hw",
+      "stl": "\u00d8 1.75 mm PLA Pin",
+      "plate": null,
+      "in_stage1_mule": false,
+      "qty": 1,
+      "colour": "#FF6B0A",
+      "stage_rc": 7,
+      "stage_ai": 7,
+      "start_offset_3js": [
+        0.0,
+        -24.0,
+        0.0
+      ],
+      "tip": "Presses into `\u00d8 1.84 mm` `Body` sill bore while `Door_L` pivots smoothly on its `\u00d8 2.00 mm` bore."
+    },
+    {
+      "node": "RC_DoorPin_R",
+      "label": "Passenger Door 1.75 mm Filament Hinge Pin",
+      "category": "rc_hw",
+      "stl": "\u00d8 1.75 mm PLA Pin",
+      "plate": null,
+      "in_stage1_mule": false,
+      "qty": 1,
+      "colour": "#FF6B0A",
+      "stage_rc": 7,
+      "stage_ai": 7,
+      "start_offset_3js": [
+        0.0,
+        -24.0,
+        0.0
+      ],
+      "tip": "Presses into `\u00d8 1.84 mm` `Body` sill bore while `Door_R` swings `+55\u00b0`."
+    },
+    {
+      "node": "BOM_01_Radxa_Zero_3W",
+      "label": "Radxa Zero 3W (RK3566 4GB LPDDR4 + Wi-Fi 6 + 0.8 TOPS NPU)",
+      "category": "ai_bom",
+      "stl": "BOM_01 (65.0 x 30.0 x 4.2 mm)",
+      "plate": null,
+      "in_stage1_mule": true,
+      "qty": 1,
+      "colour": "#146B3D",
+      "stage_rc": null,
+      "stage_ai": 6,
+      "start_offset_3js": [
+        40.0,
+        26.0,
+        0.0
+      ],
+      "tip": "`Radxa Zero 3W` (`RK3566` 4GB + Wi-Fi 6) sliding onto `Z = 37.8 mm` L-rail sled."
+    },
+    {
+      "node": "BOM_02_OV5647_Camera",
+      "label": "OV5647 5MP 160-deg Wide-Angle Fisheye M12 Camera Module",
+      "category": "ai_bom",
+      "stl": "BOM_02 (14.0 x 15.0 x 15.0 mm)",
+      "plate": null,
+      "in_stage1_mule": false,
+      "qty": 1,
+      "colour": "#1E232D",
+      "stage_rc": null,
+      "stage_ai": 8,
+      "start_offset_3js": [
+        0.0,
+        36.0,
+        0.0
+      ],
+      "tip": "`OV5647` `160\u00b0` fisheye M12 camera (`-9\u00b0` pitch) seated in `Cut_WaymoCamWell`."
+    },
+    {
+      "node": "BOM_03_CSI_Ribbon_15to22",
+      "label": "15-Pin (16.0 mm) to 22-Pin (11.5 mm) MIPI CSI-2 FPC Ribbon",
+      "category": "ai_bom",
+      "stl": "BOM_03 (1.6 x 16.0 x 21.8 mm)",
+      "plate": null,
+      "in_stage1_mule": false,
+      "qty": 1,
+      "colour": "#D89326",
+      "stage_rc": null,
+      "stage_ai": 8,
+      "start_offset_3js": [
+        0.0,
+        34.0,
+        0.0
+      ],
+      "tip": "15-to-22-pin MIPI CSI-2 FPC ribbon dropping straight down `Cut_WaymoChimney`."
+    },
+    {
+      "node": "BOM_04_GC9A01_Display",
+      "label": "Waveshare 1.28-inch Round GC9A01 240x240 RGB IPS SPI Display",
+      "category": "ai_bom",
+      "stl": "BOM_04 (35.6 x 38.0 x 4.0 mm)",
+      "plate": null,
+      "in_stage1_mule": false,
+      "qty": 1,
+      "colour": "#143F93",
+      "stage_rc": null,
+      "stage_ai": 8,
+      "start_offset_3js": [
+        0.0,
+        -28.0,
+        0.0
+      ],
+      "tip": "Waveshare `1.28\"` Round `GC9A01` `240x240` SPI IPS display (`< 12 mm` drop to GPIO)."
+    },
+    {
+      "node": "BOM_05_INMP441_Mic",
+      "label": "INMP441 Omnidirectional I2S Digital MEMS Microphone Breakout",
+      "category": "ai_bom",
+      "stl": "BOM_05 (14.0 x 14.0 x 2.5 mm)",
+      "plate": null,
+      "in_stage1_mule": false,
+      "qty": 1,
+      "colour": "#1E1E28",
+      "stage_rc": null,
+      "stage_ai": 8,
+      "start_offset_3js": [
+        0.0,
+        40.0,
+        0.0
+      ],
+      "tip": "`INMP441` omnidirectional I2S MEMS mic for `\"Hey Mustang\"` wake word & barge-in."
+    },
+    {
+      "node": "BOM_06_MAX98357A_Amp",
+      "label": "MAX98357A I2S 3W Class-D Filterless Audio Amplifier Breakout",
+      "category": "ai_bom",
+      "stl": "BOM_06 (16.5 x 19.0 x 3.2 mm)",
+      "plate": null,
+      "in_stage1_mule": true,
+      "qty": 1,
+      "colour": "#1E388C",
+      "stage_rc": null,
+      "stage_ai": 6,
+      "start_offset_3js": [
+        0.0,
+        40.0,
+        18.0
+      ],
+      "tip": "`MAX98357A` 3W Class-D I2S audio amp stacked in upper `Tub_AIAmpDrvBay`."
+    },
+    {
+      "node": "BOM_07_Speaker_1524",
+      "label": "8-Ohm 1W Sealed Cavity Micro Speaker (1524 Enclosure)",
+      "category": "ai_bom",
+      "stl": "BOM_07 (15.0 x 24.0 x 4.0 mm)",
+      "plate": null,
+      "in_stage1_mule": true,
+      "qty": 1,
+      "colour": "#26262B",
+      "stage_rc": null,
+      "stage_ai": 6,
+      "start_offset_3js": [
+        0.0,
+        36.0,
+        -18.0
+      ],
+      "tip": "`15 x 24 x 4 mm` sealed micro speaker seated in `Tub_AISpeakerBay`."
+    },
+    {
+      "node": "BOM_08_VL53L1X_ToF",
+      "label": "VL53L1X Time-of-Flight Laser Ranging Sensor Breakout (<20 ms Reflex)",
+      "category": "ai_bom",
+      "stl": "BOM_08 (3.2 x 25.0 x 10.7 mm)",
+      "plate": null,
+      "in_stage1_mule": true,
+      "qty": 1,
+      "colour": "#60237A",
+      "stage_rc": null,
+      "stage_ai": 3,
+      "start_offset_3js": [
+        -20.0,
+        32.0,
+        0.0
+      ],
+      "tip": "Front valance `< 20 ms` emergency auto-brake laser sensor (`BayTub_ToFSlot`)."
+    },
+    {
+      "node": "BOM_09_N25_Gearmotor",
+      "label": "N20/N25 6V 300-500 RPM Micro Metal Gearmotor (\u00d8 3.0 mm D-Shaft)",
+      "category": "ai_bom",
+      "stl": "BOM_09 (21.0 x 12.0 x 10.0 mm)",
+      "plate": null,
+      "in_stage1_mule": true,
+      "qty": 1,
+      "colour": "#B79338",
+      "stage_rc": null,
+      "stage_ai": 3,
+      "start_offset_3js": [
+        0.0,
+        38.0,
+        0.0
+      ],
+      "tip": "`N25` 6V 300-500 RPM gearmotor (`\u00d8 3.0 mm` D-shaft) in `BayTub_N25Bed`."
+    },
+    {
+      "node": "BOM_10_DRV8833_HBridge",
+      "label": "DRV8833 Dual H-Bridge DC Motor Driver Breakout (1.5A Peak)",
+      "category": "ai_bom",
+      "stl": "BOM_10 (16.0 x 18.5 x 3.2 mm)",
+      "plate": null,
+      "in_stage1_mule": true,
+      "qty": 1,
+      "colour": "#8C2323",
+      "stage_rc": null,
+      "stage_ai": 6,
+      "start_offset_3js": [
+        0.0,
+        34.0,
+        18.0
+      ],
+      "tip": "`DRV8833` dual H-bridge motor driver stacked in lower `Tub_AIAmpDrvBay`."
+    },
+    {
+      "node": "BOM_11_Servo_1p7g",
+      "label": "1.7g Ultra-Micro Digital Steering Servo (3-Wire JR PWM)",
+      "category": "ai_bom",
+      "stl": "BOM_11 (9.5 x 16.0 x 6.2 mm)",
+      "plate": null,
+      "in_stage1_mule": true,
+      "qty": 1,
+      "colour": "#2D2D38",
+      "stage_rc": null,
+      "stage_ai": 3,
+      "start_offset_3js": [
+        0.0,
+        34.0,
+        0.0
+      ],
+      "tip": "Front `1.7g` digital PWM servo (`PWM14_M0`) seated in `BayTub_ServoBed`."
+    },
+    {
+      "node": "BOM_12_LiPo_2S_350mAh",
+      "label": "2S 7.4V 300-350mAh 25C High-Discharge LiPo Battery Pack",
+      "category": "ai_bom",
+      "stl": "BOM_12 (35.0 x 20.0 x 8.0 mm)",
+      "plate": null,
+      "in_stage1_mule": true,
+      "qty": 1,
+      "colour": "#266BC6",
+      "stage_rc": null,
+      "stage_ai": 6,
+      "start_offset_3js": [
+        0.0,
+        42.0,
+        0.0
+      ],
+      "tip": "`2S 7.4V 350mAh` LiPo pack on the open `45 mm` `BootTub_AIClearFloor`."
+    },
+    {
+      "node": "BOM_13_BEC_5V_3A",
+      "label": "Mini360 / Pololu 5V 3A Synchronous Buck Regulator (BEC)",
+      "category": "ai_bom",
+      "stl": "BOM_13 (14.5 x 12.0 x 4.0 mm)",
+      "plate": null,
+      "in_stage1_mule": true,
+      "qty": 1,
+      "colour": "#1E7A51",
+      "stage_rc": null,
+      "stage_ai": 6,
+      "start_offset_3js": [
+        0.0,
+        44.0,
+        0.0
+      ],
+      "tip": "`5V 3A` synchronous buck regulator powering `Radxa Zero 3W` (`H5`)."
+    },
+    {
+      "node": "BOM_15_SlideSwitch_SS12D00",
+      "label": "SS12D00G3 SPDT High-Current Main Battery Slide Switch",
+      "category": "ai_bom",
+      "stl": "BOM_15 (8.6 x 3.8 x 4.0 mm)",
+      "plate": null,
+      "in_stage1_mule": true,
+      "qty": 1,
+      "colour": "#474751",
+      "stage_rc": null,
+      "stage_ai": 6,
+      "start_offset_3js": [
+        0.0,
+        44.0,
+        0.0
+      ],
+      "tip": "`SS12D00G3` main battery power slide switch in right `BootTub` pocket."
+    },
+    {
+      "node": "AI_GC9A01_Screen",
+      "label": "GC9A01 240x240 Expressive Emoji HUD Screen",
+      "category": "ai_bom",
+      "stl": "\u00d8 32.4 mm Active IPS Matrix",
+      "plate": null,
+      "in_stage1_mule": false,
+      "qty": 1,
+      "colour": "#0DE0F5",
+      "stage_rc": null,
+      "stage_ai": 8,
+      "start_offset_3js": [
+        0.0,
+        -28.0,
+        0.0
+      ],
+      "tip": "Renders 12 live expressive vector emojis (`HAPPY`, `HEART_EYES`, `ALERT_STOP`, `THINKING`, etc.) at `240x240`."
+    },
+    {
+      "node": "AI_Cab_H4_Motor",
+      "label": "Harness H4-A: Motor Drive Leads (`DRV8833 -> N25`)",
+      "category": "ai_cable",
+      "stl": "40-Pin Radxa Harness",
+      "plate": null,
+      "in_stage1_mule": true,
+      "qty": 1,
+      "colour": "#FF381F",
+      "stage_rc": null,
+      "stage_ai": 3,
+      "start_offset_3js": [
+        0.0,
+        12.0,
+        0.0
+      ],
+      "tip": "Routes through driver-side floor conduit."
+    },
+    {
+      "node": "AI_Cab_H4_Servo",
+      "label": "Harness H4-B: Steering PWM (`PWM14_M0 -> 1.7g Servo`)",
+      "category": "ai_cable",
+      "stl": "40-Pin Radxa Harness",
+      "plate": null,
+      "in_stage1_mule": true,
+      "qty": 1,
+      "colour": "#FFAD14",
+      "stage_rc": null,
+      "stage_ai": 3,
+      "start_offset_3js": [
+        0.0,
+        12.0,
+        0.0
+      ],
+      "tip": "Routes through driver-side floor conduit."
+    },
+    {
+      "node": "AI_Cab_H4_ToF",
+      "label": "Harness H4-C: Laser I2C (`I2C3 -> VL53L1X ToF`)",
+      "category": "ai_cable",
+      "stl": "40-Pin Radxa Harness",
+      "plate": null,
+      "in_stage1_mule": true,
+      "qty": 1,
+      "colour": "#598CFF",
+      "stage_rc": null,
+      "stage_ai": 3,
+      "start_offset_3js": [
+        0.0,
+        12.0,
+        0.0
+      ],
+      "tip": "400 kHz I2C front reflex bus."
+    },
+    {
+      "node": "AI_Cab_H5_Power",
+      "label": "Harness H5: 2S LiPo + 5V 3A BEC Power Bus",
+      "category": "ai_cable",
+      "stl": "40-Pin Radxa Harness",
+      "plate": null,
+      "in_stage1_mule": true,
+      "qty": 1,
+      "colour": "#FF1F2E",
+      "stage_rc": null,
+      "stage_ai": 6,
+      "start_offset_3js": [
+        0.0,
+        12.0,
+        0.0
+      ],
+      "tip": "Powers Radxa Zero 3W + motor H-bridge."
+    },
+    {
+      "node": "AI_Cab_H3_AudioDrv",
+      "label": "Harness H3-A: I2S0 Audio & Motor Logic (`GPIO -> Amp/DRV`)",
+      "category": "ai_cable",
+      "stl": "40-Pin Radxa Harness",
+      "plate": null,
+      "in_stage1_mule": true,
+      "qty": 1,
+      "colour": "#F238BF",
+      "stage_rc": null,
+      "stage_ai": 6,
+      "start_offset_3js": [
+        0.0,
+        12.0,
+        0.0
+      ],
+      "tip": "Short rear-deck GPIO jumper harness."
+    },
+    {
+      "node": "AI_Cab_H3_SpeakerPair",
+      "label": "Harness H3-B: Speaker Twisted Pair (`MAX98357A -> 1524`)",
+      "category": "ai_cable",
+      "stl": "40-Pin Radxa Harness",
+      "plate": null,
+      "in_stage1_mule": true,
+      "qty": 1,
+      "colour": "#1AEBD1",
+      "stage_rc": null,
+      "stage_ai": 6,
+      "start_offset_3js": [
+        0.0,
+        12.0,
+        0.0
+      ],
+      "tip": "Crosses rear deck above shaft tunnel."
+    },
+    {
+      "node": "AI_Cab_H2_HUD",
+      "label": "Harness H2: SPI3 Display Drop (`< 12 mm` to `GC9A01`)",
+      "category": "ai_cable",
+      "stl": "40-Pin Radxa Harness",
+      "plate": null,
+      "in_stage1_mule": false,
+      "qty": 1,
+      "colour": "#0DE0FF",
+      "stage_rc": null,
+      "stage_ai": 8,
+      "start_offset_3js": [
+        0.0,
+        12.0,
+        0.0
+      ],
+      "tip": "Ultra-short SPI3 drop from rear glass to Radxa header."
+    },
+    {
+      "node": "AI_Cab_H1_CSIRibbon",
+      "label": "Harness H1-A: MIPI CSI-2 Camera Ribbon (`OV5647 -> Radxa`)",
+      "category": "ai_cable",
+      "stl": "40-Pin Radxa Harness",
+      "plate": null,
+      "in_stage1_mule": false,
+      "qty": 1,
+      "colour": "#FF8C14",
+      "stage_rc": null,
+      "stage_ai": 8,
+      "start_offset_3js": [
+        0.0,
+        12.0,
+        0.0
+      ],
+      "tip": "Drops vertically down `Cut_WaymoChimney`."
+    },
+    {
+      "node": "AI_Cab_H1_MicI2S",
+      "label": "Harness H1-B: I2S0 Mic Harness (`INMP441 -> Radxa`)",
+      "category": "ai_cable",
+      "stl": "40-Pin Radxa Harness",
+      "plate": null,
+      "in_stage1_mule": false,
+      "qty": 1,
+      "colour": "#26F273",
+      "stage_rc": null,
+      "stage_ai": 8,
+      "start_offset_3js": [
+        0.0,
+        12.0,
+        0.0
+      ],
+      "tip": "Shielded 5-wire MEMS mic run down roof chimney."
+    }
+  ]
+}

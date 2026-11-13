@@ -13,7 +13,7 @@
 *.blend[0-9]*
 *.blend@
 
-# Python & local secrets
+# Python, Node & local secrets
 .env
 .env.*
 __pycache__/
@@ -23,6 +23,10 @@ __pycache__/
 .pytest_cache/
 .venv/
 venv/
+node_modules/
+site/node_modules/
+site/dist/
+site/public/draco/
 
 # Agent harnesses: local state, personal overrides and indexes (shared config stays tracked)
 /.claude/settings.local.json

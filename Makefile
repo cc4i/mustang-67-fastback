@@ -1,4 +1,4 @@
-.PHONY: help setup sync live voice-live voice-verify repl voice-e2e voice-e2e-speak sim simulate sim-speak open-sim self-test doctor test lint fix check step clean
+.PHONY: help setup sync live voice-live voice-verify repl voice-e2e voice-e2e-speak sim simulate sim-speak open-sim self-test doctor test lint fix check step web-assets web-build web-preview clean
 
 help: ## Show available root-level commands for software/ (AI Runtime) and mustang/ (3D CAD)
 	@echo "1967 Ford Mustang Fastback (1:20) — Root Makefile (3D CAD 'mustang/' + AI Runtime 'software/')"
@@ -59,6 +59,15 @@ check: ## Run full verification pipeline ('sync' + 'doctor' + 'self-test' + 'sim
 
 step: ## Convert exported STLs to closed-solid STEP files for Shapr3D ('mustang/make_step.py')
 	uv run mustang/make_step.py
+
+web-assets: ## Export Draco-compressed GLBs ('mustang_rc.glb', 'mustang_ai_delta.glb') & 'assembly_manifest.json' to 'site/public/assets/'
+	/Applications/Blender.app/Contents/MacOS/Blender -b --factory-startup --python mustang/export_web.py
+
+web-build: ## Typecheck & build the static Interactive 3D Assembly & Drive Studio in 'site/dist/'
+	cd site && npm run build
+
+web-preview: web-build ## Launch local preview of the Interactive 3D Assembly & Drive Studio at http://127.0.0.1:4173
+	cd site && npx vite preview --host 127.0.0.1 --port 4173
 
 clean: ## Clean caches in 'software/'
 	$(MAKE) -C software clean
