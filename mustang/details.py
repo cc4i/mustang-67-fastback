@@ -1403,10 +1403,10 @@ def chassis_parts():
         F.loft_solid("Cut_ChassisAxleR", "-Y", [
             (F.circle(REAR_AXLE_X, WHEEL_RADIUS, AXLE_HOLE_R / SCALE, 32), -45.0),
             (F.circle(REAR_AXLE_X, WHEEL_RADIUS, AXLE_HOLE_R / SCALE, 32), 45.0)]),
-        # Recessed solid cradle floors in Chassis for BayTub's steering servo (Z = 296) and N25/N20 motor (Z = 295)
-        F.prism_cutter("Cut_ChassisAxleServoBed", "+Z", rect(452.0, -162.0, 650.0, 162.0, 4.0),
-                       295.0 * SCALE, (Z_BOTTOM + 4.0) * SCALE),
-        F.prism_cutter("Cut_ChassisAxleN25Bed", "+Z", rect(926.0, -122.0, 1384.0, 122.0, 4.0),
+        # Recessed solid cradle floors in Chassis for BayTub's steering servo (Z = 256) and N25/N20 motor (Z = 295)
+        F.prism_cutter("Cut_ChassisAxleServoBed", "+Z", rect(462.0, -170.0, 668.0, 170.0, 2.0),
+                       255.0 * SCALE, (Z_BOTTOM + 4.0) * SCALE),
+        F.prism_cutter("Cut_ChassisAxleN25Bed", "+Z", rect(926.0, -127.0, 1384.0, 127.0, 4.0),
                        294.0 * SCALE, (Z_BOTTOM + 4.0) * SCALE),
     ]
     for s, stag in ((-1, "L"), (1, "R")):

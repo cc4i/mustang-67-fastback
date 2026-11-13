@@ -424,42 +424,45 @@ def setup_ai_simulation():
                           emission_rgba=(1.0, 0.08, 0.08, 1.0), emission_strength=7.5, alpha=0.75)
 
     # -------------------------------------------------------------------------
-    # BUILD THE 9 COLOUR-CODED 3D AI HARDWARE MODULES
+    # BUILD THE REAL-DATASHEET COLOUR-CODED 3D AI HARDWARE MODULES
     # -------------------------------------------------------------------------
-    # Wave 1 Hardware: Front VL53L1X ToF, 1.7g Servo, N25 Motor
-    mod_tof = _box_mesh("AI_Mod_VL53L1X", (2.6, 15.0, 4.8), (35.2, 0.0, 24.5), mat=m_tof, col=col, parent=root)
-    mod_servo = _box_mesh("AI_Mod_Servo1p7g", (6.5, 13.5, 10.0), (30.5, 0.0, 22.5), mat=m_servo, col=col, parent=root)
-    mod_n25 = _box_mesh("AI_Mod_N25Motor", (21.0, 11.0, 9.5), (58.2, 0.0, 19.75), mat=m_motor, col=col, parent=root)
+    # Wave 1 Hardware: Front VL53L1X ToF (3.2x25.0x10.7), 1.7g Servo (9.5x16.0x6.2), N25 Motor (21.0x12.0x10.0)
+    mod_tof = _box_mesh("AI_Mod_VL53L1X", (3.2, 25.0, 10.7), (35.5, 0.0, 26.2), mat=m_tof, col=col, parent=root)
+    mod_servo = _box_mesh("AI_Mod_Servo1p7g", (9.5, 16.0, 6.2), (27.65, 0.0, 17.90), mat=m_servo, col=col, parent=root)
+    mod_n25 = _box_mesh("AI_Mod_N25Motor", (21.0, 12.0, 10.0), (57.75, 0.0, 19.75), mat=m_motor, col=col, parent=root)
 
-    # Wave 2 Hardware: Lower Trunk 2S LiPo + 5V 3A BEC + Cabin Speaker + MAX98357A + DRV8833
-    mod_lipo = _box_mesh("AI_Mod_LiPo2S", (14.5, 14.0, 5.2), (209.2, 5.8, 32.6), mat=m_lipo, col=col, parent=root)
-    mod_bec = _box_mesh("AI_Mod_BEC5V", (14.0, 9.5, 4.0), (209.2, -7.8, 32.4), mat=m_bec, col=col, parent=root)
-    mod_spk = _box_mesh("AI_Mod_Speaker1524", (14.8, 24.0, 4.2), (162.4, 10.0, 30.8), mat=m_spk, col=col, parent=root)
-    mod_amp = _box_mesh("AI_Mod_MAX98357A", (13.5, 7.2, 3.6), (162.4, -12.5, 30.6), mat=m_amp, col=col, parent=root)
-    mod_drv = _box_mesh("AI_Mod_DRV8833", (13.5, 7.2, 3.6), (162.4, -20.5, 30.6), mat=m_drv, col=col, parent=root)
+    # Wave 2 Hardware: Lower Trunk 2S LiPo (35.0x20.0x8.0) + 5V 3A BEC (17.5x12.0x4.0)
+    #                  + Cabin Speaker (15.0x24.0x4.0) + MAX98357A (19.0x16.5x3.2) + DRV8833 (18.5x16.0x3.2)
+    mod_lipo = _box_mesh("AI_Mod_LiPo2S", (35.0, 20.0, 8.0), (193.0, 2.5, 33.4), mat=m_lipo, col=col, parent=root)
+    mod_bec = _box_mesh("AI_Mod_BEC5V", (17.5, 12.0, 4.0), (207.2, -15.0, 31.5), mat=m_bec, col=col, parent=root)
+    mod_spk = _box_mesh("AI_Mod_Speaker1524", (15.0, 24.0, 4.0), (159.8, 11.0, 30.5), mat=m_spk, col=col, parent=root)
+    mod_amp = _box_mesh("AI_Mod_MAX98357A", (19.0, 16.5, 3.2), (159.8, -17.65, 28.5), mat=m_amp, col=col, parent=root)
+    mod_drv = _box_mesh("AI_Mod_DRV8833", (18.5, 16.0, 3.2), (159.8, -17.65, 23.2), mat=m_drv, col=col, parent=root)
 
-    # Wave 3 Hardware: Radxa Zero 3W (65 x 30 x 5.2 mm) + Gold 40-pin GPIO Header + RK3566 SoC + CSI Socket
-    mod_radxa = _box_mesh("AI_Mod_RadxaZero3W", (65.0, 30.0, 1.8), (183.5, 0.0, 37.2), mat=m_radxa, col=col, parent=root)
-    _box_mesh("AI_Mod_RadxaGPIO", (50.8, 5.0, 2.8), (-5.5, -11.8, 2.3), mat=m_gold, col=col, parent=mod_radxa)
-    _box_mesh("AI_Mod_RadxaSoC", (14.0, 14.0, 1.6), (-1.5, 1.5, 1.6), mat=m_chip, col=col, parent=mod_radxa)
-    _box_mesh("AI_Mod_RadxaCSI", (3.2, 12.5, 2.2), (-30.3, 0.0, 1.7), mat=m_gold, col=col, parent=mod_radxa)
+    # Wave 3 Hardware: Radxa Zero 3W (65 x 30 x 5.0 mm) + Gold 40-pin GPIO Header + RK3566 SoC + CSI Socket
+    mod_radxa = _box_mesh("AI_Mod_RadxaZero3W", (65.0, 30.0, 1.4), (183.5, 0.0, 38.6), mat=m_radxa, col=col, parent=root)
+    _box_mesh("AI_Mod_RadxaGPIO", (50.8, 5.0, 3.4), (0.0, 11.8, 2.2), mat=m_gold, col=col, parent=mod_radxa)
+    _box_mesh("AI_Mod_RadxaSoC", (11.0, 11.0, 1.2), (-6.0, -2.0, 1.2), mat=m_chip, col=col, parent=mod_radxa)
+    _box_mesh("AI_Mod_RadxaCSI", (3.5, 13.5, 2.2), (-30.2, 0.0, 1.6), mat=m_gold, col=col, parent=mod_radxa)
 
-    # Wave 4 Hardware: Sub-Surface 1.28" Round GC9A01 HUD + Animated Eyes/Alerts & OV5647 + INMP441 in WaymoPod
-    mod_hud = _cyl_mesh("AI_Mod_GC9A01Screen", 13.5, 1.2, (176.5, 0.0, 55.65), (0.0, 20.5, 0.0),
+    # Wave 4 Hardware: Sub-Surface 1.28" Round GC9A01 HUD (38.0x35.6x4.5 PCB + Ø32.4 Screen) & OV5647 (Ø14.0) + INMP441 (Ø14.0)
+    mod_hud = _cyl_mesh("AI_Mod_GC9A01Screen", 16.2, 1.6, (176.5, 0.0, 51.0), (0.0, 20.5, 0.0),
                         mat=m_hud_bg, col=col, parent=root, segs=48)
-    _cyl_mesh("AI_HUD_CyanRing", 12.8, 1.35, (0.0, 0.0, 0.15), (0.0, 0.0, 0.0),
+    _box_mesh("AI_Mod_GC9A01PCB", (38.0, 35.6, 1.6), (0.0, 0.0, -1.6), (0.0, 0.0, 0.0),
+              mat=m_radxa, col=col, parent=mod_hud)
+    _cyl_mesh("AI_HUD_CyanRing", 12.8, 1.35, (0.0, 0.0, 0.25), (0.0, 0.0, 0.0),
               mat=m_hud_cyan, col=col, parent=mod_hud, segs=48)
-    hud_eye_l = _cyl_mesh("AI_HUD_EyeL", 3.2, 1.55, (-1.2, -4.6, 0.35), (0.0, 0.0, 0.0),
+    hud_eye_l = _cyl_mesh("AI_HUD_EyeL", 3.2, 1.55, (-1.2, -4.6, 0.45), (0.0, 0.0, 0.0),
                           mat=m_hud_cyan, col=col, parent=mod_hud, segs=24)
-    hud_eye_r = _cyl_mesh("AI_HUD_EyeR", 3.2, 1.55, (-1.2, 4.6, 0.35), (0.0, 0.0, 0.0),
+    hud_eye_r = _cyl_mesh("AI_HUD_EyeR", 3.2, 1.55, (-1.2, 4.6, 0.45), (0.0, 0.0, 0.0),
                           mat=m_hud_cyan, col=col, parent=mod_hud, segs=24)
-    hud_alert_red = _cyl_mesh("AI_HUD_AlertRed", 13.0, 1.65, (0.0, 0.0, 0.25), (0.0, 0.0, 0.0),
+    hud_alert_red = _cyl_mesh("AI_HUD_AlertRed", 13.0, 1.65, (0.0, 0.0, 0.35), (0.0, 0.0, 0.0),
                               mat=m_hud_red, col=col, parent=mod_hud, segs=48)
 
-    mod_cam = _cyl_mesh("AI_Mod_OV5647Lens", 4.2, 6.0, (115.2, 0.0, 65.8), (0.0, -81.0, 0.0),
-                        mat=m_hud_cyan, col=col, parent=root, segs=32)
-    mod_mic = _cyl_mesh("AI_Mod_INMP441Mic", 4.4, 1.4, (125.0, 0.0, 68.4), (0.0, 0.0, 0.0),
-                        mat=m_gold, col=col, parent=root, segs=32)
+    mod_cam = _cyl_mesh("AI_Mod_OV5647Lens", 7.0, 10.0, (117.5, 0.0, 65.0), (0.0, -81.0, 0.0),
+                        mat=m_hud_cyan, col=col, parent=root, segs=36)
+    mod_mic = _cyl_mesh("AI_Mod_INMP441Mic", 7.0, 2.5, (126.0, 0.0, 70.8), (0.0, 0.0, 0.0),
+                        mat=m_gold, col=col, parent=root, segs=36)
 
     # -------------------------------------------------------------------------
     # BUILD THE 5 ANIMATED 3D CABLE HARNESSES (H1-H5)

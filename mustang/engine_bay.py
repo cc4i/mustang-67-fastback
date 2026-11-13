@@ -365,15 +365,16 @@ def liner_parts(tree):
     pieces.append(_wall_gusset("BayTub_RegulatorGusset", 725.0, 790.0, wall_in, 30.0, 640.0))
     pieces.append(tube("BayTub_Harness", [(650.0, wall_in - 3, 720.0), (880.0, wall_in - 3, 735.0),
                                           (1500.0, wall_in - 3, 735.0)], 12, 8))
-    # Front micro steering servo snap-in cradle on BayTub_FloorFront (X = 438..672, Y = -182..+182):
-    # internal pocket 204 x 320 real mm (10.20 x 16.00 print mm) recessed to Z = 296 for a 1.7g micro servo,
+    # Front micro steering servo snap-in cradle on BayTub_FloorFront (X = 438..672, Y = -190..+190):
+    # internal pocket 198 x 336 real mm (9.90 x 16.80 print mm) recessed to Z = 296 for a 1.7g micro servo
+    # (13.5 x 6.2 x 16.0 mm datasheet body lying horizontally on Z = 14.80..21.00 mm),
     # plus front inner-apron lock plinths with 45-deg gable-roofed bottom mortise sockets locking onto Chassis_BayKeyF_L/R
-    pieces.append(_box("BayTub_ServoFront", 438.0, 454.0, -182.0, 182.0, FLOOR_Z0, 380.0, 6.0))
-    pieces.append(_box("BayTub_ServoRear", 652.0, 665.0, -182.0, 182.0, FLOOR_Z0, 380.0, 6.0))
+    pieces.append(_box("BayTub_ServoFront", 448.0, 464.0, -190.0, 190.0, FLOOR_Z0, 380.0, 6.0))
+    pieces.append(_box("BayTub_ServoRear", 666.0, 678.0, -190.0, 190.0, FLOOR_Z0, 380.0, 6.0))
     for s in (-1, 1):
         stag = "L" if s < 0 else "R"
-        sy0, sy1 = sorted((s * 160.0, s * 182.0))
-        pieces.append(_box(f"BayTub_ServoWall{stag}", 444.0, 662.0, sy0, sy1, FLOOR_Z0, 380.0, 4.0))
+        sy0, sy1 = sorted((s * 168.0, s * 190.0))
+        pieces.append(_box(f"BayTub_ServoWall{stag}", 454.0, 674.0, sy0, sy1, FLOOR_Z0, 380.0, 4.0))
         p_fy0, p_fy1 = sorted((s * 430.0, s * 502.0))
         pieces.append(_box(f"BayTub_FrontLockBoss{stag}", 450.0, 620.0, p_fy0, p_fy1, FLOOR_Z0, 415.0, 6.0))
         k_fy0, k_fy1 = sorted((s * 438.0, s * 494.0))
@@ -383,17 +384,17 @@ def liner_parts(tree):
             [(k_fy0, FLOOR_Z0 - 15.0), (k_fy1, FLOOR_Z0 - 15.0), (k_fy1, 376.0), (k_fym, 404.0), (k_fy0, 376.0)],
             460.0 * SCALE, 610.0 * SCALE,
         ))
-    cuts.append(_box("BayTub_ServoBed", 454.0, 652.0, -160.0, 160.0, 296.0, FLOOR_Z1 + 5.0, 4.0))
-    cuts.append(_box("BayTub_ServoHornSlot", 644.0, 672.0, -160.0, 90.0, 305.0, 394.0, 4.0))
+    cuts.append(_box("BayTub_ServoBed", 464.0, 666.0, -168.0, 168.0, 256.0, FLOOR_Z1 + 5.0, 2.0))
+    cuts.append(_box("BayTub_ServoHornSlot", 654.0, 682.0, -168.0, 90.0, 305.0, 394.0, 4.0))
     cuts.append(_box("BayTub_TieRodClear", 648.0, 682.0, -92.0, 92.0, FLOOR_Z0 - 10.0, 398.0, 6.0))
-    # Motor snap-in cradle on the bay floor: internal slot 450 x 240 real mm (22.50 x 12.00 print mm)
-    # sized for geared N20/N25 or 21.0 x 11.0 mm flat-can DC motors (with 2 x 0.48 mm Z-shims),
+    # Motor snap-in cradle on the bay floor: internal slot 450 x 250 real mm (22.50 x 12.50 print mm)
+    # sized for geared N20/N25 (21.0 x 12.0 x 10.0 mm datasheet) or 21.0 x 11.0 mm flat-can DC motors,
     # recessed to Z = 295 (shaft axis Z = 395) with 45-deg bottom mortise sockets in BayTub_TowerL/R locking onto Chassis_BayKeyR_L/R
-    pieces.append(_box("BayTub_N25Front", 910.0, 930.0, -160.0, 160.0, FLOOR_Z0, 422.0, 8.0))
-    pieces.append(_box("BayTub_N25Rear", 1380.0, 1400.0, -160.0, 160.0, FLOOR_Z0, 422.0, 8.0))
+    pieces.append(_box("BayTub_N25Front", 910.0, 930.0, -165.0, 165.0, FLOOR_Z0, 422.0, 8.0))
+    pieces.append(_box("BayTub_N25Rear", 1380.0, 1400.0, -165.0, 165.0, FLOOR_Z0, 422.0, 8.0))
     for s in (-1, 1):
         stag = "L" if s < 0 else "R"
-        y0, y1 = sorted((s * 120.0, s * 160.0))
+        y0, y1 = sorted((s * 125.0, s * 165.0))
         pieces.append(_box(f"BayTub_N25Wall{stag}", 915.0, 1395.0, y0, y1, FLOOR_Z0, 422.0, 6.0))
         gy0, gy1 = sorted((s * 220.0, s * 268.0))
         pieces.append(_box(f"BayTub_EngineGuide{stag}", 1018.0, 1172.0, gy0, gy1, FLOOR_Z0, 395.0, 8.0))
@@ -404,7 +405,7 @@ def liner_parts(tree):
             [(k_ry0, FLOOR_Z0 - 15.0), (k_ry1, FLOOR_Z0 - 15.0), (k_ry1, 388.0), (k_rym, 423.0), (k_ry0, 388.0)],
             905.0 * SCALE, 1135.0 * SCALE,
         ))
-    cuts.append(_box("BayTub_N25Bed", 930.0, 1380.0, -120.0, 120.0, 295.0, FLOOR_Z1 + 5.0, 3.0))
+    cuts.append(_box("BayTub_N25Bed", 930.0, 1380.0, -125.0, 125.0, 295.0, FLOOR_Z1 + 5.0, 3.0))
     cuts.append(_box("BayTub_N25WireFront", 904.0, 935.0, -96.0, 96.0, 330.0, 435.0, 4.0))
     cuts.append(_box("BayTub_N25WireSideL", 904.0, 1405.0, -148.0, -112.0, 396.0, 435.0, 3.0))
     cuts.append(_box("BayTub_N25WireRear", 1372.0, 1405.0, -158.0, -82.0, 335.0, 435.0, 4.0))
