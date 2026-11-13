@@ -264,13 +264,26 @@ def _bake_object(src, dg, out_name, target_col):
 
 
 def _center_mesh_origin(ob):
+    """Set exact analytical rotation/shift origins so odd-toothed gears and shaved shafts have 0.0 mm runout."""
     if not ob.data or not ob.data.vertices:
         return
     verts = [v.co for v in ob.data.vertices]
     cx = 0.5 * (min(v.x for v in verts) + max(v.x for v in verts))
     cy = 0.5 * (min(v.y for v in verts) + max(v.y for v in verts))
     cz = 0.5 * (min(v.z for v in verts) + max(v.z for v in verts))
-    c = Vector((cx, cy, cz))
+    if ob.name in ("MotorCoupler", "Driveshaft", "PinionGear"):
+        # Snap Y_world = 0.0, Z_world = 19.75 mm (395 * 1/20), keeping world X midpoint
+        w_mid = ob.matrix_world @ Vector((cx, cy, cz))
+        c = ob.matrix_world.inverted() @ Vector((w_mid.x, 0.0, 19.75))
+    elif ob.name in ("AxleGear", "Axle_R"):
+        # Snap X_world = 176.75 mm (3535 * 1/20), Z_world = 16.50 mm (330 * 1/20), keeping world Y midpoint
+        w_mid = ob.matrix_world @ Vector((cx, cy, cz))
+        c = ob.matrix_world.inverted() @ Vector((176.75, w_mid.y, 16.50))
+    elif ob.name.startswith(("Rim_", "Tire_")):
+        # Revolved in local space around exact (x = 0, z = 0) hub axis
+        c = Vector((0.0, cy, 0.0))
+    else:
+        c = Vector((cx, cy, cz))
     ob.data.transform(Matrix.Translation(-c))
     ob.matrix_world = ob.matrix_world @ Matrix.Translation(c)
 

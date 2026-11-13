@@ -6,6 +6,18 @@ All notable changes and architectural upgrades to the procedural 1967 Ford Musta
 
 ---
 
+## [v3.6.1] - 2026-11-13 - Fix Left/Right Wheel Spin Parity, Zero-Runout Gear/Shaft Origins & Differential X-Ray Cutaway
+
+### Fixed
+- **Co-Directional Left & Right Wheel Spin (`site/src/viewer3d.ts`)**:
+  - Fixed opposite-side wheel counter-rotation when driving or inspecting `7T:9T` gears: left-side wheels (`Rim_FL`, `Tire_FL`, `Rim_RL`, `Tire_RL`) carry a `180°` Y-yaw in `restQuat` (`[0, -1, 0, 0]`) so their Torq-Thrust spoke dishes face outward, causing local-space `rotateZ(angle)` right-multiplication to spin left wheels backward while spinning right wheels forward. Switched to parent-space quaternion left-multiplication (`multiplyQuaternions(wheelSpinQuat, baseQ)`) around `+Z_parent`, aligning all 4 wheels, `Axle_R`, and `AxleGear` to the identical `-X` forward rolling velocity.
+- **Analytical Zero-Runout Bevel Gear & Driveshaft Origins (`mustang/export_web.py`)**:
+  - Replaced bounding-box midpoint origin centering (`_center_mesh_origin`) with analytical CAD rotation axes for odd-toothed bevel gears (`7T` `PinionGear`, `9T` `AxleGear`), the bed-flat shaved `Driveshaft` (`Y_b = 0.0, Z_b = 19.75 mm` instead of `19.51 mm` bbox midpoint), and revolved wheels (`x = 0, z = 0` local), eliminating radial wobble and verifying co-directional downward (`-Y`) tooth contact velocity at `M = (174.30, 18.175, -1.50) mm`.
+- **Unobstructed Differential Housing X-Ray (`site/src/viewer3d.ts`)**:
+  - Added `Chassis`, `DiffCover`, `BayTub`, and `BootTub` to `XRAY_SHELL_NODES` so clicking `"Inspect Spinning 7T:9T Gears"` ghosts the enclosing differential housing for an unobstructed view of the meshing `PinionGear` and `AxleGear`.
+
+---
+
 ## [v3.6.0] - 2026-11-13 - Interactive 3D Assembly & Drive Web Studio (Classic RC + Gemini AI Toggle), GitHub Pages CI & README Overhaul
 
 ### Added & Refined

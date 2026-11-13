@@ -26,8 +26,15 @@ const XRAY_SHELL_NODES = new Set([
   'ValveCover_R',
   'AirCleaner',
   'InteriorTub',
+  'BayTub',
+  'BootTub',
+  'Chassis',
+  'DiffCover',
   'WaymoPod',
 ]);
+
+const PARENT_AXLE_Z = new THREE.Vector3(0, 0, 1);
+const PARENT_SHAFT_X = new THREE.Vector3(1, 0, 0);
 
 const ROLLING_CHASSIS_STAGE4_NODES = new Set([
   'Chassis',
@@ -680,7 +687,14 @@ export class MustangStudio3D {
     }
 
     // 5. Coupled 7T:9T Bevel Drivetrain & Wheel Spin
-    const shaftAngle = -(9 / 7) * this.wheelSpinAngle;
+    // Left wheels (`Rim_FL`, `Rim_RL`, `Tire_FL`, `Tire_RL`) carry a 180-deg Y flip in `restQuat`
+    // so their spoke dishes face outward (+Z_parent). Left-multiplying in parent space (`wheelSpinQuat * restQuat`)
+    // rotates BOTH left and right wheels in the same forward (-X) rolling direction around the +Z axle axis!
+    const wheelSpinQuat = new THREE.Quaternion().setFromAxisAngle(PARENT_AXLE_Z, this.wheelSpinAngle);
+    const shaftSpinQuat = new THREE.Quaternion().setFromAxisAngle(
+      PARENT_SHAFT_X,
+      -(9 / 7) * this.wheelSpinAngle
+    );
     for (const wName of [
       'Rim_FL',
       'Tire_FL',
@@ -694,16 +708,16 @@ export class MustangStudio3D {
       'AxleGear',
     ]) {
       const wObj = this.rcNodes.get(wName);
-      if (wObj && this.restQuat.has(wObj)) {
-        wObj.quaternion.copy(this.restQuat.get(wObj)!);
-        wObj.rotateZ(this.wheelSpinAngle);
+      const baseQ = wObj ? this.restQuat.get(wObj) : undefined;
+      if (wObj && baseQ) {
+        wObj.quaternion.multiplyQuaternions(wheelSpinQuat, baseQ);
       }
     }
     for (const sName of ['MotorCoupler', 'Driveshaft', 'PinionGear']) {
       const sObj = this.rcNodes.get(sName);
-      if (sObj && this.restQuat.has(sObj)) {
-        sObj.quaternion.copy(this.restQuat.get(sObj)!);
-        sObj.rotateX(shaftAngle);
+      const baseQ = sObj ? this.restQuat.get(sObj) : undefined;
+      if (sObj && baseQ) {
+        sObj.quaternion.multiplyQuaternions(shaftSpinQuat, baseQ);
       }
     }
 
